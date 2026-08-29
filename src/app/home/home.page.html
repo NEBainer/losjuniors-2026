@@ -1,0 +1,41 @@
+<ion-content class="fondo-app">
+  
+  @if (cargando) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Cerrando sesión de forma segura...</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal">
+    
+    <div class="cabecera-dashboard">
+      <h1>Panel de Control</h1>
+      <p>Seleccione un módulo para operar</p>
+    </div>
+
+    <div class="grilla-modulos">
+      <div class="modulo-card">
+        <ion-icon name="restaurantOutline"></ion-icon>
+        <h3>Gestión de Mesas</h3>
+        <p>Asignación y estado</p>
+      </div>
+      <div class="modulo-card">
+        <ion-icon name="listOutline"></ion-icon>
+        <h3>Lista de Pedidos</h3>
+        <p>Comandas activas</p>
+      </div>
+    </div>
+
+    <div class="seccion-logout">
+      <button class="boton-logout" (click)="ejecutarCierreSesion()" [disabled]="cargando">
+        <ion-icon name="log-out-outline"></ion-icon>
+        <span>Cerrar Sesión</span>
+      </button>
+    </div>
+
+  </div>
+</ion-content>

@@ -1,0 +1,7 @@
+{
+  "name": "LaMesa",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
