@@ -1,21 +1,21 @@
-# 🍽️ Comanda QR - TFI UTN 2026
+#Comanda QR - TFI UTN 2026
 
 Aplicación móvil desarrollada con Ionic y Angular para la gestión integral de un restaurante mediante códigos QR.
 
 ---
 
-# 👥 Integrantes
+#Integrantes
 
 | Integrante |
 |------------|
 | Ezequiel Bainer |
 | Maximiliano Arcieri |
 | Noelia Storgato |
-| Lucía Cichelli |
+| Lucía Cicchelli |
 
 ---
 
-# 📋 Índice
+#Índice
 
 - [Descripción del Proyecto](#descripción-del-proyecto)
 - [Tecnologías Utilizadas](#tecnologías-utilizadas)
@@ -26,7 +26,7 @@ Aplicación móvil desarrollada con Ionic y Angular para la gestión integral de
 
 ---
 
-# 📖 Descripción del Proyecto
+#Descripción del Proyecto
 
 Aplicación móvil desarrollada como Trabajo Final Integrador de la Tecnicatura Universitaria en Programación de la UTN.
 
@@ -42,7 +42,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-# 🛠️ Tecnologías Utilizadas
+#Tecnologías Utilizadas
 
 - Ionic
 - Angular
@@ -53,7 +53,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-# 👨‍💻 Organización del Equipo
+#Organización del Equipo
 
 ## Ezequiel Bainer
 
@@ -109,7 +109,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-## Lucía Cichelli
+## Lucía Cicchelli
 
 ### Módulos desarrollados
 
@@ -121,11 +121,11 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 **Fecha de finalización:** En progreso
 
-**Branch:** Cichelli
+**Branch:** Cicchelli
 
 ---
 
-# 🚀 Estado Actual del Proyecto
+#Estado Actual del Proyecto
 
 ## Finalizado
 
@@ -149,7 +149,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-# 🖼️ Capturas e Imágenes
+#Capturas e Imágenes
 
 ## Ícono de la aplicación
 
@@ -170,7 +170,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-# 🗄️ Base de Datos
+#Base de Datos
 Incluye:
 Diseño de entidades.
 Esquema SQL inicial.
