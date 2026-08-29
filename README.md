@@ -1,10 +1,10 @@
-#Comanda QR - TFI UTN 2026
+# Comanda QR - TFI UTN 2026
 
 Aplicación móvil desarrollada con Ionic y Angular para la gestión integral de un restaurante mediante códigos QR.
 
 ---
 
-#Integrantes
+## Integrantes
 
 | Integrante |
 |------------|
@@ -15,7 +15,7 @@ Aplicación móvil desarrollada con Ionic y Angular para la gestión integral de
 
 ---
 
-#Índice
+## Índice
 
 - [Descripción del Proyecto](#descripción-del-proyecto)
 - [Tecnologías Utilizadas](#tecnologías-utilizadas)
@@ -26,7 +26,7 @@ Aplicación móvil desarrollada con Ionic y Angular para la gestión integral de
 
 ---
 
-#Descripción del Proyecto
+## Descripción del Proyecto
 
 Aplicación móvil desarrollada como Trabajo Final Integrador de la Tecnicatura Universitaria en Programación de la UTN.
 
@@ -42,7 +42,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-#Tecnologías Utilizadas
+## Tecnologías Utilizadas
 
 - Ionic
 - Angular
@@ -53,11 +53,11 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-#Organización del Equipo
+## Organización del Equipo
 
-## Ezequiel Bainer
+### Ezequiel Bainer
 
-### Módulos desarrollados
+#### Módulos desarrollados
 
 - Creación y administración del repositorio GitHub.
 - Organización general del proyecto.
@@ -74,9 +74,9 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-## Maximiliano Arcieri
+### Maximiliano Arcieri
 
-### Módulos desarrollados
+#### Módulos desarrollados
 
 - Configuración inicial de Supabase.
 - Diseño de entidades.
@@ -92,14 +92,14 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-## Noelia Storgato
+### Noelia Storgato
 
-### Módulos desarrollados
+#### Módulos desarrollados
 
 - Formulario de Login.
 - Pantalla de accesos rápidos.
 - Implementación de Logout.
-- Creación de proyecto Ionic
+- Creación del proyecto Ionic.
 
 **Fecha de inicio:** 22/09/2026
 
@@ -109,9 +109,9 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-## Lucía Cicchelli
+### Lucía Cicchelli
 
-### Módulos desarrollados
+#### Módulos desarrollados
 
 - Diseño del ícono de la aplicación.
 - Diseño del splash screen estático.
@@ -125,9 +125,9 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-#Estado Actual del Proyecto
+## Estado Actual del Proyecto
 
-## Finalizado
+### Finalizado
 
 - Repositorio GitHub creado.
 - Proyecto Ionic generado.
@@ -140,7 +140,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 - Diseño del splash screen estático.
 - Diseño del splash screen animado.
 
-## En desarrollo
+### En desarrollo
 
 - Login.
 - Accesos rápidos.
@@ -149,36 +149,38 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ---
 
-#Capturas e Imágenes
+## Capturas e Imágenes
 
-## Ícono de la aplicación
+### Ícono de la aplicación
 
-![alt text](image-2.png)
+![Ícono de la aplicación](image-2.png)
 
-## Splash Screen Estático
+### Splash Screen Estático
 
-![alt text](image-3.png)
+![Splash Screen Estático](image-3.png)
 
+### Pantalla de Login
 
-## Pantalla de Login
+![Pantalla de Login](image.png)
 
-![alt text](image.png)
+### Accesos Rápidos
 
-## Accesos Rápidos
-
-![alt text](image-1.png)
+![Accesos Rápidos](image-1.png)
 
 ---
 
-#Base de Datos
-Incluye:
-Diseño de entidades.
-Esquema SQL inicial.
-Configuración de autenticación.
-Políticas RLS.
-Datos de prueba.
+## Base de Datos
+
 La documentación de la base de datos se encuentra en:
 
 ```text
 /supabase/README.md
+```
 
+Incluye:
+
+- Diseño de entidades.
+- Esquema SQL inicial.
+- Configuración de autenticación.
+- Políticas RLS.
+- Datos de prueba.
