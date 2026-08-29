@@ -8,30 +8,14 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+@Component({
+  selector: 'app-splash-inicio-estatico',
+  standalone: true,
+  templateUrl: './splash.inicio.estatico.component.html',
+  styleUrl: './splash.inicio.estatico.component.scss',
+})
+export class SplashInicioEstaticoComponent {}
 
-/**
- * splash.inicio.component.ts
- * ---------------------------
- * Splash de arranque de LA MESA (Los Juniors — TFI Gestión de Restaurante).
- *
- * Convención de archivos del equipo: rol.estado.extensión
- *   rol    -> splash   (a qué pantalla/pieza pertenece)
- *   estado -> inicio   (la app todavía no terminó de montar/cargar)
- *
- * Se usa como cualquier componente standalone:
- *   <app-splash-inicio (splashListo)="onSplashListo()" />
- *
- * Mientras `splashListo` no se emitió, conviene ocultar el resto del layout
- * (por ejemplo con *ngIf="appLista" en el AppComponent) para no pagar el
- * costo de renderizar la app real por debajo del splash.
- *
- * no estaban pedidas explícitamente pero evitan objeciones
- *   - Caché con vencimiento (no un flag para siempre): si el diseño cambia,
- *     alcanza con subir VERSION y todos lo vuelven a ver una vez.
- *   - Salida manual en cualquier momento (click, tecla, botón "Saltar").
- *   - prefers-reduced-motion respetado (ver .scss).
- *   - Manejo defensivo de localStorage (modo privado / cuota llena no rompe nada).
- */
 @Component({
   selector: 'app-splash-inicio',
   standalone: true,

@@ -1,10 +1,23 @@
+:root,
 :host {
   --crema: #f4eada;
+  --crema-panel: #f0e4d2;
   --marron: #7a3a22;
   --marron-osc: #5b2a17;
   --dorado: #c68a34;
   --texto-gris: #9c9186;
   --duracion-sello: 0.65s;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--crema);
 }
 
 .splash {
@@ -40,7 +53,7 @@
   position: relative;
   width: min(92vw, 420px);
   max-height: min(94dvh, 94vh, 800px);
-  overflow-y: auto; 
+  overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
   clip-path: circle(0% at 50% 50%);
@@ -55,6 +68,7 @@
     clip-path: circle(75% at 50% 50%);
   }
 }
+
 @keyframes sello {
   to {
     clip-path: circle(75% at 50% 50%);
@@ -68,14 +82,17 @@
   inset: 12px;
   border-radius: 26px;
 }
+
 .marco-ext {
   border: 3px solid var(--marron);
 }
+
 .marco-med {
   inset: 20px;
   border: 2px solid var(--dorado);
   border-radius: 20px;
 }
+
 .marco-int {
   inset: 25px;
   border: 1px solid var(--marron);
@@ -93,24 +110,29 @@
   &.marron {
     background: var(--marron);
   }
+
   &.dorado {
     background: var(--dorado);
   }
+
   &.tl {
     top: 4px;
     left: 4px;
     animation-delay: 0.55s;
   }
+
   &.tr {
     top: 4px;
     right: 4px;
     animation-delay: 0.62s;
   }
+
   &.bl {
     bottom: 4px;
     left: 4px;
     animation-delay: 0.62s;
   }
+
   &.br {
     bottom: 4px;
     right: 4px;
@@ -123,6 +145,7 @@
     transform: rotate(45deg) scale(1);
   }
 }
+
 @keyframes aparecer-rombo {
   0% {
     transform: rotate(45deg) scale(0);
@@ -152,32 +175,38 @@
     left: 15%;
     animation-delay: 1.8s;
   }
+
   &:nth-child(2) {
     top: 8%;
     right: 15%;
     animation-delay: 2.3s;
   }
+
   &:nth-child(3) {
     top: 27%;
     left: 9%;
     animation-delay: 2.6s;
   }
+
   &:nth-child(4) {
     top: 27%;
     right: 9%;
     animation-delay: 2s;
   }
+
   &:nth-child(5) {
     bottom: 30%;
     left: 10%;
     animation-delay: 2.9s;
   }
+
   &:nth-child(6) {
     bottom: 30%;
     right: 10%;
     animation-delay: 2.1s;
   }
 }
+
 @keyframes titilar {
   0%,
   100% {
@@ -211,6 +240,7 @@
     transform: none;
   }
 }
+
 @keyframes entrar {
   to {
     opacity: 1;
@@ -240,6 +270,7 @@
     height: 2px;
     background: var(--dorado);
   }
+
   .rombo {
     width: 8px;
     height: 8px;
@@ -267,7 +298,7 @@
   aspect-ratio: 1;
   flex-shrink: 0;
   border-radius: 50%;
-  overflow: hidden; 
+  overflow: hidden;
   box-shadow: 0 3px 14px rgba(0, 0, 0, 0.18);
   opacity: 0;
   transform: scale(0.7) rotate(-6deg);
@@ -315,6 +346,7 @@
     transform: scale(1) rotate(0deg);
   }
 }
+
 @keyframes onda-tinta {
   0% {
     opacity: 0.5;
@@ -364,6 +396,7 @@
     border-color: var(--marron);
     color: var(--marron);
   }
+
   &:focus-visible {
     outline: 2px solid var(--marron);
     outline-offset: 2px;
@@ -375,6 +408,7 @@
     animation: none;
     clip-path: circle(75% at 50% 50%);
   }
+
   .item,
   .rombo-esquina,
   .sello-central,
@@ -383,9 +417,11 @@
     opacity: 1 !important;
     transform: none !important;
   }
+
   .sello-central::before {
     display: none;
   }
+
   .puntos span {
     animation: none;
     opacity: 0.3;
