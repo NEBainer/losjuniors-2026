@@ -114,8 +114,13 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 #### Módulos desarrollados
 
 - Diseño del ícono de la aplicación.
-- Diseño del splash screen estático.
-- Diseño del splash screen animado.
+- Desarrollo de la pantalla de inicio (Splash Screen) estática y animada para el sistema "LA MESA".
+- Maquetación modular utilizando Angular y SCSS con paleta cromática temática.
+- Implementación de animaciones CSS3 mediante `@keyframes`, `clip-path`, efecto de estampado y entradas escalonadas de elementos visuales.
+- Desarrollo de mejoras de experiencia de usuario y accesibilidad:
+  - Botón para omitir la animación.
+  - Adaptación responsive para distintos dispositivos.
+  - Compatibilidad con usuarios que prefieren movimiento reducido (`prefers-reduced-motion`).
 
 **Fecha de inicio:** 22/09/2026
 
@@ -153,19 +158,23 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 ### Ícono de la aplicación
 
-![Ícono de la aplicación](image-2.png)
+<img src="image-2.png" alt="Ícono de la aplicación" width="250">
 
 ### Splash Screen Estático
 
-![Splash Screen Estático](image-3.png)
+<img src="image-3.png" alt="Splash Screen Estático" width="600">
+
+### Splash Screen Animado
+
+![Splash Screen Animado](splashGiff.gif)
 
 ### Pantalla de Login
 
-![Pantalla de Login](image.png)
+<img src="image.png" alt="Pantalla de Login" width="350">
 
 ### Accesos Rápidos
 
-![Accesos Rápidos](image-1.png)
+<img src="image-1.png" alt="Accesos Rápidos" width="350">
 
 ---
 
