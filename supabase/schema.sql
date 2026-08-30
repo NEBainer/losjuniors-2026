@@ -175,6 +175,94 @@ for insert
 to authenticated
 with check ( perfil_actual() in ('dueño', 'supervisor') );
 
+-- producto_fotos ------------------------------------------------
+
+alter table producto_fotos enable row level security;
+
+create policy "producto_fotos_lectura_autenticados"
+on producto_fotos
+for select
+to authenticated
+using ( true );
+
+create policy "producto_fotos_cocinero_inserta"
+on producto_fotos
+for insert
+to authenticated
+with check (
+  perfil_actual() = 'cocinero'
+  and exists (
+    select 1 from productos p
+    where p.id = producto_fotos.producto_id
+    and p.tipo in ('plato', 'postre')
+  )
+);
+
+create policy "producto_fotos_cantinero_inserta"
+on producto_fotos
+for insert
+to authenticated
+with check (
+  perfil_actual() = 'cantinero'
+  and exists (
+    select 1 from productos p
+    where p.id = producto_fotos.producto_id
+    and p.tipo = 'bebida'
+  )
+);
+
+create policy "producto_fotos_cocinero_actualiza"
+on producto_fotos
+for update
+to authenticated
+using (
+  perfil_actual() = 'cocinero'
+  and exists (
+    select 1 from productos p
+    where p.id = producto_fotos.producto_id
+    and p.tipo in ('plato', 'postre')
+  )
+);
+
+create policy "producto_fotos_cantinero_actualiza"
+on producto_fotos
+for update
+to authenticated
+using (
+  perfil_actual() = 'cantinero'
+  and exists (
+    select 1 from productos p
+    where p.id = producto_fotos.producto_id
+    and p.tipo = 'bebida'
+  )
+);
+
+create policy "producto_fotos_cocinero_borra"
+on producto_fotos
+for delete
+to authenticated
+using (
+  perfil_actual() = 'cocinero'
+  and exists (
+    select 1 from productos p
+    where p.id = producto_fotos.producto_id
+    and p.tipo in ('plato', 'postre')
+  )
+);
+
+create policy "producto_fotos_cantinero_borra"
+on producto_fotos
+for delete
+to authenticated
+using (
+  perfil_actual() = 'cantinero'
+  and exists (
+    select 1 from productos p
+    where p.id = producto_fotos.producto_id
+    and p.tipo = 'bebida'
+  )
+);
+
 -- =========================================================
 -- 7. USUARIOS DE PRUEBA
 -- Crear primero en Authentication > Users del dashboard (Auto Confirm
@@ -227,3 +315,116 @@ insert into mesas (numero, cantidad_comensales, tipo, qr_code, creado_por) value
   (3, 4, 'vip',                'MESA-3', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
   (4, 6, 'estandar',           'MESA-4', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
   (5, 2, 'movilidad_reducida', 'MESA-5', '3c6e305d-5593-4bde-a69a-7262e12e2611');
+
+  -- =========================================================
+-- 10. STORAGE: bucket "fotos"
+-- Punto "Preparación inicial" + puntos 1, 2, 3, 4, 5: fotos de
+-- usuarios, productos y mesas. Bucket público (ver README: no hay
+-- requisito de privacidad de datos en el enunciado, y evita la
+-- complejidad de signed URLs para 5 puntos funcionales distintos).
+-- =========================================================
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'fotos',
+  'fotos',
+  true,
+  5242880, -- 5MB
+  array['image/jpeg', 'image/png', 'image/webp']
+);
+
+-- LECTURA: pública para todos (clientes anónimos ven fotos de productos
+-- y mesas sin estar logueados como cliente_registrado)
+create policy "storage_fotos_lectura_publica"
+on storage.objects
+for select
+using ( bucket_id = 'fotos' );
+
+-- INSERT: cada usuario sube únicamente su propia foto de perfil
+create policy "storage_fotos_usuario_sube_propia"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'usuarios'
+  and (storage.foldername(name))[2] = auth.uid()::text
+);
+
+-- INSERT: cocinero sube fotos a la carpeta productos (sus platos/postres)
+create policy "storage_fotos_cocinero_sube_productos"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'productos'
+  and perfil_actual() = 'cocinero'
+);
+
+-- INSERT: cantinero sube fotos a la carpeta productos (sus bebidas)
+create policy "storage_fotos_cantinero_sube_productos"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'productos'
+  and perfil_actual() = 'cantinero'
+);
+
+-- INSERT: dueño/supervisor suben fotos de mesas
+create policy "storage_fotos_dueño_supervisor_sube_mesas"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'mesas'
+  and perfil_actual() in ('dueño', 'supervisor')
+);
+
+-- UPDATE: mismo criterio que insert, para reemplazo de fotos
+-- (puntos 2/3 piden "posibilidad de seleccionar otra imagen")
+create policy "storage_fotos_usuario_actualiza_propia"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'usuarios'
+  and (storage.foldername(name))[2] = auth.uid()::text
+);
+
+-- UPDATE: cocinero reemplaza fotos en la carpeta productos (sus platos/postres)
+create policy "storage_fotos_cocinero_actualiza_productos"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'productos'
+  and perfil_actual() = 'cocinero'
+);
+
+-- UPDATE: cantinero reemplaza fotos en la carpeta productos (sus bebidas)
+create policy "storage_fotos_cantinero_actualiza_productos"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'productos'
+  and perfil_actual() = 'cantinero'
+);
+
+-- UPDATE: dueño/supervisor reemplazan fotos de mesas
+create policy "storage_fotos_dueño_supervisor_actualiza_mesas"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'mesas'
+  and perfil_actual() in ('dueño', 'supervisor')
+);
