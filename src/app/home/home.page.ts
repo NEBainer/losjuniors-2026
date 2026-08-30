@@ -21,6 +21,10 @@ export class HomePage {
     addIcons({ logOutOutline, restaurantOutline, listOutline });
   }
 
+  irAAltaDeMesa() {
+    this.router.navigate(['/mesas/alta']);
+  }
+
   async ejecutarCierreSesion() {
     this.cargando = true;
     try {

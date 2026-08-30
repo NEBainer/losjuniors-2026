@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { 
@@ -41,7 +41,8 @@ export class LoginPage implements OnInit {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {
     addIcons({ business, eye, list, restaurant, pizza, wine, person, warning, flash });
 
@@ -76,10 +77,15 @@ export class LoginPage implements OnInit {
       // Simulacion de espera para que se aprecie el spinner con logo
       setTimeout(() => {
         this.cargando = false;
+        // Supabase resuelve fuera del ciclo de detección de cambios de
+        // Angular: sin este detectChanges() la vista queda congelada
+        // mostrando el spinner de carga.
+        this.cdr.detectChanges();
         this.router.navigate(['/home']); // Ajustar a la ruta principal post-login
       }, 1500);
     } catch (error) {
       this.cargando = false;
+      this.cdr.detectChanges();
       this.dispararError('Credenciales incorrectas. Verifique su correo electrónico y contraseña.');
     }
   }
@@ -107,14 +113,16 @@ export class LoginPage implements OnInit {
   // Vibracion al detectar error
   private async dispararError(mensaje: string) {
     this.mensajeError = mensaje;
+    this.cdr.detectChanges();
     try {
       await Haptics.impact({ style: ImpactStyle.Heavy });
     } catch {
 
     }
-    
+
     setTimeout(() => {
       this.mensajeError = '';
+      this.cdr.detectChanges();
     }, 4000);
   }
 }

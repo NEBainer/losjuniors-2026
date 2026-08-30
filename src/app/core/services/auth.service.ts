@@ -1,18 +1,12 @@
-import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Injectable, inject } from '@angular/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { environment } from '../../../environments/environment';
+import { SupabaseService } from './supabase.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private supabase: SupabaseClient;
-
-  constructor() {
-    // Inicializar  cliente con credenciales de Supa
-    this.supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
-  }
+  private supabase = inject(SupabaseService).client;
 
   // Metodo para el login manual y el ingreso rapido
   async iniciarSesion(correo: string, clave: string) {
@@ -50,5 +44,23 @@ export class AuthService {
       return null;
     }
     return data.session;
+  }
+
+  // Datos del usuario logueado (perfil, nombre, etc.) para decidir qué puede ver/hacer
+  async obtenerUsuarioActual() {
+    const sesion = await this.obtenerSesionActual();
+    if (!sesion) return null;
+
+    const { data, error } = await this.supabase
+      .from('usuarios')
+      .select('id, nombres, apellidos, perfil')
+      .eq('id', sesion.user.id)
+      .single();
+
+    if (error) {
+      console.error('Error obteniendo usuario:', error);
+      return null;
+    }
+    return data;
   }
 }

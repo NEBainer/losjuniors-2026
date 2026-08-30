@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  supabaseUrl: 'https://gbclocrtlezunqnmzdhx.supabase.co/rest/v1/usuarios', // CONECTAR --------
+  supabaseUrl: 'https://gbclocrtlezunqnmzdhx.supabase.co',
   supabaseKey: 'sb_publishable_i5Lj7kSpAg6LAF6qSmYD0g_EhXGaoWz'
 };
 

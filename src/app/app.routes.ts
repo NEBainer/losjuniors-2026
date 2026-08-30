@@ -16,4 +16,9 @@ export const routes: Routes = [
     loadComponent: () => import('./home/home.page').then((m) => m.HomePage),
     canActivate: [authGuard] // Bloqueo de seguridad aplicado
   },
+  {
+    path: 'mesas/alta',
+    loadComponent: () => import('./pages/mesa-alta/mesa-alta.page').then((m) => m.MesaAltaPage),
+    canActivate: [authGuard]
+  },
 ];
