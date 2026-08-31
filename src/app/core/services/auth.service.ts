@@ -14,6 +14,14 @@ export class AuthService {
     this.supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
   }
 
+  // Otros services (usuarios.service.ts, etc.) reutilizan ESTA instancia
+  // en vez de hacer su propio createClient(). Dos instancias de GoTrue en
+  // la misma app se pisan la sesión y la segunda puede quedar "anónima"
+  // frente a RLS. Ver AVANCES.md (gotcha del punto 6).
+  get client(): SupabaseClient {
+    return this.supabase;
+  }
+
   // Metodo para el login manual y el ingreso rapido
   async iniciarSesion(correo: string, clave: string) {
     try {
