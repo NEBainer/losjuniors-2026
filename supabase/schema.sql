@@ -29,6 +29,12 @@ create type tipo_producto as enum ('plato', 'bebida', 'postre');
 create type tipo_mesa as enum ('vip', 'estandar', 'movilidad_reducida');
 create type estado_mesa as enum ('vacia', 'ocupada');
 
+-- Estado de aprobación del cliente registrado (puntos 5, 6, 7, 8).
+-- El alta de cliente (punto 5) inserta 'pendiente'; dueño/supervisor lo
+-- pasan a 'aceptado' o 'rechazado'. NULL = usuario que no requiere
+-- aprobación (empleados, dueño, supervisor).
+create type estado_aprobacion as enum ('pendiente', 'aceptado', 'rechazado');
+
 -- =========================================================
 -- 2. TABLA: usuarios
 -- Vinculada 1 a 1 con auth.users (Supabase Auth maneja la contraseña).
@@ -46,6 +52,11 @@ create table usuarios (
   foto_url text,
   created_at timestamptz not null default now()
 );
+
+-- Estado de aprobación (puntos 5-8). Columna aparte y nullable: los
+-- usuarios ya existentes (seeds, empleados) quedan en NULL = "no requiere
+-- aprobación". Sólo el cliente registrado usa este campo.
+alter table usuarios add column estado_aprobacion estado_aprobacion;
 
 create index idx_usuarios_perfil on usuarios(perfil);
 
@@ -140,6 +151,18 @@ on usuarios
 for select
 to authenticated
 using ( perfil_actual() in ('dueño', 'supervisor') );
+
+-- UPDATE: dueño/supervisor aceptan o rechazan clientes registrados
+-- pendientes (puntos 6, 7, 8). Versión "intermedia": acotada a
+-- perfil = 'cliente_registrado', no un UPDATE genérico sobre toda la
+-- tabla. El with check repite la condición para que en el mismo update
+-- no se pueda cambiar el perfil de la fila y escaparse del scope.
+create policy "usuarios_dueño_supervisor_actualiza_clientes"
+on usuarios
+for update
+to authenticated
+using ( perfil_actual() in ('dueño','supervisor') and perfil = 'cliente_registrado' )
+with check ( perfil_actual() in ('dueño','supervisor') and perfil = 'cliente_registrado' );
 
 -- productos --------------------------------------------------
 
@@ -278,6 +301,10 @@ insert into usuarios (id, apellidos, nombres, dni, cuil, email, perfil) values
   ('0ef1c165-5c3e-4154-b838-0cffea487630', 'López',     'Martín',  '30555666', '20305556667', 'cocinero@test.com',   'cocinero'),
   ('1ebd312c-d187-418b-b06c-2c0a84e7be2b', 'Díaz',      'Camila',  '30666777', '27306667778', 'cantinero@test.com',  'cantinero'),
   ('711748ed-5c4a-4d51-b765-956467fd1342', 'Torres',    'Julián',  '30777888', '20307778889', 'cliente@test.com',    'cliente_registrado');
+
+-- Cliente de prueba en estado 'pendiente' para probar el listado del
+-- punto 6 mientras el alta de cliente registrado (punto 5) no exista.
+update usuarios set estado_aprobacion = 'pendiente' where email = 'cliente@test.com';
 
 -- =========================================================
 -- 8. PRODUCTOS DE PRUEBA (5 platos + 5 bebidas)

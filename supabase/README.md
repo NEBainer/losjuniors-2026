@@ -1,8 +1,8 @@
 # Base de datos - Supabase
 
 Esquema de la base de datos para la app de gestión de restaurante (TFI UTN).
-Cubre la **preparación inicial** y los puntos **1, 2, 3, 4 y 11** del listado
-de funcionalidades. El código ejecutable está en [`schema.sql`](./schema.sql).
+Cubre la **preparación inicial** y los puntos **1, 2, 3, 4, 6 y 11** del
+listado de funcionalidades. El código ejecutable está en [`schema.sql`](./schema.sql).
 
 ## Cómo se armó
 
@@ -115,7 +115,20 @@ externos que alguien pueda manipular para ver el perfil de otro.
   con aprobación).
 - `dueño_supervisor_ven_todos_usuarios` — dueño/supervisor pueden ver
   cualquier fila de `usuarios`, no solo la propia (necesario para que el
-  alta de un empleado nuevo pueda devolver la fila creada).
+  alta de un empleado nuevo pueda devolver la fila creada). Esta misma
+  policy es la que habilita el **listado de clientes pendientes del
+  punto 6** — no hizo falta una policy de SELECT nueva.
+- `usuarios_dueño_supervisor_actualiza_clientes` — dueño/supervisor pueden
+  hacer `UPDATE` de una fila de `usuarios` **solo si es de un
+  `cliente_registrado`** (puntos 6, 7 y 8: aceptar/rechazar). Se eligió
+  esta versión *intermedia* —acotada por `perfil = 'cliente_registrado'`—
+  en vez de un `UPDATE` genérico sobre toda la tabla (más permisivo de lo
+  que el punto necesita) o un trigger que limite qué columnas se tocan
+  (más correcto pero caro para el plazo). El `with check` repite la
+  condición para que en el mismo update no se pueda cambiar el `perfil` de
+  la fila y salirse del scope. El estado se guarda en la columna nueva
+  `usuarios.estado_aprobacion` (enum `pendiente`/`aceptado`/`rechazado`,
+  nullable; `NULL` = usuario que no requiere aprobación).
 
 **`productos`**
 - `productos_lectura_autenticados` — cualquier usuario logueado puede ver
@@ -197,6 +210,11 @@ cliente registrado, más al menos 5 platos, 5 bebidas y 5 mesas.
 - **5 mesas**, todas creadas por el usuario dueño de prueba. `qr_code` es
   un valor placeholder (`MESA-1`, `MESA-2`, etc.) — falta definir con el
   equipo el formato final de lo que se codifica en el QR real.
+- **1 cliente en estado `pendiente`**: se marcó `cliente@test.com` (Julián
+  Torres) con `estado_aprobacion = 'pendiente'` a mano, para poder probar
+  el listado del punto 6 antes de que exista el alta de cliente registrado
+  (punto 5). Es el único; si hace falta probar el listado con varias filas
+  hay que crear más usuarios de prueba.
 - **Bucket `fotos`** creado y con políticas activas (ver arriba), pero
   **sin archivos reales cargados todavía** — las pruebas de subida se
   hicieron con archivos descartables vía `curl`, no desde la app.
@@ -229,6 +247,13 @@ se crean desde el dashboard:
 - **Storage — mozo** intenta subir a la misma carpeta → `403 Unauthorized`,
   `"new row violates row-level security policy"`. Confirma que la policy
   de Storage no solo compila: filtra de verdad por perfil.
+- **Punto 6 — dueño** hace `PATCH` de `estado_aprobacion` sobre un
+  `cliente_registrado` → `200`, fila actualizada.
+- **Punto 6 — cocinero** intenta el mismo `PATCH` → `200` con body `[]`
+  (0 filas: lo frena el `using` de la policy).
+- **Punto 6 — dueño** intenta `PATCH` sobre un empleado (cocinero, no es
+  `cliente_registrado`) → `200` con body `[]` (0 filas). El scope a
+  `cliente_registrado` funciona.
 
 **Nota:** las políticas de `producto_fotos` (la tabla, no Storage) se
 probaron por revisión del SQL y quedaron validadas indirectamente al
@@ -238,9 +263,11 @@ confianza que sobre Storage.
 
 ## Pendiente (a propósito, según lo visto en clase)
 
-- Políticas de `UPDATE` y `DELETE` en `usuarios`, `productos` y `mesas`
-  (ej.: cocinero editando su propio plato, dueño dando de baja una mesa).
-  No las pide ningún punto de esta entrega todavía.
+- Políticas de `UPDATE`/`DELETE` en `productos` y `mesas` (ej.: cocinero
+  editando su propio plato, dueño dando de baja una mesa). No las pide
+  ningún punto de esta entrega todavía. *(En `usuarios` ya se agregó el
+  `UPDATE` acotado a `cliente_registrado` para los puntos 6-8; ver la
+  sección de políticas más arriba.)*
 - Prueba directa (no vía Storage) de `insert`/`update`/`delete` sobre
   `producto_fotos`.
 - Alta de empleados desde la app real: la solución está **diseñada pero

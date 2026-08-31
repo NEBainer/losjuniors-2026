@@ -1,0 +1,252 @@
+.fondo-app {
+  --background: var(--ion-background-color);
+}
+
+.contenedor-principal {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 20px;
+  color: var(--ion-text-color);
+}
+
+/* Cabecera con volver + refrescar */
+.cabecera-pendientes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  .titulo {
+    flex-grow: 1;
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: var(--ion-color-primary);
+      margin: 0 0 4px 0;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.95rem;
+      opacity: 0.85;
+    }
+  }
+
+  .boton-icono {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--ion-color-step-100);
+    border: 2px solid #D8C4A6;
+    border-radius: 10px;
+    color: var(--ion-color-primary);
+
+    ion-icon {
+      font-size: 1.4rem;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+}
+
+/* Mensajes de info/error (no alerts) */
+.mensaje {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+
+  ion-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+}
+
+.mensaje-error {
+  background-color: var(--ion-color-danger);
+  color: #FCF7EE;
+}
+
+.mensaje-ok {
+  background-color: #2E6E4E;
+  color: #FCF7EE;
+}
+
+/* Estado sin pendientes */
+.estado-vacio {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  opacity: 0.8;
+
+  ion-icon {
+    font-size: 3.5rem;
+    color: var(--ion-color-primary);
+  }
+
+  p {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+}
+
+/* Listado */
+.lista-pendientes {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cliente-card {
+  background-color: var(--ion-color-step-100);
+  border: 2px solid #D8C4A6;
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  grid-template-areas:
+    "avatar datos"
+    "acciones acciones";
+  gap: 12px;
+  align-items: center;
+
+  .avatar {
+    grid-area: avatar;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: var(--ion-color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .inicial {
+      color: var(--ion-color-primary-contrast);
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+  }
+
+  .datos {
+    grid-area: datos;
+
+    h3 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: bold;
+      color: var(--ion-text-color);
+    }
+  }
+
+  .acciones {
+    grid-area: acciones;
+    display: flex;
+    gap: 10px;
+
+    &.acciones-confirmar {
+      align-items: center;
+      flex-wrap: wrap;
+
+      .pregunta {
+        flex-basis: 100%;
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+
+    ion-icon {
+      font-size: 1.2rem;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  .btn-aceptar,
+  .btn-si {
+    background-color: #2E6E4E;
+    color: #FCF7EE;
+  }
+
+  .btn-rechazar,
+  .btn-no {
+    background-color: var(--ion-color-danger);
+    color: #FCF7EE;
+  }
+}
+
+/* Spinner reutilizable (mismo patrón que login/home) */
+.overlay-cargando {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(26, 37, 44, 0.95);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--ion-background-color);
+
+  .contenedor-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+
+    .logo-spinner {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+    }
+
+    .spinner-css {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--ion-background-color);
+      border-top-color: var(--ion-color-primary);
+      border-radius: 50%;
+      animation: girar 1s linear infinite;
+    }
+  }
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
