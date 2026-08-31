@@ -1,0 +1,69 @@
+<ion-content class="fondo-app">
+  <!-- Indicador visual en todas las esperas con logo -->
+  @if (cargando) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <!-- CAMBIAR LA RUTA POR LOGO DE LU-->
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Autenticando usuario...</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal">
+    <div class="cabecera-logo">
+      <h1>La Mesa</h1>
+      <p>Gestión de Restaurante</p>
+    </div>
+
+    <!-- Errores con controles personalizados-->
+    @if (mensajeError) {
+      <div class="mensaje-error">
+        <ion-icon name="warning"></ion-icon>
+        <span>{{ mensajeError }}</span>
+      </div>
+    }
+
+    <!-- Validacion de datos en todos los formularios -->
+    <form [formGroup]="formularioLogin" (ngSubmit)="iniciarSesion()" class="formulario">
+      <div class="campo">
+        <label>Correo electrónico</label>
+        <input type="email" formControlName="correo" placeholder="ejemplo@correo.com" />
+      </div>
+
+      <div class="campo">
+        <label>Contraseña</label>
+        <input type="password" formControlName="clave" placeholder="Ingrese su clave" />
+      </div>
+
+      <button type="submit" class="boton-principal" [disabled]="cargando || formularioLogin.invalid">
+        Ingresar al sistema
+      </button>
+    </form>
+    <div class="enlace-registro">
+      <span>¿Todavía no tenés cuenta?</span>
+        <ion-button
+          fill="clear"
+          (click)="irARegistro()"
+          class="boton-registro-link">
+          Registrate como cliente
+        </ion-button>
+    </div>
+  </div>
+
+  <!-- Accesos rapidos -->
+  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+    <ion-fab-button color="tertiary">
+      <ion-icon name="flash"></ion-icon>
+    </ion-fab-button>
+    
+    <ion-fab-list side="top">
+      @for (usuario of accesosRapidos; track usuario.correo) {
+        <ion-fab-button (click)="cargarAccesoRapido(usuario)" [title]="usuario.perfil">
+          <ion-icon [name]="usuario.icono"></ion-icon>
+        </ion-fab-button>
+      }
+    </ion-fab-list>
+  </ion-fab>
+</ion-content>

@@ -1,0 +1,5 @@
+
+# Build/caché/dependencias - no deben trackearse
+.angular/
+node_modules/
+www/
