@@ -2,20 +2,21 @@ import { Injectable } from '@angular/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { AuthService } from './auth.service';
 import { ClientePendiente, EstadoAprobacion } from '../models/usuario.model';
+import { SupabaseService } from './supabase.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UsuariosService {
 
-  // Reutilizamos el MISMO cliente Supabase que AuthService (getter `client`).
+  // Reutilizamos el MISMO cliente Supabase que AuthService (getter `client`).(SupabaseService)
   // Crear otro createClient() acá daría dos instancias de GoTrue y la nueva
   // podría no ver la sesión del usuario logueado -> RLS te trataría como
   // anónimo. Ver AVANCES.md (gotcha del punto 6).
-  constructor(private auth: AuthService) {}
+  constructor(private supabaseService: SupabaseService) {}
 
   private get sb() {
-    return this.auth.client;
+    return this.supabaseService.client;
   }
 
   // Listado del punto 6: clientes registrados en estado 'pendiente'.
