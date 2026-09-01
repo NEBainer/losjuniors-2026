@@ -1,0 +1,54 @@
+.contenedor-estado {
+  --background: var(--ion-color-primary);
+}
+
+.banner-estado {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.estado {
+  width: 100%;
+  max-width: 340px;
+  background: var(--ion-color-step-100);
+  border-radius: 20px;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+
+  ion-icon {
+    font-size: 56px;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--ion-text-color);
+    margin: 0;
+  }
+
+  p {
+    font-size: 0.9rem;
+    color: var(--ion-text-color);
+    opacity: 0.85;
+    margin: 0;
+  }
+
+  &.pendiente ion-icon {
+    color: var(--ion-color-primary);
+  }
+
+  &.aceptado ion-icon {
+    color: var(--ion-color-success);
+  }
+
+  &.rechazado ion-icon {
+    color: var(--ion-color-danger);
+  }
+}

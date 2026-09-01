@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { IonContent, IonButton, IonIcon } from '@ionic/angular';
+import { IonContent, IonIcon } from '@ionic/angular';
 import { AuthService } from '../core/services/auth.service';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -34,9 +34,11 @@ export class HomePage {
       this.router.navigate(['/login'], { replaceUrl: true });
     } catch (error) {
       this.cargando = false;
-      // Vibracion al detectarse un error
-      await Haptics.impact({ style: ImpactStyle.Heavy });
       console.error('Error al cerrar sesión', error);
+      // Vibracion al detectarse un error
+      try {
+        await Haptics.impact({ style: ImpactStyle.Heavy });
+      } catch { }
     }
   }
 }
