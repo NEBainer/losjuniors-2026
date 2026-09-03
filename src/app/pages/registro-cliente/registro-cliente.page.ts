@@ -2,13 +2,12 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { IonButton, IonContent, IonIcon, IonInput, IonLabel, IonSpinner } from '@ionic/angular';
-import { createClient } from '@supabase/supabase-js';
-import { environment } from '../../../environments/environment';
 import { ClienteService } from '../../core/services/cliente.service';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
-import { camera, warning ,personAddOutline} from 'ionicons/icons';
+import { camera, warning ,personAddOutline, cameraOutline, warningOutline} from 'ionicons/icons';
+import { SupabaseService } from '../../core/services/supabase.service';
 
 @Component({
   selector: 'app-registro-cliente',
@@ -22,10 +21,9 @@ export class RegistroClientePage  implements OnInit {
   cargando = false;
   mensajeError = '';
 
-  private supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
-
   constructor(
     private fb: FormBuilder,
+    private supabaseService: SupabaseService,
     private clienteService: ClienteService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -38,7 +36,7 @@ export class RegistroClientePage  implements OnInit {
       clave: ['', [Validators.required, Validators.minLength(6)]]
     });
 
-    addIcons({ camera, warning, personAddOutline });
+    addIcons({ camera, warning, warningOutline, personAddOutline, cameraOutline });
    }
 
   ngOnInit() {}
@@ -61,7 +59,7 @@ export class RegistroClientePage  implements OnInit {
     const { nombres, apellidos, dni, email, clave } = this.formulario.value;
 
     try {
-      const { data, error: errorAuth } = await this.supabase.auth.signUp({
+      const { data, error: errorAuth } = await this.supabaseService.client.auth.signUp({
         email, password: clave
       });
       if (errorAuth || !data.user) throw errorAuth;

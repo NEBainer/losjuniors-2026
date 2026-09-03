@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { environment } from '../../../environments/environment';
 import { Camera } from '@capacitor/camera';
+import { SupabaseService } from './supabase.service';
 
 export interface EstadoCliente {
   id: string;
@@ -10,11 +9,8 @@ export interface EstadoCliente {
 
 @Injectable({ providedIn: 'root' })
 export class ClienteService {
-  private supabase: SupabaseClient;
 
-  constructor() {
-    this.supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
-  }
+  constructor(private supabaseService: SupabaseService) {}
 
   async tomarFoto(): Promise<string> {
     const foto = await Camera.takePhoto({ quality: 80 });
@@ -25,13 +21,13 @@ export class ClienteService {
     const blob = await (await fetch(webPath)).blob();
     const nombreArchivo = `usuarios/${uid}/foto.jpg`; 
 
-    const { error } = await this.supabase.storage
+    const { error } = await this.supabaseService.client.storage
       .from('fotos')
       .upload(nombreArchivo, blob, { contentType: 'image/jpeg', upsert: true });
 
     if (error) throw error;
 
-    const { data } = this.supabase.storage
+    const { data } = this.supabaseService.client.storage
       .from('fotos')
       .getPublicUrl(nombreArchivo);
 
@@ -46,7 +42,7 @@ export class ClienteService {
     email: string;
     fotoUrl: string;
   }) {
-    const { error } = await this.supabase.from('usuarios').insert({
+    const { error } = await this.supabaseService.client.from('usuarios').insert({
       id: datos.id,
       nombres: datos.nombres,
       apellidos: datos.apellidos,
@@ -61,7 +57,7 @@ export class ClienteService {
   }
 
   escucharCambioEstado(clienteId: string, callback: (estado: EstadoCliente) => void) {
-    return this.supabase
+    return this.supabaseService.client
       .channel(`estado-cliente-${clienteId}`)
       .on(
         'postgres_changes',
