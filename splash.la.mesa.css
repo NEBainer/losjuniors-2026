@@ -1,0 +1,231 @@
+  :root{
+    --crema:        #F4EADA;
+    --crema-panel:  #F0E4D2;
+    --marron:       #7A3A22;
+    --marron-osc:   #5B2A17;
+    --dorado:       #C68A34;
+    --texto-gris:   #9C9186;
+    --duracion-sello: .65s;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin: 0;
+    height: 100%;
+    background: var(--crema);
+  }
+
+  .splash{
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--crema);
+    font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+    z-index: 9999;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity .5s ease, visibility 0s linear 0s;
+  }
+  .splash.oculto{
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .5s ease, visibility 0s linear .5s;
+    pointer-events: none;
+  }
+  
+  .marco{
+    position: relative;
+    width: min(92vw, 420px);
+    max-height: min(94%, 800px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    clip-path: circle(0% at 50% 50%);
+    animation: sello var(--duracion-sello) cubic-bezier(.2,.7,.25,1) forwards;
+  }
+  .marco::-webkit-scrollbar{ display: none; }
+  @keyframes sello{
+    to{ clip-path: circle(75% at 50% 50%); }
+  }
+
+  .marco-capa-ext{
+    margin: 12px;
+    border: 3px solid var(--marron);
+    border-radius: 26px;
+  }
+  .marco-capa-med{
+    margin: 8px;
+    border: 2px solid var(--dorado);
+    border-radius: 20px;
+  }
+
+  .rombo-esquina{
+    position: absolute;
+    width: 12px; height: 12px;
+    transform: rotate(45deg) scale(0);
+    opacity: 0;
+    animation: aparecer-rombo .4s ease-out forwards;
+  }
+  .rombo-esquina.marron{ background: var(--marron); }
+  .rombo-esquina.dorado{ background: var(--dorado); }
+  .rombo-esquina.tl{ top: 4px;    left: 4px;    animation-delay: .55s; }
+  .rombo-esquina.tr{ top: 4px;    right: 4px;   animation-delay: .62s; }
+  .rombo-esquina.bl{ bottom: 4px; left: 4px;    animation-delay: .62s; }
+  .rombo-esquina.br{ bottom: 4px; right: 4px;   animation-delay: .55s; }
+  @keyframes aparecer-rombo{
+    0%{   transform: rotate(45deg) scale(0);   opacity: 0; }
+    60%{  transform: rotate(45deg) scale(1.3); opacity: 1; }
+    100%{ transform: rotate(45deg) scale(1);   opacity: 1; }
+  }
+
+  .puntos span{
+    position: absolute;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--texto-gris);
+    opacity: 0;
+    animation: titilar 4s ease-in-out infinite;
+  }
+  .puntos span:nth-child(1){ top: 8%;  left: 15%; animation-delay: 1.8s; }
+  .puntos span:nth-child(2){ top: 8%;  right: 15%; animation-delay: 2.3s; }
+  .puntos span:nth-child(3){ top: 27%; left: 9%;  animation-delay: 2.6s; }
+  .puntos span:nth-child(4){ top: 27%; right: 9%; animation-delay: 2.0s; }
+  .puntos span:nth-child(5){ bottom: 30%; left: 10%; animation-delay: 2.9s; }
+  .puntos span:nth-child(6){ bottom: 30%; right: 10%; animation-delay: 2.1s; }
+
+  @keyframes titilar{
+    0%, 100%{ opacity: .25; }
+    50%{ opacity: .55; }
+  }
+  .contenido{
+    position: relative;
+    border: 1px solid var(--marron);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1.1rem, 5vh, 2.5rem);
+    padding: 9%;
+    text-align: center;
+  }
+
+  .item{
+    opacity: 0;
+    transform: translateY(14px);
+    animation: entrar .5s cubic-bezier(.16,.8,.3,1) forwards;
+    animation-delay: calc(.55s + (var(--i, 0) * .09s));
+  }
+  @keyframes entrar{
+    to{ opacity: 1; transform: translateY(0); }
+  }
+
+  .insignia{
+    border: 2px solid var(--marron);
+    border-radius: 999px;
+    padding: .5em 1.3em;
+    font-family: 'Cinzel', 'Playfair Display', serif;
+    font-size: clamp(.8rem, 2.6vw, 1rem);
+    letter-spacing: .12em;
+    color: var(--marron);
+    font-weight: 600;
+  }
+
+  .separador{
+    display: flex;
+    align-items: center;
+    gap: .5em;
+    margin: .9em 0;
+  }
+  .separador .linea{ width: 150px; height: 2px; background: var(--dorado); }
+  .separador .rombo{ width: 8px; height: 8px; background: var(--dorado); transform: rotate(45deg); }
+  .separador.punteado .linea{ background: none; border-top: 2px dotted var(--texto-gris); }
+
+  .subtitulo{
+    font-family: 'Cinzel', 'Playfair Display', serif;
+    font-size: clamp(1rem, 3.4vw, 1.3rem);
+    letter-spacing: .14em;
+    color: var(--marron);
+    font-weight: 700;
+  }
+
+  .sello-central{
+    position: relative;
+    width: min(58vw, 250px);
+    aspect-ratio: 1;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden; 
+    box-shadow: 0 3px 14px rgba(0,0,0,.18);
+    opacity: 0;
+    transform: scale(.7) rotate(-6deg);
+    animation: golpe-sello .6s cubic-bezier(.34,1.56,.64,1) forwards;
+    animation-delay: .95s;
+  }
+  .sello-central::before{
+    content: '';
+    position: absolute;
+    inset: -14px;
+    border-radius: 50%;
+    border: 2px solid var(--marron);
+    opacity: 0;
+    animation: onda-tinta .8s ease-out forwards;
+    animation-delay: 1.1s;
+    pointer-events: none;
+  }
+  .logo-marca{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  @keyframes golpe-sello{
+    0%{   opacity: 0; transform: scale(.7) rotate(-6deg); }
+    100%{ opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+  @keyframes onda-tinta{
+    0%{   opacity: .5; transform: scale(.9); }
+    100%{ opacity: 0;  transform: scale(1.12); }
+  }
+
+  .autores{
+    color: var(--texto-gris);
+    font-size: clamp(.95rem, 3.6vw, 1.15rem);
+    line-height: 1.85;
+  }
+
+  .pie{
+    font-size: .85rem;
+    font-style: italic;
+    color: var(--texto-gris);
+  }
+
+  .btn-saltar{
+    position: absolute;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    right: 18px;
+    background: none;
+    border: 1px solid var(--texto-gris);
+    color: var(--texto-gris);
+    border-radius: 999px;
+    padding: .4em 1em;
+    font-family: inherit;
+    font-size: .78rem;
+    letter-spacing: .05em;
+    cursor: pointer;
+    opacity: 0;
+    animation: entrar .4s ease forwards;
+    animation-delay: 1.6s;
+  }
+  .btn-saltar:hover{ border-color: var(--marron); color: var(--marron); }
+  .btn-saltar:focus-visible{ outline: 2px solid var(--marron); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce){
+    .marco{ animation: none; clip-path: circle(75% at 50% 50%); }
+    .item, .rombo-esquina, .sello-central, .btn-saltar{ animation: none !important; opacity: 1 !important; transform: none !important; }
+    .sello-central::before{ display: none; }
+    .puntos span{ animation: none; opacity: .3; }
+  }

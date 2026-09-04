@@ -40,20 +40,10 @@ import { Camera, MediaTypeSelection } from '@capacitor/camera';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 
 /**
- * Uso:
- *   <app-producto-alta
- *     tipo="plato"
- *     [nombresExistentes]="nombresDeLaCarta"
- *     [guardando]="guardandoEnSupabase"
- *     [errorGuardado]="errorDelUltimoIntento"
- *     (guardar)="onGuardarProducto($event)"
- *     (cancelar)="volver()"
- *   />
- *
- * Este componente NO habla con Supabase directamente — solo arma y valida
- * los datos, y los emite por (guardar). La pantalla que lo use es la que
- * hace el insert real (mismo patrón que ya usan con AuthService.client:
- * un solo dueño de la conexión, todo lo demás lo recibe inyectado/emitido).
+ * Alta de plato (perfil cocinero, punto 2 del TP) y alta de bebida (perfil
+ * cantinero, punto 3) — son el mismo formulario con dos etiquetas distintas,
+ * así que en vez de duplicar dos pantallas casi idénticas, un solo componente
+ * con @Input() tipo decide el texto y qué se emite.
  */
 
 export interface FotoProducto {
@@ -532,8 +522,6 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
         }
       }
     } catch (error) {
-      // El usuario canceló el selector nativo o no dio permisos.
-      // No es un error de validación del formulario, así que no se muestra nada.
       console.warn('No se pudo obtener la foto', error);
     }
   }
