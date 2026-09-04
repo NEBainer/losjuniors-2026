@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonContent, IonIcon, IonSpinner } from '@ionic/angular';
 import { ClienteService } from '../../core/services/cliente.service';
@@ -13,7 +13,7 @@ import { checkmarkCircle, closeCircle, timeOutline } from 'ionicons/icons';
   imports: [IonContent, IonSpinner, IonIcon, CommonModule]
 })
 export class RegistroPendientePage implements OnInit, OnDestroy {
-  estado: 'pendiente' | 'aceptado' | 'rechazado' = 'pendiente';
+  readonly estado = signal<'pendiente' | 'aceptado' | 'rechazado'>('pendiente');
   private canal: any;
 
   constructor(private clienteService: ClienteService, private router: Router) { 
@@ -28,8 +28,8 @@ export class RegistroPendientePage implements OnInit, OnDestroy {
     }
 
     this.canal = this.clienteService.escucharCambioEstado(clienteId, (nuevoEstado) => {
-        this.estado = nuevoEstado.estado_aprobacion;
-        if (this.estado === 'aceptado') {
+        this.estado.set(nuevoEstado.estado_aprobacion);
+        if (this.estado() === 'aceptado') {
           setTimeout(() => this.router.navigate(['/home']), 2500);
         }
       });

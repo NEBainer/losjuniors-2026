@@ -8,8 +8,8 @@
     </header>
 
     <div class="contenedor-foto" (click)="capturarFoto()">
-      @if (fotoUri) {
-        <img [src]="fotoUri" alt="Foto de perfil" class="foto-preview" />
+      @if (fotoUri()) {
+        <img [src]="fotoUri()" alt="Foto de perfil" class="foto-preview" />
         <span class="etiqueta-cambiar">Tocar para volver a tomar</span>
       } @else {
         <ion-icon name="camera-outline" class="icono-camara"></ion-icon>
@@ -88,7 +88,7 @@
         }
       </div>
 
-      @if (mensajeError) {
+      @if (mensajeError()) {
         <div class="banner-error">
           <ion-icon name="warning-outline"></ion-icon>
           <span>{{ mensajeError }}</span>
@@ -99,8 +99,8 @@
         type="submit"
         expand="block"
         class="boton-registrar"
-        [disabled]="cargando">
-        @if (cargando) {
+        [disabled]="cargando()">
+        @if (cargando()) {
           <ion-spinner name="crescent"></ion-spinner>
         } @else {
           Registrarme

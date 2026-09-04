@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { IonButton, IonContent, IonIcon, IonInput, IonLabel, IonSpinner } from '@ionic/angular';
 import { ClienteService } from '../../core/services/cliente.service';
@@ -17,16 +17,15 @@ import { SupabaseService } from '../../core/services/supabase.service';
 })
 export class RegistroClientePage  implements OnInit {
   formulario: FormGroup;
-  fotoUri: string | null = null;
-  cargando = false;
-  mensajeError = '';
+  readonly fotoUri = signal<string | null>(null);
+  readonly cargando = signal(false);
+  readonly mensajeError = signal('');
 
   constructor(
     private fb: FormBuilder,
     private supabaseService: SupabaseService,
     private clienteService: ClienteService,
-    private router: Router,
-    private cdr: ChangeDetectorRef
+    private router: Router
   ) {
     this.formulario = this.fb.group({
       nombres: ['', [Validators.required, Validators.minLength(2)]],
@@ -43,49 +42,49 @@ export class RegistroClientePage  implements OnInit {
 
   async capturarFoto() {
     try {
-      this.fotoUri = await this.clienteService.tomarFoto();
+      const uri = await this.clienteService.tomarFoto();
+      this.fotoUri.set(uri);
     } catch {
       this.dispararError('No se pudo acceder a la cámara.');
     }
   }
 
   async registrarse() {
-    if (this.formulario.invalid || !this.fotoUri) {
+    if (this.formulario.invalid || !this.fotoUri()) {
       this.dispararError('Complete todos los campos y tome una foto antes de continuar.');
       return;
     }
 
-    this.cargando = true;
+    this.cargando.set(true);
     const { nombres, apellidos, dni, email, clave } = this.formulario.value;
 
     try {
       const { data, error: errorAuth } = await this.supabaseService.client.auth.signUp({
         email, password: clave
       });
+      console.log('¿Hay sesión activa?', data.session); // Si en consola vemos  null, "Confirm email" está activada y se resuelve desactivando "Confirm email" en el dashboard. Sino se ejecuta como usuario anonimo.
       if (errorAuth || !data.user) throw errorAuth;
 
-      const fotoUrl = await this.clienteService.subirFoto(this.fotoUri, data.user.id);
+      const fotoUrl = await this.clienteService.subirFoto(this.fotoUri()!, data.user.id);
 
       await this.clienteService.registrarCliente({
         id: data.user.id, nombres, apellidos, dni, email, fotoUrl
       });
 
-      this.cargando = false;
+      this.cargando.set(false);
       this.router.navigate(['/registro-pendiente'], { state: { clienteId: data.user.id } });
 
     } catch (error) {
-      this.cargando = false;
-      this.cdr.detectChanges();
+      this.cargando.set(false);
       this.dispararError('No se pudo completar el registro. Intente nuevamente.');
     }
   }
 
   private async dispararError(mensaje: string) {
-    this.mensajeError = mensaje;
+    this.mensajeError.set(mensaje);
     try { await Haptics.impact({ style: ImpactStyle.Heavy }); } catch {}
     setTimeout(() => {
-      this.mensajeError = '';
-      this.cdr.detectChanges();
+      this.mensajeError.set('');
     }, 4000);
   }
 

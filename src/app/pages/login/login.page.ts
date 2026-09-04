@@ -54,11 +54,12 @@ export class LoginPage implements OnInit {
 
   ngOnInit() {}
 
-  cargarAccesoRapido(usuario: any) {
+  async cargarAccesoRapido(usuario: any) {
     this.formularioLogin.patchValue({
       correo: usuario.correo,
       clave: usuario.clave
     });
+    await this.iniciarSesion();
   }
 
   async iniciarSesion() {
