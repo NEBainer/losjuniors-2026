@@ -211,6 +211,10 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
     {{ guardando ? 'Guardando…' : (tipo === 'plato' ? 'Guardar plato' : 'Guardar bebida') }}
   </ion-button>
 
+  <div class="cierre-decorativo" aria-hidden="true">
+    <span class="linea-cierre"></span><span class="rombo-cierre"></span><span class="linea-cierre"></span>
+  </div>
+
 </form>
 
 <div class="velo-selector" *ngIf="mostrarSelector()" (click)="mostrarSelector.set(false)">
@@ -255,6 +259,13 @@ ion-header ion-toolbar {
 
 .fondo-carta {
   --background: var(--crema);
+}
+.fondo-carta::part(background) {
+  background-color: var(--crema);
+  background-image:
+    radial-gradient(circle at 14px 14px, rgba(198, 138, 52, 0.18) 1.6px, transparent 1.6px),
+    radial-gradient(circle at 46px 42px, rgba(122, 58, 34, 0.10) 1.3px, transparent 1.3px);
+  background-size: 64px 64px;
 }
 
 .formulario {
@@ -371,6 +382,25 @@ ion-header ion-toolbar {
   --border-radius: 999px;
   margin-top: 12px;
   font-weight: 600;
+}
+
+.cierre-decorativo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  margin-top: 28px;
+}
+.linea-cierre {
+  width: 40px;
+  height: 2px;
+  background: var(--dorado);
+}
+.rombo-cierre {
+  width: 8px;
+  height: 8px;
+  background: var(--dorado);
+  transform: rotate(45deg);
 }
 
 .velo-selector {
