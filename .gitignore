@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Angular
+.angular/
+dist/
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Capacitor / Android build
+android/.gradle/
+android/build/
+android/app/build/
+
+# Ionic
+www/
+
+# CLAUDE
+CLAUDE.local.md
+enunciado-tfi.md
+AVANCES.md

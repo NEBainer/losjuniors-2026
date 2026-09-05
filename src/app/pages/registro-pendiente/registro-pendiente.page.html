@@ -1,0 +1,28 @@
+<ion-content class="ion-padding contenedor-estado">
+  <div class="banner-estado">
+    @switch (estado()) {
+      @case ('pendiente') {
+        <div class="estado pendiente">
+          <ion-icon name="time-outline"></ion-icon>
+          <h2>Tu registro está pendiente de aprobación</h2>
+          <p>El dueño o supervisor lo revisará en breve. Esta pantalla se actualiza sola.</p>
+          <ion-spinner name="dots"></ion-spinner>
+        </div>
+      }
+      @case ('aceptado') {
+        <div class="estado aceptado">
+          <ion-icon name="checkmark-circle"></ion-icon>
+          <h2>¡Registro aceptado!</h2>
+          <p>Ya podés ingresar a la aplicación.</p>
+        </div>
+      }
+      @case ('rechazado') {
+        <div class="estado rechazado">
+          <ion-icon name="close-circle"></ion-icon>
+          <h2>Registro rechazado</h2>
+          <p>Revisá tu correo electrónico para más información.</p>
+        </div>
+      }
+    }
+  </div>
+</ion-content>
