@@ -455,3 +455,24 @@ using (
   and (storage.foldername(name))[1] = 'mesas'
   and perfil_actual() in ('dueño', 'supervisor')
 );
+
+-- ============================================================
+-- Punto 5: autorregistro de cliente registrado
+-- Agregado 03/09/2026 — hueco detectado en revisión de merge de `dev`.
+-- Sin esta policy, ClienteService.registrarCliente() falla con 403:
+-- no había ninguna policy de INSERT en `usuarios` para que un cliente
+-- nuevo se dé de alta a sí mismo (solo existía la de dueño/supervisor
+-- dando de alta empleados).
+-- ============================================================
+create policy "usuarios_cliente_se_autorregistra"
+on usuarios
+for insert
+to authenticated
+with check (
+  auth.uid() = id
+  and perfil = 'cliente_registrado'
+  and estado_aprobacion = 'pendiente'
+);
+-- El with check fija perfil y estado_aprobacion para que un cliente
+-- no pueda insertarse con otro perfil (ej. 'dueño') ni autoaprobarse
+-- (ej. estado_aprobacion = 'aceptado') en el mismo insert.

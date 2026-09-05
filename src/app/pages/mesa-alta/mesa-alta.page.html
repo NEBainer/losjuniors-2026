@@ -1,0 +1,92 @@
+<ion-content class="fondo-app">
+  @if (guardando) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Dando de alta la mesa...</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal">
+    <div class="cabecera-pagina">
+      <button class="boton-volver" (click)="volver()" type="button">
+        <ion-icon name="arrow-back"></ion-icon>
+      </button>
+      <div>
+        <h1>Alta de Mesa</h1>
+        <p>Gestión de Mesas</p>
+      </div>
+    </div>
+
+    @if (cargando) {
+      <p class="texto-centrado">Verificando permisos...</p>
+    } @else if (!tienePermiso) {
+      <div class="acceso-denegado">
+        <ion-icon name="warning"></ion-icon>
+        <p>Solo el dueño o el supervisor pueden dar de alta una mesa.</p>
+        <button class="boton-principal" (click)="volver()" type="button">Volver al inicio</button>
+      </div>
+    } @else if (mesaCreada) {
+      <div class="resultado-alta">
+        <ion-icon name="checkmark-circle" class="icono-exito"></ion-icon>
+        <h2>Mesa {{ mesaCreada.numero }} creada</h2>
+        <p>Código: {{ mesaCreada.qr_code }}</p>
+
+        @if (qrDataUrl) {
+          <img [src]="qrDataUrl" alt="Código QR de la mesa" class="qr-generado" />
+        }
+
+        <button class="boton-principal" (click)="darDeAltaOtraMesa()" type="button">
+          Dar de alta otra mesa
+        </button>
+        <button class="boton-secundario" (click)="volver()" type="button">Volver al inicio</button>
+      </div>
+    } @else {
+      @if (mensajeError) {
+        <div class="mensaje-error">
+          <ion-icon name="warning"></ion-icon>
+          <span>{{ mensajeError }}</span>
+        </div>
+      }
+
+      <form [formGroup]="formularioMesa" (ngSubmit)="darDeAlta()" class="formulario">
+        <div class="campo">
+          <label>Número de mesa</label>
+          <input type="number" min="1" formControlName="numero" placeholder="Ej: 6" />
+        </div>
+
+        <div class="campo">
+          <label>Cantidad de comensales</label>
+          <input type="number" min="1" formControlName="cantidad_comensales" placeholder="Ej: 4" />
+        </div>
+
+        <div class="campo">
+          <label>Tipo de mesa</label>
+          <select formControlName="tipo">
+            @for (t of tiposDeMesa; track t.valor) {
+              <option [value]="t.valor">{{ t.etiqueta }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="campo">
+          <label>Foto de la mesa (opcional)</label>
+          <label class="selector-foto">
+            <ion-icon name="camera"></ion-icon>
+            <span>{{ fotoSeleccionada ? fotoSeleccionada.name : 'Seleccionar imagen' }}</span>
+            <input type="file" accept="image/*" (change)="seleccionarFoto($event)" hidden />
+          </label>
+          @if (previewFoto) {
+            <img [src]="previewFoto" alt="Vista previa de la mesa" class="preview-foto" />
+          }
+        </div>
+
+        <button type="submit" class="boton-principal" [disabled]="guardando || formularioMesa.invalid">
+          Dar de alta
+        </button>
+      </form>
+    }
+  </div>
+</ion-content>

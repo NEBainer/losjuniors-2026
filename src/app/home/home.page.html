@@ -18,16 +18,27 @@
     </div>
 
     <div class="grilla-modulos">
-      <div class="modulo-card">
-        <ion-icon name="restaurantOutline"></ion-icon>
-        <h3>Gestión de Mesas</h3>
-        <p>Asignación y estado</p>
-      </div>
-      <div class="modulo-card">
-        <ion-icon name="listOutline"></ion-icon>
-        <h3>Lista de Pedidos</h3>
-        <p>Comandas activas</p>
-      </div>
+      @if (puedeVerMesas()) {
+        <div class="modulo-card" (click)="irAAltaDeMesa()">
+          <ion-icon name="restaurantOutline"></ion-icon>
+          <h3>Gestión de Mesas</h3>
+          <p>Asignación y estado</p>
+        </div>
+      }
+      @if (puedeVerPedidos()) {
+        <div class="modulo-card">
+          <ion-icon name="listOutline"></ion-icon>
+          <h3>Lista de Pedidos</h3>
+          <p>Comandas activas</p>
+        </div>
+      }
+      @if (puedeVerClientesPendientes()) {
+        <div class="modulo-card" (click)="irAClientesPendientes()">
+          <ion-icon name="peopleOutline"></ion-icon>
+          <h3>Clientes Pendientes</h3>
+          <p>Aprobación de ingreso</p>
+        </div>
+      }
     </div>
 
     <div class="seccion-logout">

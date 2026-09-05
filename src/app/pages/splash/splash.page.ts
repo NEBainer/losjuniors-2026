@@ -1,33 +1,17 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
-import { SplashScreen } from '@capacitor/splash-screen';
+import { Component } from '@angular/core';
 import { Router } from '@angular/router';
+import { SplashInicioComponent } from '../../splash/splash.inicio.component';
 
 @Component({
   selector: 'app-splash',
-  templateUrl: './splash.page.html',
-  styleUrls: ['./splash.page.scss'],
-  imports: [IonContent, IonHeader, IonTitle, IonToolbar, CommonModule]
+  standalone: true,
+  imports: [SplashInicioComponent],
+  template: `<app-splash-inicio (splashListo)="irALogin()" />`,
 })
-export class SplashPage implements OnInit, OnDestroy {
-  private temporizador: ReturnType<typeof setTimeout> | undefined;
-
+export class SplashPage {
   constructor(private router: Router) {}
 
-  ngOnInit() {
-    SplashScreen.hide();
-    this.temporizador = setTimeout(() => {
-      this.irALogin();
-    }, 3000);
-  }
-
-  ngOnDestroy() {
-    clearTimeout(this.temporizador);
-  }
-
-  irALogin() {
+  irALogin(): void {
     this.router.navigate(['/login'], { replaceUrl: true });
   }
-
 }
