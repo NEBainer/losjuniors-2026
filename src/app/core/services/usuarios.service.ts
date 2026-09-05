@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { AuthService } from './auth.service';
-import { ClientePendiente, EstadoAprobacion } from '../models/usuario.model';
+import { ClientePendiente, EstadoAprobacion, PerfilUsuario } from '../models/usuario.model';
 import { SupabaseService } from './supabase.service';
 
 @Injectable({
@@ -13,10 +13,37 @@ export class UsuariosService {
   // Crear otro createClient() acá daría dos instancias de GoTrue y la nueva
   // podría no ver la sesión del usuario logueado -> RLS te trataría como
   // anónimo. Ver AVANCES.md (gotcha del punto 6).
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(
+    private supabaseService: SupabaseService,
+    private authService: AuthService,
+  ) {}
 
   private get sb() {
     return this.supabaseService.client;
+  }
+
+  // Perfil ('dueño', 'cocinero', etc.) del usuario logueado. Vive en la
+  // tabla `usuarios`, no en supabase.auth -> hay que cruzarlo con la
+  // sesión. La policy `usuarios_pueden_ver_su_propio_perfil` habilita
+  // este select para cualquier usuario autenticado sobre su propia fila.
+  async getPerfilActual(): Promise<PerfilUsuario | null> {
+    const sesion = await this.authService.obtenerSesionActual();
+    if (!sesion) {
+      return null;
+    }
+
+    const { data, error } = await this.sb
+      .from('usuarios')
+      .select('perfil')
+      .eq('id', sesion.user.id)
+      .single();
+
+    if (error || !data) {
+      console.error('Error obteniendo el perfil del usuario:', error);
+      return null;
+    }
+
+    return data.perfil as PerfilUsuario;
   }
 
   // Listado del punto 6: clientes registrados en estado 'pendiente'.
