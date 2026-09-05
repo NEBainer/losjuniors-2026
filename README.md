@@ -89,10 +89,10 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 | Integrante | Branch | Período | Módulos desarrollados |
 |---|---|---|---|
-| **Ezequiel Bainer** | `Bainer` | 22/09/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Creación y administración del repositorio GitHub.</li><li>Organización general del proyecto.</li><li>Actualización y mantenimiento del README.</li><li>Investigación inicial de Ionic.</li><li>Investigación inicial de Android Studio.</li><li>Investigación inicial de Capacitor.</li><li>Pantalla de alta de mesa (con tabla y QR).</li></ul></details> |
-| **Maximiliano Arcieri** | `Arcieri` | 22/09/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Configuración inicial de Supabase.</li><li>Diseño de entidades.</li><li>Creación del esquema inicial de base de datos.</li><li>Implementación de autenticación.</li><li>Configuración de políticas RLS.</li><li>Pantalla de dueño/supervisor con listado de clientes pendientes y botones aceptar/rechazar (integrada con las políticas RLS).</li></ul></details> |
-| **Noelia Storgato** | `Storgato` | 22/09/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Formulario de Login.</li><li>Pantalla de accesos rápidos.</li><li>Implementación de Logout.</li><li>Creación del proyecto Ionic.</li><li>Flujo de cliente registrado: pantalla de alta, estado "pendiente" y notificación visual del cambio de estado.</li></ul></details> |
-| **Lucía Cicchelli** | `Cicchelli` | 22/09/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Diseño del ícono de la aplicación.</li><li>Desarrollo de la pantalla de inicio (Splash Screen) estática y animada para el sistema "LA MESA".</li><li>Maquetación modular utilizando Angular y SCSS con paleta cromática temática.</li><li>Implementación de animaciones CSS3 mediante <code>@keyframes</code>, <code>clip-path</code>, efecto de estampado y entradas escalonadas de elementos visuales.</li><li>Botón para omitir la animación.</li><li>Adaptación responsive para distintos dispositivos.</li><li>Compatibilidad con <code>prefers-reduced-motion</code>.</li><li>Diseño visual (mockups / Ionic) de las pantallas de alta de plato y bebida, reutilizando el patrón de formulario del equipo.</li></ul></details> |
+| **Ezequiel Bainer** | `Bainer` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Creación y administración del repositorio GitHub.</li><li>Organización general del proyecto.</li><li>Actualización y mantenimiento del README.</li><li>Investigación inicial de Ionic.</li><li>Investigación inicial de Android Studio.</li><li>Investigación inicial de Capacitor.</li><li>Pantalla de alta de mesa (formulario + generación de QR).</li></ul></details> |
+| **Maximiliano Arcieri** | `Arcieri` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Configuración inicial de Supabase.</li><li>Diseño de entidades.</li><li>Creación del esquema inicial de base de datos.</li><li>Implementación de autenticación.</li><li>Configuración de políticas RLS (incluida <code>usuarios_cliente_se_autorregistra</code>).</li><li>Pantalla de dueño/supervisor con listado de clientes pendientes y botones aceptar/rechazar (integrada con las políticas RLS).</li><li>Filtrado del Panel de Control por perfil: dueño/supervisor ven "Gestión de Mesas" y "Clientes Pendientes"; cocinero/cantinero ven solo "Lista de Pedidos". Pruebas realizadas.</li></ul></details> |
+| **Noelia Storgato** | `Storgato` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Formulario de Login.</li><li>Pantalla de accesos rápidos.</li><li>Implementación de Logout.</li><li>Creación del proyecto Ionic.</li><li>Flujo de cliente registrado: pantalla de alta, estado "pendiente" y notificación visual del cambio de estado.</li><li>Migración de registro-cliente y registro-pendiente a Signals; lógica de navegación desde el splash.</li></ul></details> |
+| **Lucía Cicchelli** | `Cicchelli` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Diseño del ícono de la aplicación.</li><li>Desarrollo de la pantalla de inicio (Splash Screen) estática y animada para el sistema "LA MESA".</li><li>Maquetación modular utilizando Angular y SCSS con paleta cromática temática.</li><li>Implementación de animaciones CSS3 mediante <code>@keyframes</code>, <code>clip-path</code>, efecto de estampado y entradas escalonadas de elementos visuales.</li><li>Botón para omitir la animación.</li><li>Adaptación responsive para distintos dispositivos.</li><li>Compatibilidad con <code>prefers-reduced-motion</code>.</li><li>Diseño visual (mockups / Ionic) de las pantallas de alta de plato y bebida, reutilizando el patrón de formulario del equipo.</li></ul></details> |
 
 ---
 
@@ -110,14 +110,15 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 | Diseño del ícono de la aplicación | ✅ |
 | Diseño del splash screen estático | ✅ |
 | Diseño del splash screen animado | ✅ |
-| Login | 🔄 |
-| Accesos rápidos | 🔄 |
-| Logout | 🔄 |
+| Login | ✅ |
+| Accesos rápidos | ✅ |
+| Logout | ✅ |
+| Flujo de cliente registrado (alta, estado pendiente, notificación) | ✅ |
+| Gestión de clientes pendientes (dueño/supervisor: aceptar/rechazar) | ✅ |
+| Alta de mesa (formulario y generación de QR) | ✅ |
+| Filtrado del Panel de Control por perfil | ✅ |
+| Alta de producto (plato/bebida) | 🔄 |
 | Integración con Supabase | 🔄 |
-| Flujo de cliente registrado (alta, estado pendiente, notificación) | 🔄 |
-| Gestión de clientes pendientes (dueño/supervisor: aceptar/rechazar) | 🔄 |
-| Alta de mesa (tabla y QR) | 🔄 |
-| Diseño visual de alta de plato y bebida | 🔄 |
 
 ---
 
@@ -153,6 +154,26 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 <td align="center" colspan="2">
 <b>Splash Screen Animado</b><br><br>
 <img src="splashGiff.gif" alt="Splash Screen Animado" width="220">
+</td>
+</tr>
+<tr>
+<td align="center">
+<b>Alta de Mesa — Formulario</b><br><br>
+<img src="alta-mesa-formulario.png" alt="Formulario de alta de mesa" width="220">
+</td>
+<td align="center">
+<b>Alta de Mesa — QR generado</b><br><br>
+<img src="alta-mesa-qr.png" alt="QR generado al dar de alta una mesa" width="220">
+</td>
+</tr>
+<tr>
+<td align="center">
+<b>Panel de Control — Dueño/Supervisor</b><br><br>
+<img src="panel-control-dueno.png" alt="Panel de control visto por dueño o supervisor" width="220">
+</td>
+<td align="center">
+<b>Panel de Control — Cocinero/Cantinero</b><br><br>
+<img src="panel-control-cocinero.png" alt="Panel de control visto por cocinero o cantinero" width="220">
 </td>
 </tr>
 </table>
