@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
 import { Router } from '@angular/router';
+import { SplashScreen } from '@capacitor/splash-screen';
 
 @Component({
   selector: 'app-splash',
@@ -15,6 +16,8 @@ export class SplashPage implements OnInit, OnDestroy {
   constructor(private router: Router) {}
 
   ngOnInit() {
+    SplashScreen.hide(); // <-- agregado: oculta la splash nativa apenas Angular ya puede pintar esta pantalla
+
     this.temporizador = setTimeout(() => {
       this.irALogin();
     }, 3000);
@@ -27,5 +30,4 @@ export class SplashPage implements OnInit, OnDestroy {
   irALogin() {
     this.router.navigate(['/login'], { replaceUrl: true });
   }
-
 }
