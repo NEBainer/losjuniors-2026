@@ -1,7 +1,7 @@
 # Base de datos - Supabase
 
 Esquema de la base de datos para la app de gestión de restaurante (TFI UTN).
-Cubre la **preparación inicial** y los puntos **1, 2, 3, 4, 6 y 11** del
+Cubre la **preparación inicial** y los puntos **1, 2, 3, 4, 5, 6 y 11** del
 listado de funcionalidades. El código ejecutable está en [`schema.sql`](./schema.sql).
 
 ## Cómo se armó
@@ -51,9 +51,20 @@ defendible dado el alcance del TFI, no un descuido de seguridad.
 **En `foto_url` se guarda el path, no la URL pública completa**
 Tanto en `usuarios.foto_url`, `producto_fotos.url` como `mesas.foto_url`
 se guarda algo como `productos/{id}/1.jpg`, no la URL completa de
-`picsum`/Supabase. Si en algún momento hace falta pasar el bucket a
-privado, alcanza con cambiar cómo se genera la URL en el service Angular,
-sin tocar ni una fila de la base.
+Supabase. Si en algún momento hace falta pasar el bucket a privado,
+alcanza con cambiar cómo se genera la URL en el service Angular (usando
+`createSignedUrl()` en vez de `getPublicUrl()`), sin tocar ni una fila
+de la base.
+
+Para usuarios puntualmente, el path tiene subcarpeta:
+`usuarios/{uid}/foto.jpg` (no `usuarios/{uid}.jpg` plano). Es importante
+que coincida exactamente así porque la policy de Storage valida con
+`(storage.foldername(name))[2] = auth.uid()`, que requiere dos niveles
+de carpeta — con ruta plana el segundo segmento no existe y el insert
+se rechaza siempre. *(Corregido 03/09: esta sección tenía el ejemplo
+plano, desactualizado respecto al código real de `cliente.service.ts`
+y a la policy ya deployada — ninguno de los dos estaba mal, era solo
+este documento.)*
 
 ## Función auxiliar: `perfil_actual()`
 
@@ -93,6 +104,38 @@ pasar por RLS, rompiendo el ciclo. Es seguro porque la función solo expone
 el perfil del propio usuario autenticado (`auth.uid()`), sin parámetros
 externos que alguien pueda manipular para ver el perfil de otro.
 
+## Bug encontrado y resuelto: Confirm email bloqueaba el insert de clientes
+
+`registrarCliente()` (punto 5) hace `supabase.auth.signUp()` y a
+continuación un `insert` en `usuarios` usando la sesión recién creada.
+Con **"Confirm email" activado** (Authentication → Sign In/Providers →
+Email), `signUp()` no deja sesión activa hasta que el usuario confirma
+el correo — el usuario queda en estado "Waiting for verification".
+Eso significa que `auth.uid()` es `NULL` en el momento del insert, y
+cualquier policy de RLS (incluida `usuarios_cliente_se_autorregistra`)
+lo rechaza — no porque la policy esté mal, sino porque no hay sesión.
+
+**Solución:** se desactivó "Confirm email" para el proyecto. Se revisó
+el enunciado del TFI y no exige verificación de email en el registro
+(el "correo automático" que sí piden los puntos 7/8/22/25 es un
+mecanismo distinto — notificaciones de negocio con diseño propio, no
+una verificación de cuenta). Queda desactivado para el resto del
+proyecto.
+
+## Bug encontrado y resuelto: Realtime no disparaba en `usuarios`
+
+`escucharCambioEstado()` en `cliente.service.ts` se suscribe a
+`postgres_changes` sobre la tabla `usuarios`. La tabla no estaba
+agregada a la publicación `supabase_realtime`
+(Database → Publications) — sin eso, la suscripción se conecta sin
+ningún error, pero el callback nunca se dispara. No hay excepción ni
+log que lo delate, hay que revisarlo a mano en el dashboard.
+
+**Solución:** se agregó `usuarios` a la publicación `supabase_realtime`
+desde Database → Publications. La policy de SELECT existente
+(`usuarios_pueden_ver_su_propio_perfil`) ya alcanza para que el cliente
+reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
+
 ## Seguridad (RLS) activada en
 
 - `usuarios`
@@ -109,15 +152,18 @@ externos que alguien pueda manipular para ver el perfil de otro.
 - `usuarios_pueden_ver_su_propio_perfil` — cualquier usuario logueado puede
   leer su propia fila (necesario tras el login, para saber a qué pantalla
   redirigir según su perfil).
+
 - `usuarios_dueño_supervisor_inserta_empleados` — solo dueño/supervisor
   pueden dar de alta empleados, y solo con perfiles de empleado (no pueden
   crear otro "dueño", ni perfiles de cliente — esos tienen su propio flujo
   con aprobación).
+
 - `dueño_supervisor_ven_todos_usuarios` — dueño/supervisor pueden ver
   cualquier fila de `usuarios`, no solo la propia (necesario para que el
   alta de un empleado nuevo pueda devolver la fila creada). Esta misma
   policy es la que habilita el **listado de clientes pendientes del
   punto 6** — no hizo falta una policy de SELECT nueva.
+
 - `usuarios_dueño_supervisor_actualiza_clientes` — dueño/supervisor pueden
   hacer `UPDATE` de una fila de `usuarios` **solo si es de un
   `cliente_registrado`** (puntos 6, 7 y 8: aceptar/rechazar). Se eligió
@@ -129,6 +175,15 @@ externos que alguien pueda manipular para ver el perfil de otro.
   la fila y salirse del scope. El estado se guarda en la columna nueva
   `usuarios.estado_aprobacion` (enum `pendiente`/`aceptado`/`rechazado`,
   nullable; `NULL` = usuario que no requiere aprobación).
+
+- `usuarios_cliente_se_autorregistra` — permite a cualquier usuario
+  autenticado insertar su propia fila en `usuarios` con
+  `perfil = 'cliente_registrado'` y `estado_aprobacion = 'pendiente'`
+  (punto 5). El `with check` fija ambos campos para que no se pueda usar
+  este insert para crear un usuario con otro perfil (ej. `dueño`) ni para
+  autoaprobarse. **Agregada el 03/09**, tras detectar en la revisión de
+  merge de `dev` que no existía ninguna policy de insert para este flujo
+  — solo estaba cubierto el alta de empleados por dueño/supervisor.
 
 **`productos`**
 - `productos_lectura_autenticados` — cualquier usuario logueado puede ver
@@ -161,8 +216,8 @@ externos que alguien pueda manipular para ver el perfil de otro.
   del bucket (coherente con la decisión de bucket público).
 - `storage_fotos_usuario_sube_propia` / `_actualiza_propia` — cada usuario
   autenticado solo puede subir/reemplazar su propia foto de perfil, en
-  `usuarios/{su_propio_uid}.jpg`. Se valida comparando el segundo segmento
-  del path contra `auth.uid()`.
+  `usuarios/{su_propio_uid}/foto.jpg`. Se valida comparando el segundo
+  segmento del path (`(storage.foldername(name))[2]`) contra `auth.uid()`.
 - `storage_fotos_cocinero_sube_productos` / `_actualiza_productos` — el
   cocinero puede subir/reemplazar archivos en la carpeta `productos/`.
 - `storage_fotos_cantinero_sube_productos` / `_actualiza_productos` —
@@ -230,6 +285,14 @@ se crean desde el dashboard:
 3. Recién ahí correr el `insert into usuarios (...)` de `schema.sql`,
    usando ese mismo `UID` como `id`.
 
+**Nota (03/09):** desde que se desactivó "Confirm email" a nivel proyecto
+(ver bug de arriba), tildar "Auto Confirm User" al crear usuarios de
+prueba manualmente ya no es estrictamente necesario — un `signUp()`
+normal desde ahora también deja sesión activa sin confirmación. Se deja
+esta guía igual porque sigue siendo el método usado para los usuarios de
+`@test.com` (no pasan por el formulario de la app), y no cambia el
+resultado.
+
 ## Probado con `curl` (simulando llamadas reales de la app)
 
 - Login (`POST /auth/v1/token`) + lectura del propio perfil filtrada por
@@ -255,6 +318,16 @@ se crean desde el dashboard:
   `cliente_registrado`) → `200` con body `[]` (0 filas). El scope a
   `cliente_registrado` funciona.
 
+**Prueba (04/09)** con `curl` end-to-end (signup real + insert), 3 casos:
+- Cliente se autorregistra con `perfil='cliente_registrado'` +
+  `estado_aprobacion='pendiente'` → `201`, fila creada.
+- Intento de autoasignarse `perfil='dueño'` → `403`, error `42501`.
+- Intento de autoaprobarse (`estado_aprobacion='aceptado'`) → `403`,
+  error `42501`.
+Confirma que el `with check` filtra correctamente los dos intentos de
+manipulación, no solo que la policy compila.
+
+
 **Nota:** las políticas de `producto_fotos` (la tabla, no Storage) se
 probaron por revisión del SQL y quedaron validadas indirectamente al
 confirmar que Storage funciona — todavía falta un `insert`/`update`/
@@ -270,6 +343,8 @@ confianza que sobre Storage.
   sección de políticas más arriba.)*
 - Prueba directa (no vía Storage) de `insert`/`update`/`delete` sobre
   `producto_fotos`.
+- Prueba directa con `curl` de `usuarios_cliente_se_autorregistra` (ver
+  nota en la sección anterior).
 - Alta de empleados desde la app real: la solución está **diseñada pero
   no implementada**. Requiere una **Edge Function** con
   `admin.createUser()` (usando la `service_role` key), porque `signUp()`

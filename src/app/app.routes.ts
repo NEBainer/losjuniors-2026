@@ -1,5 +1,6 @@
-import { Routes } from '@angular/router';
+﻿import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { guardPerfil } from './core/guards/perfil.guard';
 
 export const routes: Routes = [
   {
@@ -38,5 +39,15 @@ export const routes: Routes = [
   {
     path: 'registro-cliente',
     loadComponent: () => import('./pages/registro-cliente/registro-cliente.page').then( m => m.RegistroClientePage)
+  },
+  {
+    path: 'cocinero/plato-alta',
+    loadComponent: () => import('./pages/plato-alta/plato.alta.component').then(m => m.PlatoAltaComponent),
+    canActivate: [authGuard, guardPerfil(['cocinero'])]
+  },
+  {
+    path: 'cantinero/bebida-alta',
+    loadComponent: () => import('./pages/bebida-alta/bebida.alta.component').then(m => m.BebidaAltaComponent),
+    canActivate: [authGuard, guardPerfil(['cantinero'])]
   },
 ];
