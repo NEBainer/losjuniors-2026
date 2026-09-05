@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { Router } from '@angular/router';
 
 @Component({
@@ -15,6 +16,7 @@ export class SplashPage implements OnInit, OnDestroy {
   constructor(private router: Router) {}
 
   ngOnInit() {
+    SplashScreen.hide();
     this.temporizador = setTimeout(() => {
       this.irALogin();
     }, 3000);
