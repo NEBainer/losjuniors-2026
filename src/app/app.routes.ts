@@ -4,8 +4,12 @@ import { authGuard } from './core/guards/auth.guard';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'login', 
+    redirectTo: 'splash',
     pathMatch: 'full',
+  },
+  {
+    path: 'splash',
+    loadComponent: () => import('./pages/splash/splash.page').then(m => m.SplashPage)
   },
   {
     path: 'login',
@@ -14,15 +18,20 @@ export const routes: Routes = [
   {
     path: 'home',
     loadComponent: () => import('./home/home.page').then((m) => m.HomePage),
-    canActivate: [authGuard] // Bloqueo de seguridad aplicado
+    canActivate: [authGuard]
   },
   {
-    // Punto 6: listado de clientes pendientes + aceptar/rechazar (dueño/supervisor).
-    // Por ahora solo authGuard (sesión). El filtro por rol lo hace RLS en Supabase;
-    // el guard de rol es el paso 6 opcional del plan.
     path: 'clientes-pendientes',
     loadComponent: () =>
       import('./pages/clientes-pendientes/clientes-pendientes.page').then((m) => m.ClientesPendientesPage),
     canActivate: [authGuard]
+  },
+  {
+    path: 'registro-pendiente',
+    loadComponent: () => import('./pages/registro-pendiente/registro-pendiente.page').then( m => m.RegistroPendientePage)
+  },
+  {
+    path: 'registro-cliente',
+    loadComponent: () => import('./pages/registro-cliente/registro-cliente.page').then( m => m.RegistroClientePage)
   },
 ];

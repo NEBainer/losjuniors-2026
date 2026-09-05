@@ -1,9 +1,9 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import {
-  IonContent, IonHeader, IonTitle, IonToolbar,
-  IonFab, IonFabButton, IonFabList, IonIcon
+import { 
+  IonButton,
+  IonContent, IonFab, IonFabButton, IonFabList, IonIcon
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { business, eye, restaurant, person, warning, flash, list, pizza, wine } from 'ionicons/icons';
@@ -18,7 +18,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
   standalone: true,
   imports: [
     IonContent, IonFab, IonFabButton, IonFabList, IonIcon,
-   CommonModule, ReactiveFormsModule
+   CommonModule, ReactiveFormsModule, IonButton
   ]
 })
 export class LoginPage implements OnInit {
@@ -54,11 +54,12 @@ export class LoginPage implements OnInit {
 
   ngOnInit() {}
 
-  cargarAccesoRapido(usuario: any) {
+  async cargarAccesoRapido(usuario: any) {
     this.formularioLogin.patchValue({
       correo: usuario.correo,
       clave: usuario.clave
     });
+    await this.iniciarSesion();
   }
 
   async iniciarSesion() {
@@ -77,9 +78,6 @@ export class LoginPage implements OnInit {
       // Simulacion de espera para que se aprecie el spinner con logo
       setTimeout(() => {
         this.cargando = false;
-        // Supabase resuelve fuera del ciclo de detección de cambios de
-        // Angular: sin este detectChanges() la vista queda congelada
-        // mostrando el spinner de carga.
         this.cdr.detectChanges();
         this.router.navigate(['/home']); // Ajustar a la ruta principal post-login
       }, 1500);
@@ -90,26 +88,6 @@ export class LoginPage implements OnInit {
     }
   }
 
-//   async iniciarSesion(correo: string, clave: string) {
-//   try {
-//     const { data, error } = await this.authService.signInWithPassword({
-//       email: correo,
-//       password: clave,
-//     });
-//     if (error) throw error;
-//     return data;
-//   } catch (error: any) {
-//     // Vibración al detectarse un error (si el dispositivo la soporta)
-//     try {
-//       await Haptics.impact({ style: ImpactStyle.Heavy });
-//     } catch {
-//       // Ignorar silenciosamente si el navegador no soporta vibración
-//     }
-//     // Delegar al componente UI
-//     throw new Error('Credenciales inválidas. Por favor, intente nuevamente.');
-//   }
-// }
-
   // Vibracion al detectar error
   private async dispararError(mensaje: string) {
     this.mensajeError = mensaje;
@@ -119,10 +97,14 @@ export class LoginPage implements OnInit {
     } catch {
 
     }
-
+    
     setTimeout(() => {
       this.mensajeError = '';
       this.cdr.detectChanges();
     }, 4000);
+  }
+
+  irARegistro() {
+    this.router.navigate(['/registro-cliente']);
   }
 }

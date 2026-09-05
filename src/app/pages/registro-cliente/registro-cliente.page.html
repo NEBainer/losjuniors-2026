@@ -1,0 +1,112 @@
+<ion-content class="fondo-registro" [scrollY]="true">
+  <div class="contenedor-registro">
+
+    <header class="encabezado">
+      <ion-icon name="person-add-outline"></ion-icon>
+      <h1>Registro de cliente</h1>
+      <p>Completá tus datos para reservar tu lugar en La Mesa</p>
+    </header>
+
+    <div class="contenedor-foto" (click)="capturarFoto()">
+      @if (fotoUri()) {
+        <img [src]="fotoUri()" alt="Foto de perfil" class="foto-preview" />
+        <span class="etiqueta-cambiar">Tocar para volver a tomar</span>
+      } @else {
+        <ion-icon name="camera-outline" class="icono-camara"></ion-icon>
+        <span>Tomar foto</span>
+      }
+    </div>
+
+    <form [formGroup]="formulario" (ngSubmit)="registrarse()" class="formulario">
+
+      <div class="campo">
+        <ion-label>Nombres</ion-label>
+        <ion-input
+          formControlName="nombres"
+          placeholder="Ej: Julián"
+          fill="solid"
+          class="input-formulario">
+        </ion-input>
+        @if (formulario.get('nombres')?.touched && formulario.get('nombres')?.invalid) {
+          <span class="error-campo">Ingresá un nombre válido (mínimo 2 caracteres).</span>
+        }
+      </div>
+
+      <div class="campo">
+        <ion-label>Apellidos</ion-label>
+        <ion-input
+          formControlName="apellidos"
+          placeholder="Ej: Rodríguez"
+          fill="solid"
+          class="input-formulario">
+        </ion-input>
+        @if (formulario.get('apellidos')?.touched && formulario.get('apellidos')?.invalid) {
+          <span class="error-campo">Ingresá un apellido válido (mínimo 2 caracteres).</span>
+        }
+      </div>
+
+      <div class="campo">
+        <ion-label>DNI</ion-label>
+        <ion-input
+          formControlName="dni"
+          placeholder="Ej: 38456123"
+          type="tel"
+          inputmode="numeric"
+          fill="solid"
+          class="input-formulario">
+        </ion-input>
+        @if (formulario.get('dni')?.touched && formulario.get('dni')?.invalid) {
+          <span class="error-campo">El DNI debe tener 7 u 8 números, sin puntos.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <ion-label>Correo electrónico</ion-label>
+        <ion-input
+          formControlName="email"
+          placeholder="Ej: julian@correo.com"
+          type="email"
+          fill="solid"
+          class="input-formulario">
+        </ion-input>
+        @if (formulario.get('email')?.touched && formulario.get('email')?.invalid) {
+          <span class="error-campo">Ingresá un correo electrónico válido.</span>
+        }
+      </div>
+
+      <div class="campo">
+        <ion-label>Contraseña</ion-label>
+        <ion-input
+          formControlName="clave"
+          placeholder="Mínimo 6 caracteres"
+          type="password"
+          fill="solid"
+          class="input-formulario">
+        </ion-input>
+        @if (formulario.get('clave')?.touched && formulario.get('clave')?.invalid) {
+          <span class="error-campo">La contraseña debe tener al menos 6 caracteres.</span>
+        }
+      </div>
+
+      @if (mensajeError()) {
+        <div class="banner-error">
+          <ion-icon name="warning-outline"></ion-icon>
+          <span>{{ mensajeError }}</span>
+        </div>
+      }
+
+      <ion-button
+        type="submit"
+        expand="block"
+        class="boton-registrar"
+        [disabled]="cargando()">
+        @if (cargando()) {
+          <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+          Registrarme
+        }
+      </ion-button>
+
+    </form>
+  </div>
+</ion-content>
