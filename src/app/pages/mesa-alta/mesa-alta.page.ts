@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { IonContent, IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { arrowBack, camera, checkmarkCircle, warning } from 'ionicons/icons';
+import { arrowBack, camera, checkmarkCircle, restaurantOutline, warning } from 'ionicons/icons';
 import { toDataURL } from 'qrcode';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -44,7 +44,7 @@ export class MesaAltaPage implements OnInit {
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
-    addIcons({ arrowBack, camera, checkmarkCircle, warning });
+    addIcons({ arrowBack, camera, checkmarkCircle, restaurantOutline, warning });
 
     this.formularioMesa = this.fb.group({
       numero: ['', [Validators.required, Validators.min(1)]],
@@ -91,7 +91,7 @@ export class MesaAltaPage implements OnInit {
         usuario.id,
         this.fotoSeleccionada ?? undefined
       );
-      const qrDataUrl = await toDataURL(mesa.qr_code, { width: 220, margin: 1 });
+      const qrDataUrl = await toDataURL(mesa.qr_code, { width: 280, margin: 1 });
 
       this.mesaCreada = mesa;
       this.qrDataUrl = qrDataUrl;

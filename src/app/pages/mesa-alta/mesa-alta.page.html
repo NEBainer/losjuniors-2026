@@ -73,14 +73,20 @@
 
         <div class="campo">
           <label>Foto de la mesa (opcional)</label>
-          <label class="selector-foto">
-            <ion-icon name="camera"></ion-icon>
-            <span>{{ fotoSeleccionada ? fotoSeleccionada.name : 'Seleccionar imagen' }}</span>
-            <input type="file" accept="image/*" (change)="seleccionarFoto($event)" hidden />
-          </label>
-          @if (previewFoto) {
-            <img [src]="previewFoto" alt="Vista previa de la mesa" class="preview-foto" />
-          }
+          <div class="fila-foto">
+            <div class="miniatura-foto">
+              @if (previewFoto) {
+                <img [src]="previewFoto" alt="Vista previa de la mesa" />
+              } @else {
+                <ion-icon name="restaurant-outline"></ion-icon>
+              }
+            </div>
+            <label class="selector-foto">
+              <ion-icon name="camera"></ion-icon>
+              <span>{{ fotoSeleccionada ? 'Cambiar imagen' : 'Seleccionar imagen' }}</span>
+              <input type="file" accept="image/*" (change)="seleccionarFoto($event)" hidden />
+            </label>
+          </div>
         </div>
 
         <button type="submit" class="boton-principal" [disabled]="guardando || formularioMesa.invalid">
