@@ -71,21 +71,19 @@
           </select>
         </div>
 
-        <div class="campo">
+        <div class="campo campo-foto">
           <label>Foto de la mesa (opcional)</label>
-          <div class="fila-foto">
-            <div class="miniatura-foto">
-              @if (fotoUri) {
-                <img [src]="fotoUri" alt="Vista previa de la mesa" />
-              } @else {
-                <ion-icon name="restaurant-outline"></ion-icon>
-              }
-            </div>
-            <button type="button" class="selector-foto" (click)="capturarFoto()">
+          <button type="button" class="contenedor-foto" (click)="capturarFoto()">
+            @if (fotoUri) {
+              <img [src]="fotoUri" alt="Vista previa de la mesa" />
+            } @else {
+              <ion-icon name="restaurant-outline"></ion-icon>
+            }
+            <span class="etiqueta-foto">
               <ion-icon name="camera"></ion-icon>
-              <span>{{ fotoUri ? 'Volver a tomar foto' : 'Tomar foto' }}</span>
-            </button>
-          </div>
+              {{ fotoUri ? 'Volver a tomar foto' : 'Tomar foto' }}
+            </span>
+          </button>
         </div>
 
         <button type="submit" class="boton-principal" [disabled]="guardando || formularioMesa.invalid">
