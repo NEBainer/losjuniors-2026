@@ -25,8 +25,7 @@ export class MesaAltaPage implements OnInit {
   tienePermiso = false;
   mensajeError = '';
 
-  fotoSeleccionada: File | null = null;
-  previewFoto: string | null = null;
+  fotoUri: string | null = null;
 
   mesaCreada: { numero: number; qr_code: string } | null = null;
   qrDataUrl: string | null = null;
@@ -63,11 +62,13 @@ export class MesaAltaPage implements OnInit {
     this.cdr.detectChanges();
   }
 
-  seleccionarFoto(evento: Event) {
-    const input = evento.target as HTMLInputElement;
-    const archivo = input.files?.[0] ?? null;
-    this.fotoSeleccionada = archivo;
-    this.previewFoto = archivo ? URL.createObjectURL(archivo) : null;
+  async capturarFoto() {
+    try {
+      this.fotoUri = await this.mesaService.tomarFoto();
+      this.cdr.detectChanges();
+    } catch {
+      this.dispararError('No se pudo acceder a la cámara.');
+    }
   }
 
   async darDeAlta() {
@@ -89,7 +90,7 @@ export class MesaAltaPage implements OnInit {
       const mesa = await this.mesaService.crearMesa(
         { numero: Number(numero), cantidad_comensales: Number(cantidad_comensales), tipo },
         usuario.id,
-        this.fotoSeleccionada ?? undefined
+        this.fotoUri ?? undefined
       );
       const qrDataUrl = await toDataURL(mesa.qr_code, { width: 280, margin: 1 });
 
@@ -107,8 +108,7 @@ export class MesaAltaPage implements OnInit {
   darDeAltaOtraMesa() {
     this.mesaCreada = null;
     this.qrDataUrl = null;
-    this.fotoSeleccionada = null;
-    this.previewFoto = null;
+    this.fotoUri = null;
     this.formularioMesa.reset({ numero: '', cantidad_comensales: '', tipo: 'estandar' });
   }
 

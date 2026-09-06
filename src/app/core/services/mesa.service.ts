@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { Camera } from '@capacitor/camera';
 import { SupabaseService } from './supabase.service';
 
 export interface NuevaMesa {
@@ -13,14 +14,14 @@ export interface NuevaMesa {
 export class MesaService {
   private supabase = inject(SupabaseService).client;
 
-  // Alta de mesa (punto 4): crea la fila en "mesas" y, si se cargó una foto,
+  // Alta de mesa (punto 4): crea la fila en "mesas" y, si se tomó una foto,
   // la sube antes al bucket "fotos/mesas". El qr_code se arma a partir del
   // número de mesa, siguiendo el mismo formato que los datos de prueba.
-  async crearMesa(datos: NuevaMesa, creadoPor: string, foto?: File) {
+  async crearMesa(datos: NuevaMesa, creadoPor: string, fotoWebPath?: string) {
     let fotoUrl: string | null = null;
 
-    if (foto) {
-      fotoUrl = await this.subirFotoMesa(foto);
+    if (fotoWebPath) {
+      fotoUrl = await this.subirFotoMesa(fotoWebPath);
     }
 
     const qrCode = `MESA-${datos.numero}`;
@@ -51,13 +52,18 @@ export class MesaService {
     return data;
   }
 
-  private async subirFotoMesa(foto: File): Promise<string> {
-    const extension = foto.name.split('.').pop();
-    const ruta = `mesas/${crypto.randomUUID()}.${extension}`;
+  async tomarFoto(): Promise<string> {
+    const foto = await Camera.takePhoto({ quality: 80 });
+    return foto.webPath!;
+  }
+
+  private async subirFotoMesa(webPath: string): Promise<string> {
+    const blob = await (await fetch(webPath)).blob();
+    const ruta = `mesas/${crypto.randomUUID()}.jpg`;
 
     const { error } = await this.supabase.storage
       .from('fotos')
-      .upload(ruta, foto);
+      .upload(ruta, blob, { contentType: 'image/jpeg' });
 
     if (error) {
       throw new Error('No se pudo subir la foto de la mesa.');

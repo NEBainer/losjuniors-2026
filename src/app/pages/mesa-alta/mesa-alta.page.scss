@@ -134,10 +134,14 @@
     align-items: center;
     gap: 10px;
     background-color: var(--ion-color-step-100);
+    border: none;
     padding: 16px;
     border-radius: 10px;
     cursor: pointer;
     font-size: 1rem;
+    font-family: inherit;
+    color: var(--ion-text-color);
+    text-align: left;
 
     ion-icon {
       font-size: 1.3rem;
