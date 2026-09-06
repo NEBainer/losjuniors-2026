@@ -26,7 +26,7 @@
       <div class="acceso-denegado">
         <ion-icon name="warning"></ion-icon>
         <p>Solo el dueño o el supervisor pueden dar de alta una mesa.</p>
-        <button class="boton-principal" (click)="volver()" type="button">Volver al inicio</button>
+        <button class="boton-principal" (click)="irAHome()" type="button">Volver al inicio</button>
       </div>
     } @else if (mesaCreada) {
       <div class="resultado-alta">
@@ -41,7 +41,7 @@
         <button class="boton-principal" (click)="darDeAltaOtraMesa()" type="button">
           Dar de alta otra mesa
         </button>
-        <button class="boton-secundario" (click)="volver()" type="button">Volver al inicio</button>
+        <button class="boton-secundario" (click)="volver()" type="button">Ver en el listado</button>
       </div>
     } @else {
       @if (mensajeError) {

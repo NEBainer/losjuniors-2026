@@ -113,6 +113,10 @@ export class MesaAltaPage implements OnInit {
   }
 
   volver() {
+    this.router.navigate(['/mesas']);
+  }
+
+  irAHome() {
     this.router.navigate(['/home']);
   }
 

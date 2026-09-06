@@ -22,6 +22,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'mesas',
+    loadComponent: () => import('./pages/mesas-gestion/mesas-gestion.page').then((m) => m.MesasGestionPage),
+    canActivate: [authGuard]
+  },
+  {
     path: 'mesas/alta',
     loadComponent: () => import('./pages/mesa-alta/mesa-alta.page').then((m) => m.MesaAltaPage),
     canActivate: [authGuard]

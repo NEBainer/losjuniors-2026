@@ -8,6 +8,16 @@ export interface NuevaMesa {
   tipo: 'vip' | 'estandar' | 'movilidad_reducida';
 }
 
+export interface Mesa {
+  id: string;
+  numero: number;
+  cantidad_comensales: number;
+  tipo: 'vip' | 'estandar' | 'movilidad_reducida';
+  disponibilidad: 'vacia' | 'ocupada';
+  foto_url: string | null;
+  qr_code: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -50,6 +60,37 @@ export class MesaService {
     }
 
     return data;
+  }
+
+  // Listado de gestión de mesas (punto 4): trae todas las mesas para
+  // verificar la existencia de la recién creada y poder modificar su
+  // disponibilidad.
+  async listarMesas(): Promise<Mesa[]> {
+    const { data, error } = await this.supabase
+      .from('mesas')
+      .select('id, numero, cantidad_comensales, tipo, disponibilidad, foto_url, qr_code')
+      .order('numero', { ascending: true });
+
+    if (error) {
+      throw new Error('No se pudieron cargar las mesas.');
+    }
+
+    return data;
+  }
+
+  async actualizarDisponibilidad(id: string, disponibilidad: 'vacia' | 'ocupada') {
+    // .select().single() para que, si RLS bloquea el update (0 filas
+    // afectadas), Supabase lo reporte como error en vez de un éxito vacío.
+    const { error } = await this.supabase
+      .from('mesas')
+      .update({ disponibilidad })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error('No se pudo actualizar la disponibilidad de la mesa.');
+    }
   }
 
   async tomarFoto(): Promise<string> {
