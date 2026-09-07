@@ -198,6 +198,16 @@ for insert
 to authenticated
 with check ( perfil_actual() in ('dueño', 'supervisor') );
 
+-- UPDATE: dueño/supervisor modifican la disponibilidad de una mesa
+-- (punto 4: "permitir la gestión de mesas, dando la posibilidad de
+-- modificar la disponibilidad").
+create policy "mesas_dueño_supervisor_actualiza"
+on mesas
+for update
+to authenticated
+using ( perfil_actual() in ('dueño', 'supervisor') )
+with check ( perfil_actual() in ('dueño', 'supervisor') );
+
 -- producto_fotos ------------------------------------------------
 
 alter table producto_fotos enable row level security;

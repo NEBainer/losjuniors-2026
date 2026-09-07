@@ -19,7 +19,7 @@
 
     <div class="grilla-modulos">
       @if (puedeVerMesas()) {
-        <div class="modulo-card">
+        <div class="modulo-card" (click)="irAGestionMesas()">
           <ion-icon name="restaurantOutline"></ion-icon>
           <h3>Gestión de Mesas</h3>
           <p>Asignación y estado</p>

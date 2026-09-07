@@ -55,6 +55,10 @@ export class HomePage {
     this.router.navigate(['/clientes-pendientes']);
   }
 
+  irAGestionMesas() {
+    this.router.navigate(['/mesas']);
+  }
+
   async ejecutarCierreSesion() {
     this.cargando = true;
     try {

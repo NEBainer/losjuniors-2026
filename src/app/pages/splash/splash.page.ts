@@ -1,20 +1,21 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
+import { Component } from '@angular/core';
 import { Router } from '@angular/router';
+<<<<<<< HEAD
 import { SplashScreen } from '@capacitor/splash-screen';
+=======
+import { SplashInicioComponent } from '../../splash/splash.inicio.component';
+>>>>>>> origin/dev
 
 @Component({
   selector: 'app-splash',
-  templateUrl: './splash.page.html',
-  styleUrls: ['./splash.page.scss'],
-  imports: [IonContent, IonHeader, IonTitle, IonToolbar, CommonModule]
+  standalone: true,
+  imports: [SplashInicioComponent],
+  template: `<app-splash-inicio (splashListo)="irALogin()" />`,
 })
-export class SplashPage implements OnInit, OnDestroy {
-  private temporizador: ReturnType<typeof setTimeout> | undefined;
-
+export class SplashPage {
   constructor(private router: Router) {}
 
+<<<<<<< HEAD
   ngOnInit() {
     SplashScreen.hide(); // <-- agregado: oculta la splash nativa apenas Angular ya puede pintar esta pantalla
 
@@ -28,6 +29,9 @@ export class SplashPage implements OnInit, OnDestroy {
   }
 
   irALogin() {
+=======
+  irALogin(): void {
+>>>>>>> origin/dev
     this.router.navigate(['/login'], { replaceUrl: true });
   }
 }
