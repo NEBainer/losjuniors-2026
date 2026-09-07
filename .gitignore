@@ -24,6 +24,9 @@ android/app/build/
 # Ionic
 www/
 
+# Android
+.idea/
+
 # CLAUDE
 CLAUDE.local.md
 enunciado-tfi.md
