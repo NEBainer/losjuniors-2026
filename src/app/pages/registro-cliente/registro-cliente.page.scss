@@ -15,8 +15,11 @@
   color: var(--ion-color-primary-contrast);
   margin-bottom: 8px;
 
-  ion-icon {
-    font-size: 48px;
+  .mascota-encabezado {
+    width: 76px;
+    height: auto;
+    margin: 0 auto 4px;
+    display: block;
   }
 
   h1 {
@@ -24,39 +27,42 @@
     font-weight: 700;
     margin: 8px 0 4px;
   }
-
-  p {
-    font-size: 0.95rem;
-    opacity: 0.9;
-  }
 }
 
-.contenedor-foto {
-  align-self: center;
-  width: 140px;
-  height: 140px;
+.fila-acciones-iniciales {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.contenedor-foto,
+.contenedor-qr {
+  position: relative; 
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  background: var(--ion-color-step-100); 
+  background: var(--ion-color-step-100);
   border: 3px solid var(--ion-color-primary-contrast);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  overflow: hidden;
   cursor: pointer;
+}
 
-  .icono-camara {
-    font-size: 36px;
-    color: var(--ion-color-primary);
-  }
+.icono-camara,
+.icono-qr {
+  font-size: 32px;
+  color: var(--ion-color-primary);
+}
 
-  span {
-    font-size: 0.75rem;
-    color: var(--ion-text-color);
-    padding: 0 8px;
-    text-align: center;
-  }
+.contenedor-qr span {
+  font-size: 0.72rem;
+  color: var(--ion-text-color);
+  text-align: center;
+  padding: 0 6px;
+}
 
   .foto-preview {
     width: 100%;
@@ -66,8 +72,14 @@
 
   .etiqueta-cambiar {
     position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.68rem;
+    color: var(--ion-color-primary-contrast);
+    white-space: nowrap;
   }
-}
+
 
 .formulario {
   display: flex;
@@ -104,6 +116,13 @@
     color: var(--ion-color-danger);
     font-weight: 600;
   }
+}
+
+.aviso-qr {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--ion-color-primary-contrast);
+  margin: 4px 0 8px;
 }
 
 .banner-error {
