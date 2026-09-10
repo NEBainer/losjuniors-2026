@@ -78,6 +78,9 @@ export class LoginPage implements OnInit {
       // Simulacion de espera para que se aprecie el spinner con logo
       setTimeout(() => {
         this.cargando = false;
+        // Supabase resuelve fuera del ciclo de detección de cambios de
+        // Angular: sin este detectChanges() la vista queda congelada
+        // mostrando el spinner de carga.
         this.cdr.detectChanges();
         this.router.navigate(['/home']); // Ajustar a la ruta principal post-login
       }, 1500);
@@ -97,7 +100,7 @@ export class LoginPage implements OnInit {
     } catch {
 
     }
-    
+
     setTimeout(() => {
       this.mensajeError = '';
       this.cdr.detectChanges();

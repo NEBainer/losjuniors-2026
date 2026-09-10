@@ -1,8 +1,10 @@
 -- =========================================================
 -- ESQUEMA DE BASE DE DATOS - APP RESTAURANTE (TFI UTN)
--- v2 - Preparación inicial + políticas RLS (puntos 1, 2, 3, 4, 11)
--- Ver supabase/README.md para el detalle completo de decisiones,
--- pruebas realizadas y pendientes.
+-- v3 - Preparación inicial + políticas RLS (puntos 1, 2, 3, 4, 11)
+-- v3 (09/09/2026): índices únicos parciales de usuarios (dni/cuil/email)
+-- + policy de Storage para que dueño/supervisor suban la foto de un
+-- empleado nuevo. Ver supabase/README.md para el detalle completo de
+-- decisiones, pruebas realizadas y pendientes.
 -- =========================================================
 
 -- =========================================================
@@ -59,6 +61,20 @@ create table usuarios (
 alter table usuarios add column estado_aprobacion estado_aprobacion;
 
 create index idx_usuarios_perfil on usuarios(perfil);
+
+-- Índices únicos PARCIALES (no NOT NULL): dni/cuil/email no pueden
+-- repetirse entre usuarios, pero siguen siendo opcionales a nivel DB
+-- porque el cliente_anonimo (punto 9) no los completa. "Obligatorio
+-- según el perfil" se valida en el form Angular (Validators.required
+-- condicional), no acá. Agregado 09/09/2026.
+create unique index if not exists usuarios_dni_unico
+  on usuarios (dni) where dni is not null;
+
+create unique index if not exists usuarios_cuil_unico
+  on usuarios (cuil) where cuil is not null;
+
+create unique index if not exists usuarios_email_unico
+  on usuarios (email) where email is not null;
 
 alter table usuarios enable row level security;
 
@@ -196,6 +212,16 @@ create policy "mesas_dueño_supervisor_inserta"
 on mesas
 for insert
 to authenticated
+with check ( perfil_actual() in ('dueño', 'supervisor') );
+
+-- UPDATE: dueño/supervisor modifican la disponibilidad de una mesa
+-- (punto 4: "permitir la gestión de mesas, dando la posibilidad de
+-- modificar la disponibilidad").
+create policy "mesas_dueño_supervisor_actualiza"
+on mesas
+for update
+to authenticated
+using ( perfil_actual() in ('dueño', 'supervisor') )
 with check ( perfil_actual() in ('dueño', 'supervisor') );
 
 -- producto_fotos ------------------------------------------------
@@ -455,3 +481,43 @@ using (
   and (storage.foldername(name))[1] = 'mesas'
   and perfil_actual() in ('dueño', 'supervisor')
 );
+
+-- ============================================================
+-- Punto 1: alta de empleado — dueño/supervisor suben la foto del
+-- EMPLEADO NUEVO (carpeta ajena, no la propia).
+-- Agregado 09/09/2026 — hueco detectado al diseñar el flujo del punto 1.
+-- Sin esta policy, "storage_fotos_usuario_sube_propia" rechaza el
+-- insert con 403: esa policy solo permite subir a la carpeta del
+-- propio auth.uid(), y acá quien sube (el dueño) no es el dueño de la
+-- carpeta de destino (la del empleado recién creado).
+-- ============================================================
+create policy "storage_fotos_dueño_supervisor_sube_usuarios"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'usuarios'
+  and perfil_actual() in ('dueño', 'supervisor')
+);
+
+-- ============================================================
+-- Punto 5: autorregistro de cliente registrado
+-- Agregado 03/09/2026 — hueco detectado en revisión de merge de `dev`.
+-- Sin esta policy, ClienteService.registrarCliente() falla con 403:
+-- no había ninguna policy de INSERT en `usuarios` para que un cliente
+-- nuevo se dé de alta a sí mismo (solo existía la de dueño/supervisor
+-- dando de alta empleados).
+-- ============================================================
+create policy "usuarios_cliente_se_autorregistra"
+on usuarios
+for insert
+to authenticated
+with check (
+  auth.uid() = id
+  and perfil = 'cliente_registrado'
+  and estado_aprobacion = 'pendiente'
+);
+-- El with check fija perfil y estado_aprobacion para que un cliente
+-- no pueda insertarse con otro perfil (ej. 'dueño') ni autoaprobarse
+-- (ej. estado_aprobacion = 'aceptado') en el mismo insert.

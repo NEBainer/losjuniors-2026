@@ -1,0 +1,71 @@
+<ion-content class="fondo-app">
+  <div class="contenedor-principal">
+    <div class="cabecera-pagina">
+      <button class="boton-volver" (click)="volver()" type="button">
+        <ion-icon name="arrow-back"></ion-icon>
+      </button>
+      <div>
+        <h1>Gestión de Mesas</h1>
+        <p>Asignación y estado</p>
+      </div>
+      @if (tienePermiso) {
+        <button class="boton-agregar" (click)="irAAltaDeMesa()" type="button">
+          <ion-icon name="add"></ion-icon>
+        </button>
+      }
+    </div>
+
+    @if (cargando) {
+      <p class="texto-centrado">Verificando permisos...</p>
+    } @else if (!tienePermiso) {
+      <div class="acceso-denegado">
+        <ion-icon name="warning"></ion-icon>
+        <p>Solo el dueño o el supervisor pueden gestionar las mesas.</p>
+        <button class="boton-principal" (click)="volver()" type="button">Volver al inicio</button>
+      </div>
+    } @else {
+      @if (mensajeError) {
+        <div class="mensaje-error">
+          <ion-icon name="warning"></ion-icon>
+          <span>{{ mensajeError }}</span>
+        </div>
+      }
+
+      @if (mesas.length === 0) {
+        <div class="sin-mesas">
+          <ion-icon name="restaurant-outline"></ion-icon>
+          <p>Todavía no hay mesas cargadas.</p>
+          <button class="boton-principal" (click)="irAAltaDeMesa()" type="button">Agregar la primera mesa</button>
+        </div>
+      } @else {
+        <div class="lista-mesas">
+          @for (mesa of mesas; track mesa.id) {
+            <div class="tarjeta-mesa">
+              <div class="foto-mesa">
+                @if (mesa.foto_url) {
+                  <img [src]="mesa.foto_url" alt="Foto de la mesa {{ mesa.numero }}" />
+                } @else {
+                  <ion-icon name="restaurant-outline"></ion-icon>
+                }
+              </div>
+
+              <div class="info-mesa">
+                <h3>Mesa {{ mesa.numero }}</h3>
+                <p>{{ etiquetasTipo[mesa.tipo] }} · {{ mesa.cantidad_comensales }} comensales</p>
+
+                <button
+                  type="button"
+                  class="chip-disponibilidad"
+                  [class.ocupada]="mesa.disponibilidad === 'ocupada'"
+                  (click)="alternarDisponibilidad(mesa)"
+                >
+                  {{ mesa.disponibilidad === 'vacia' ? 'Vacía' : 'Ocupada' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+</ion-content>
