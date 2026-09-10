@@ -1,8 +1,10 @@
 -- =========================================================
 -- ESQUEMA DE BASE DE DATOS - APP RESTAURANTE (TFI UTN)
--- v2 - Preparación inicial + políticas RLS (puntos 1, 2, 3, 4, 11)
--- Ver supabase/README.md para el detalle completo de decisiones,
--- pruebas realizadas y pendientes.
+-- v3 - Preparación inicial + políticas RLS (puntos 1, 2, 3, 4, 11)
+-- v3 (09/09/2026): índices únicos parciales de usuarios (dni/cuil/email)
+-- + policy de Storage para que dueño/supervisor suban la foto de un
+-- empleado nuevo. Ver supabase/README.md para el detalle completo de
+-- decisiones, pruebas realizadas y pendientes.
 -- =========================================================
 
 -- =========================================================
@@ -59,6 +61,20 @@ create table usuarios (
 alter table usuarios add column estado_aprobacion estado_aprobacion;
 
 create index idx_usuarios_perfil on usuarios(perfil);
+
+-- Índices únicos PARCIALES (no NOT NULL): dni/cuil/email no pueden
+-- repetirse entre usuarios, pero siguen siendo opcionales a nivel DB
+-- porque el cliente_anonimo (punto 9) no los completa. "Obligatorio
+-- según el perfil" se valida en el form Angular (Validators.required
+-- condicional), no acá. Agregado 09/09/2026.
+create unique index if not exists usuarios_dni_unico
+  on usuarios (dni) where dni is not null;
+
+create unique index if not exists usuarios_cuil_unico
+  on usuarios (cuil) where cuil is not null;
+
+create unique index if not exists usuarios_email_unico
+  on usuarios (email) where email is not null;
 
 alter table usuarios enable row level security;
 
@@ -463,6 +479,25 @@ to authenticated
 using (
   bucket_id = 'fotos'
   and (storage.foldername(name))[1] = 'mesas'
+  and perfil_actual() in ('dueño', 'supervisor')
+);
+
+-- ============================================================
+-- Punto 1: alta de empleado — dueño/supervisor suben la foto del
+-- EMPLEADO NUEVO (carpeta ajena, no la propia).
+-- Agregado 09/09/2026 — hueco detectado al diseñar el flujo del punto 1.
+-- Sin esta policy, "storage_fotos_usuario_sube_propia" rechaza el
+-- insert con 403: esa policy solo permite subir a la carpeta del
+-- propio auth.uid(), y acá quien sube (el dueño) no es el dueño de la
+-- carpeta de destino (la del empleado recién creado).
+-- ============================================================
+create policy "storage_fotos_dueño_supervisor_sube_usuarios"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'usuarios'
   and perfil_actual() in ('dueño', 'supervisor')
 );
 

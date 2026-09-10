@@ -56,6 +56,16 @@ alcanza con cambiar cómo se genera la URL en el service Angular (usando
 `createSignedUrl()` en vez de `getPublicUrl()`), sin tocar ni una fila
 de la base.
 
+**`usuarios.dni` / `cuil` / `email` — únicos pero no obligatorios a nivel DB**
+Se agregaron índices únicos **parciales** (`where dni is not null`, etc.),
+no `NOT NULL`: evitan que dos usuarios queden con el mismo DNI/CUIL/email,
+pero siguen permitiendo `NULL` porque el `cliente_anonimo` (punto 9) no
+completa esos campos. "Obligatorio según el perfil" se sigue resolviendo
+en el form Angular (`Validators.required` condicional), no en la DB — la
+DB solo se ocupa de que, cuando el dato existe, no se repita. Confirmado
+en Supabase el 09/09/2026 que antes de esto no había ningún índice único
+más allá de la primary key.
+
 Para usuarios puntualmente, el path tiene subcarpeta:
 `usuarios/{uid}/foto.jpg` (no `usuarios/{uid}.jpg` plano). Es importante
 que coincida exactamente así porque la policy de Storage valida con
@@ -224,6 +234,18 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
   mismo criterio para el cantinero, misma carpeta.
 - `storage_fotos_dueño_supervisor_sube_mesas` / `_actualiza_mesas` —
   dueño/supervisor pueden subir/reemplazar archivos en la carpeta `mesas/`.
+- `storage_fotos_dueño_supervisor_sube_usuarios` — dueño/supervisor pueden
+  subir un archivo a la carpeta de **otro** usuario dentro de `usuarios/`
+  (no solo la propia). Necesaria para el punto 1 (alta de empleado): quien
+  sube la foto es el dueño/supervisor logueado, pero el destino es la
+  carpeta del **empleado recién creado**, así que
+  `storage_fotos_usuario_sube_propia` (que exige que la carpeta coincida
+  con el `auth.uid()` de quien sube) no alcanza. Agregada el 09/09/2026,
+  detectada al diseñar el flujo del punto 1 antes de implementarlo — no
+  había ningún caso anterior de "subir una foto para otro usuario".
+  **Sin `_actualiza_usuarios` todavía**: no hace falta por ahora porque el
+  punto 1 es alta, no edición de empleados existentes; agregar si en algún
+  momento se pide poder editar la foto de un empleado ya creado.
 
 **Limitación conocida y aceptada:** como la carpeta es
 `productos/{producto_id}/...` (no `productos/{tipo}/{producto_id}/...`),
@@ -346,16 +368,24 @@ confianza que sobre Storage.
 - Prueba directa con `curl` de `usuarios_cliente_se_autorregistra` (ver
   nota en la sección anterior).
 - Alta de empleados desde la app real: la solución está **diseñada pero
-  no implementada**. Requiere una **Edge Function** con
-  `admin.createUser()` (usando la `service_role` key), porque `signUp()`
-  normal loguearía automáticamente al empleado nuevo y desconectaría a
-  quien lo está creando. El código de referencia de la function y del
-  service Angular que la invoca está definido, pero **no se creó el
-  archivo en el proyecto, no se desplegó y no se probó**.
+  no implementada** (la DB ya está lista, ver más abajo). Requiere una
+  **Edge Function** con `admin.createUser()` (usando la `service_role`
+  key) para el paso de Auth únicamente — el resto del flujo (insert en
+  `usuarios`, subida de foto a Storage) se hace directo desde el cliente
+  Angular con la sesión del dueño/supervisor, ya que las policies
+  necesarias para eso **ya existen y están confirmadas** (ver detalle
+  abajo). Sigue sin existir el archivo de la function en el proyecto, no
+  se desplegó y no se probó — eso es lo único que falta de este punto del
+  lado de Supabase.
+  - **Diseño confirmado el 09/09/2026** tras revisar en el SQL Editor qué
+    policies ya estaban creadas: `usuarios_dueño_supervisor_inserta_empleados`
+    (para el insert en `usuarios`) y `storage_fotos_dueño_supervisor_sube_usuarios`
+    (agregada ese mismo día, para la foto) ya cubren esos dos pasos sin
+    necesitar `service_role`. Esto simplifica lo que la Edge Function
+    tiene que hacer: solo crear el usuario en Auth y devolver su `id`,
+    nada más.
 - Validaciones adicionales a nivel DB: largo máximo de descripción,
-  nombres duplicados en la carta, índices únicos parciales en `usuarios`
-  (dni/cuil/email, considerando que el cliente anónimo no completa esos
-  campos).
+  nombres duplicados en la carta.
 - Postres cargados en el seed.
 - Tablas de los puntos siguientes del TFI (estadías, lista de espera,
   pedidos, encuestas, etc.) — se agregan a medida que el equipo avance
