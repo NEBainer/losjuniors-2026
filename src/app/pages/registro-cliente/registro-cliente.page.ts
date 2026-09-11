@@ -8,6 +8,13 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
 import { camera, warning ,personAddOutline, cameraOutline, warningOutline} from 'ionicons/icons';
 import { SupabaseService } from '../../core/services/supabase.service';
+import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
+
+interface DatosDni {
+  apellidos: string;
+  nombres: string;
+  dni: string;
+}
 
 @Component({
   selector: 'app-registro-cliente',
@@ -20,6 +27,9 @@ export class RegistroClientePage  implements OnInit {
   readonly fotoUri = signal<string | null>(null);
   readonly cargando = signal(false);
   readonly mensajeError = signal('');
+  readonly escaneando = signal(false);
+  readonly lectorQrDisponible = signal(false);
+  readonly datosVienenDeQr = signal(false);
 
   constructor(
     private fb: FormBuilder,
@@ -38,7 +48,10 @@ export class RegistroClientePage  implements OnInit {
     addIcons({ camera, warning, warningOutline, personAddOutline, cameraOutline });
    }
 
-  ngOnInit() {}
+  async ngOnInit() {
+    const { supported } = await BarcodeScanner.isSupported();
+    this.lectorQrDisponible.set(supported);
+  }
 
   async capturarFoto() {
     try {
@@ -78,6 +91,55 @@ export class RegistroClientePage  implements OnInit {
       this.cargando.set(false);
       this.dispararError('No se pudo completar el registro. Intente nuevamente.');
     }
+  }
+
+  async escanearDni() {
+    this.escaneando.set(true);
+    try {
+      const { camera } = await BarcodeScanner.checkPermissions();
+      if (camera === 'denied') {
+        this.dispararError('Activá el permiso de cámara desde Configuración del dispositivo para poder escanear el DNI.');
+        return;
+      }
+      if (camera !== 'granted') {
+        const solicitado = await BarcodeScanner.requestPermissions();
+        if (solicitado.camera !== 'granted') {
+          this.dispararError('Se necesita permiso de cámara para escanear el DNI.');
+          return;
+        }
+      }
+      // PDF417, no QrCode: es el formato real del DNI argentino.
+      const { barcodes } = await BarcodeScanner.scan({ formats: [BarcodeFormat.Pdf417] });
+      if (barcodes.length === 0) return; 
+      
+      const rawValue = barcodes[0].rawValue;
+      if (!rawValue) {
+        throw new Error('No se pudo leer el contenido del código.');
+      }
+
+      const datos = this.parsearDni(rawValue);
+
+      this.formulario.patchValue({
+        dni: datos.dni,
+        nombres: datos.nombres,
+        apellidos: datos.apellidos
+      });
+      this.datosVienenDeQr.set(true);
+
+    } catch {
+      this.dispararError('No se pudo leer el código del DNI. Probá enfocar bien el frente del documento.');
+    } finally {
+      this.escaneando.set(false);
+    }
+  }
+
+  private parsearDni(raw: string): DatosDni {
+    const campos = raw.split('@');
+    if (campos.length < 8) {
+      throw new Error('Formato de DNI no reconocido');
+    }
+    const [, apellidos, nombres, , dni] = campos;
+    return { apellidos, nombres, dni };
   }
 
   private async dispararError(mensaje: string) {

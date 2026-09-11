@@ -3,7 +3,6 @@
   @if (cargando) {
     <div class="overlay-cargando">
       <div class="contenedor-spinner">
-        <!-- CAMBIAR LA RUTA POR LOGO DE LU-->
         <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
         <div class="spinner-css"></div>
         <p>Autenticando usuario...</p>
@@ -13,8 +12,8 @@
 
   <div class="contenedor-principal">
     <div class="cabecera-logo">
+      <img src="assets/mascota/gatito-login.png" alt="Mascota La Mesa" class="mascota-login" />
       <h1>La Mesa</h1>
-      <p>Gestión de Restaurante</p>
     </div>
 
     <!-- Errores con controles personalizados-->
@@ -38,7 +37,7 @@
       </div>
 
       <button type="submit" class="boton-principal" [disabled]="cargando || formularioLogin.invalid">
-        Ingresar al sistema
+        Iniciar sesión
       </button>
     </form>
     <div class="enlace-registro">

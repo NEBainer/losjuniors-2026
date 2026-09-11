@@ -2,23 +2,38 @@
   <div class="contenedor-registro">
 
     <header class="encabezado">
-      <ion-icon name="person-add-outline"></ion-icon>
+      <img src="assets/mascota/gatito-registro.png" alt="Mascota La Mesa" class="mascota-encabezado" />
       <h1>Registro de cliente</h1>
-      <p>Completá tus datos para reservar tu lugar en La Mesa</p>
     </header>
 
-    <div class="contenedor-foto" (click)="capturarFoto()">
-      @if (fotoUri()) {
-        <img [src]="fotoUri()" alt="Foto de perfil" class="foto-preview" />
-        <span class="etiqueta-cambiar">Tocar para volver a tomar</span>
-      } @else {
-        <ion-icon name="camera-outline" class="icono-camara"></ion-icon>
-        <span>Tomar foto</span>
+    <div class="fila-acciones-iniciales">
+      <div class="contenedor-foto" (click)="capturarFoto()">
+        @if (fotoUri()) {
+          <img [src]="fotoUri()" alt="Foto de perfil" class="foto-preview" />
+          <span class="etiqueta-cambiar">Tocar para cambiar</span>
+        } @else {
+          <ion-icon name="camera-outline" class="icono-camara"></ion-icon>
+          <span>Tomar foto</span>
+        }
+      </div>
+
+      @if (lectorQrDisponible()) {
+        <div class="contenedor-qr" (click)="escanearDni()">
+          @if (escaneando()) {
+            <ion-spinner name="crescent"></ion-spinner>
+          } @else {
+            <ion-icon name="qr-code-outline" class="icono-qr"></ion-icon>
+            <span>Escanear DNI</span>
+          }
+        </div>
       }
     </div>
 
-    <form [formGroup]="formulario" (ngSubmit)="registrarse()" class="formulario">
+    @if (datosVienenDeQr()) {
+      <p class="aviso-qr">✓ Datos cargados desde el DNI. Completá el resto para continuar.</p>
+    }
 
+    <form [formGroup]="formulario" (ngSubmit)="registrarse()" class="formulario">
       <div class="campo">
         <ion-label>Nombres</ion-label>
         <ion-input
@@ -91,7 +106,7 @@
       @if (mensajeError()) {
         <div class="banner-error">
           <ion-icon name="warning-outline"></ion-icon>
-          <span>{{ mensajeError }}</span>
+          <span>{{ mensajeError() }}</span>
         </div>
       }
 
@@ -106,7 +121,6 @@
           Registrarme
         }
       </ion-button>
-
     </form>
   </div>
 </ion-content>
