@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonContent, IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
@@ -15,7 +15,7 @@ import { Mesa, MesaService } from '../../core/services/mesa.service';
   standalone: true,
   imports: [IonContent, IonIcon, CommonModule],
 })
-export class MesasGestionPage implements OnInit {
+export class MesasGestionPage {
   cargando = true;
   tienePermiso = false;
   mensajeError = '';
@@ -37,7 +37,13 @@ export class MesasGestionPage implements OnInit {
     addIcons({ add, arrowBack, restaurantOutline, warning });
   }
 
-  async ngOnInit() {
+  // Lifecycle de Ionic: corre cada vez que se entra a la pantalla (incluido
+  // volver de "Alta de mesa"), así el listado siempre refleja los cambios
+  // recién guardados. Con ngOnInit solo, Ionic reutiliza la instancia
+  // cacheada al volver atrás y el listado quedaba desactualizado.
+  async ionViewWillEnter() {
+    this.cargando = true;
+
     const usuario = await this.authService.obtenerUsuarioActual();
     this.tienePermiso = !!usuario && ['dueño', 'supervisor'].includes(usuario.perfil);
 
