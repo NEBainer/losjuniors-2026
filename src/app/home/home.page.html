@@ -18,6 +18,11 @@
     </div>
 
     <div class="grilla-modulos">
+      <div class="modulo-card" (click)="irALaCarta()">
+        <ion-icon name="book-outline"></ion-icon>
+        <h3>Ver la Carta</h3>
+        <p>Menú completo</p>
+      </div>
       @if (puedeVerMesas()) {
         <div class="modulo-card" (click)="irAGestionMesas()">
           <ion-icon name="restaurantOutline"></ion-icon>
@@ -37,6 +42,27 @@
           <ion-icon name="peopleOutline"></ion-icon>
           <h3>Clientes Pendientes</h3>
           <p>Aprobación de ingreso</p>
+        </div>
+      }
+      @if (puedeVerAltaEmpleado()) {
+        <div class="modulo-card" (click)="irAAltaEmpleado()">
+          <ion-icon name="personAddOutline"></ion-icon>
+          <h3>Empleados</h3>
+          <p>Alta de personal</p>
+        </div>
+      }
+      @if (puedeAgregarPlato()) {
+        <div class="modulo-card" (click)="irAAltaPlato()">
+          <ion-icon name="fastFoodOutline"></ion-icon>
+          <h3>Agregar Plato</h3>
+          <p>Alta de nuevo plato</p>
+        </div>
+      }
+      @if (puedeAgregarBebida()) {
+        <div class="modulo-card" (click)="irAAltaBebida()">
+          <ion-icon name="wineOutline"></ion-icon>
+          <h3>Agregar Bebida</h3>
+          <p>Alta de nueva bebida</p>
         </div>
       }
     </div>

@@ -1,5 +1,9 @@
 :root {
-  --ion-background-color: #FCF7EE; 
+  // Padding lateral consistente en toda la app (convención docente
+  // 06/09) — reusar esta variable en vez de valores sueltos por pantalla.
+  --app-padding: 16px;
+
+  --ion-background-color: #FCF7EE;
   
   --ion-text-color: #632A12; 
   

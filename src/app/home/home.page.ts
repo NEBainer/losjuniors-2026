@@ -6,7 +6,7 @@ import { PerfilUsuario } from '../core/models/usuario.model';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
-import { listOutline, logOutOutline, peopleOutline, restaurantOutline } from 'ionicons/icons';
+import { bookOutline, fastFoodOutline, listOutline, logOutOutline, peopleOutline, personAddOutline, restaurantOutline, wineOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-home',
@@ -22,6 +22,12 @@ export class HomePage {
   // zona de Angular) y así la vista se refresca sola al llegar el dato.
   private readonly perfil = signal<PerfilUsuario | null>(null);
 
+  readonly puedeAgregarPlato = computed(() =>
+    this.esUnoDe(this.perfil(), ['cocinero']),
+  );
+  readonly puedeAgregarBebida = computed(() =>
+    this.esUnoDe(this.perfil(), ['cantinero']),
+  ); 
   readonly puedeVerMesas = computed(() =>
     this.esUnoDe(this.perfil(), ['dueño', 'supervisor']),
   );
@@ -31,13 +37,16 @@ export class HomePage {
   readonly puedeVerClientesPendientes = computed(() =>
     this.esUnoDe(this.perfil(), ['dueño', 'supervisor']),
   );
+  readonly puedeVerAltaEmpleado = computed(() =>
+    this.esUnoDe(this.perfil(), ['dueño', 'supervisor']),
+  );
 
   constructor(
     private authService: AuthService,
     private usuariosService: UsuariosService,
     private router: Router,
   ) {
-    addIcons({ logOutOutline, restaurantOutline, listOutline, peopleOutline });
+    addIcons({ logOutOutline, restaurantOutline, listOutline, peopleOutline, personAddOutline, fastFoodOutline, wineOutline, bookOutline });
   }
 
   // Lifecycle de Ionic: corre cada vez que se entra a la pantalla
@@ -55,8 +64,28 @@ export class HomePage {
     this.router.navigate(['/clientes-pendientes']);
   }
 
+  irAAltaEmpleado() {
+    this.router.navigate(['/empleados/alta']);
+  }
+
   irAGestionMesas() {
     this.router.navigate(['/mesas']);
+  }
+
+  irAAltaPlato() {
+    this.router.navigate(['/cocinero/plato-alta']);
+  }
+
+  irAAltaBebida() {
+    this.router.navigate(['/cantinero/bebida-alta']);
+  }
+
+  // Punto 11: ver la carta completa. No depende de ningún perfil en
+  // particular (a diferencia del resto de las tarjetas) — cualquier
+  // usuario logueado la puede consultar, igual que la vería un cliente
+  // escaneando el QR de la mesa.
+  irALaCarta() {
+    this.router.navigate(['/carta']);
   }
 
   async ejecutarCierreSesion() {

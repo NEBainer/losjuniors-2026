@@ -29,11 +29,8 @@ import { SplashScreen } from '@capacitor/splash-screen';
  * costo de renderizar la app real por debajo del splash.
  *
  * Decisiones que no estaban pedidas explícitamente pero evitan objeciones
- *   - Caché con vencimiento (no un flag para siempre): si el diseño cambia,
- *     alcanza con subir VERSION y todos lo vuelven a ver una vez.
  *   - Salida manual en cualquier momento (click, tecla, botón "Saltar").
  *   - prefers-reduced-motion respetado (ver .scss).
- *   - Manejo defensivo de localStorage (modo privado / cuota llena no rompe nada).
  */
 @Component({
   selector: 'app-splash-inicio',
@@ -43,7 +40,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
 <div
   class="splash"
   [class.oculto]="oculto()"
-  [class.animacion-rapida]="animacionRapida()"
   role="img"
   aria-label="LA MESA — Gestión de Restaurante, cargando"
   (click)="alHacerClick()"
@@ -127,17 +123,11 @@ import { SplashScreen } from '@capacitor/splash-screen';
   visibility: visible;
   transition: opacity 0.5s ease, visibility 0s linear 0s;
 }
-.splash.animacion-rapida {
-  transition-duration: 0.15s;
-}
 .splash.oculto {
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.5s ease, visibility 0s linear 0.5s;
   pointer-events: none;
-}
-.splash.oculto.animacion-rapida {
-  transition: opacity 0.15s ease, visibility 0s linear 0.15s;
 }
 
 .marco {
@@ -152,10 +142,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
 }
 .marco::-webkit-scrollbar {
   display: none;
-}
-.animacion-rapida .marco {
-  animation: none;
-  clip-path: circle(75% at 50% 50%);
 }
 @keyframes sello {
   to {
@@ -207,11 +193,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
   bottom: 4px;
   right: 4px;
   animation-delay: 0.55s;
-}
-.animacion-rapida .rombo-esquina {
-  animation: none;
-  opacity: 1;
-  transform: rotate(45deg) scale(1);
 }
 @keyframes aparecer-rombo {
   0% {
@@ -296,11 +277,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
   animation: entrar 0.5s cubic-bezier(0.16, 0.8, 0.3, 1) forwards;
   animation-delay: calc(0.55s + (var(--i, 0) * 0.09s));
 }
-.animacion-rapida .item {
-  animation: none;
-  opacity: 1;
-  transform: none;
-}
 @keyframes entrar {
   to {
     opacity: 1;
@@ -362,11 +338,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
   animation: golpe-sello 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   animation-delay: 0.95s;
 }
-.animacion-rapida .sello-central {
-  animation: none;
-  opacity: 1;
-  transform: none;
-}
 .sello-central::before {
   content: '';
   position: absolute;
@@ -378,10 +349,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
   animation-delay: 1.1s;
   pointer-events: none;
 }
-.animacion-rapida .sello-central::before {
-  display: none;
-}
-
 .logo-marca {
   width: 100%;
   height: 100%;
@@ -447,10 +414,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
   animation: entrar 0.4s ease forwards;
   animation-delay: 1.6s;
 }
-.animacion-rapida .btn-saltar {
-  animation: none;
-  opacity: 1;
-}
 .btn-saltar::part(native):hover,
 .btn-saltar::part(native):focus-visible {
   --border-color: var(--marron);
@@ -500,23 +463,23 @@ import { SplashScreen } from '@capacitor/splash-screen';
 export class SplashInicioComponent implements OnInit, OnDestroy {
   @Output() splashListo = new EventEmitter<void>();
 
-  private static readonly CLAVE = 'lm_splash';
-  private static readonly VERSION = 1;
-  private static readonly VIGENCIA_MS = 1000 * 60 * 60 * 6; 
+  private static readonly DURACION_MS = 2000;
+  private static readonly DURACION_TRANSICION_MS = 500; // debe coincidir con .splash.oculto en el CSS de arriba.
+
   protected readonly oculto = signal(false);
-  protected readonly animacionRapida = signal(false);
 
   private yaCerrado = false;
   private temporizadorCierre?: ReturnType<typeof setTimeout>;
 
   ngOnInit(): void {
     SplashScreen.hide();
-    if (this.debeSaltarAnimacionCompleta()) {
-      this.animacionRapida.set(true);
-      this.temporizadorCierre = setTimeout(() => this.cerrar(), 150);
-    } else {
-      this.temporizadorCierre = setTimeout(() => this.cerrar(), 5000);
-    }
+    // Siempre se muestra completo, siempre los mismos 2 segundos — sin
+    // caché ni excepciones. El botón "Saltar" (o un click/tecla) sigue
+    // permitiendo cerrarlo antes para quien lo prefiera.
+    this.temporizadorCierre = setTimeout(
+      () => this.cerrar(),
+      SplashInicioComponent.DURACION_MS
+    );
   }
 
   ngOnDestroy(): void {
@@ -540,37 +503,11 @@ export class SplashInicioComponent implements OnInit, OnDestroy {
   private cerrar(): void {
     if (this.yaCerrado) return;
     this.yaCerrado = true;
-    this.guardarCache();
     this.oculto.set(true);
 
     setTimeout(
       () => this.splashListo.emit(),
-      this.animacionRapida() ? 150 : 500
+      SplashInicioComponent.DURACION_TRANSICION_MS
     );
-  }
-
-  private leerCache(): { v: number; ts: number } | null {
-    try {
-      const crudo = localStorage.getItem(SplashInicioComponent.CLAVE);
-      return crudo ? JSON.parse(crudo) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  private guardarCache(): void {
-    try {
-      localStorage.setItem(
-        SplashInicioComponent.CLAVE,
-        JSON.stringify({ v: SplashInicioComponent.VERSION, ts: Date.now() })
-      );
-    } catch {
-    }
-  }
-
-  private debeSaltarAnimacionCompleta(): boolean {
-    const datos = this.leerCache();
-    if (!datos || datos.v !== SplashInicioComponent.VERSION) return false;
-    return Date.now() - datos.ts < SplashInicioComponent.VIGENCIA_MS;
   }
 }
