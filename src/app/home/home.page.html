@@ -39,6 +39,20 @@
           <p>Aprobación de ingreso</p>
         </div>
       }
+            @if (puedeAgregarPlato()) {
+        <div class="modulo-card" (click)="irAAltaPlato()">
+          <ion-icon name="fastFoodOutline"></ion-icon>
+          <h3>Agregar Plato</h3>
+          <p>Alta de nuevo plato</p>
+        </div>
+      }
+      @if (puedeAgregarBebida()) {
+        <div class="modulo-card" (click)="irAAltaBebida()">
+          <ion-icon name="wineOutline"></ion-icon>
+          <h3>Agregar Bebida</h3>
+          <p>Alta de nueva bebida</p>
+        </div>
+      }
     </div>
 
     <div class="seccion-logout">
