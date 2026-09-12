@@ -1,4 +1,4 @@
-﻿import {
+import {
   Component,
   DestroyRef,
   EventEmitter,
@@ -327,6 +327,27 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   `,
   styles: [`
 :host {
+  /*
+   * Este componente vive un nivel adentro de la página de ruta real
+   * (plato.alta / bebida.alta, que son las que llevan la clase .ion-page
+   * y por lo tanto display:flex;flex-direction:column). Sin este bloque,
+   * el host de este componente queda con el display:block por default de
+   * cualquier custom element, así que dentro del flex de .ion-page se
+   * comporta como un flex-item que NO crece (flex:0 1 auto) y encima no
+   * pasa el flex-context hacia abajo — el resultado es que <ion-content>
+   * (que necesita ser flex-item de un padre display:flex para poder crecer
+   * con su propio flex:1 interno) queda con altura "auto" y colapsa a la
+   * altura de <ion-header> nomás, aunque el <form> de adentro sí tenga
+   * altura real (queda recortado por el overflow:hidden de ion-content).
+   * display:flex;flex-direction:column + flex:1 1 auto acá reproduce la
+   * misma cadena que usan las páginas que sí andan bien (donde ion-header
+   * / ion-content son hijos directos del componente con .ion-page).
+   */
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+
   --crema: #f4eada;
   --marron: #7a3a22;
   --marron-osc: #5b2a17;
@@ -460,7 +481,10 @@ ion-header ion-toolbar {
 .imagen-foto {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* object-fit: cover recortaría la foto para llenar el cuadrado — el TP pide
+     mostrarla completa sin recortar, así que contain (con el fondo del
+     contenedor asomando en los bordes que no llenen el cuadro). */
+  object-fit: contain;
   display: block;
 }
 
@@ -777,10 +801,22 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
         }
       }
     } catch (error) {
-      // El usuario canceló el selector nativo o no dio permisos.
-      // No es un error de validación del formulario, así que no se muestra nada.
-      console.warn('No se pudo obtener la foto', error);
+      if (this.esCancelacionDeUsuario(error)) {
+        // El usuario cerró el selector nativo sin elegir nada — no es un error.
+        console.warn('Selección de foto cancelada por el usuario', error);
+        return;
+      }
+      // Falla real (sin permisos, sin cámara disponible, etc.) — esto sí es
+      // un error del flujo, así que vibra como cualquier otro error del form.
+      console.error('No se pudo obtener la foto', error);
+      await this.vibrarError();
     }
+  }
+
+  /** Los plugins nativos no estandarizan un código de "cancelado", pero sí el texto del mensaje. */
+  private esCancelacionDeUsuario(error: unknown): boolean {
+    const mensaje = (error as { message?: string } | undefined)?.message?.toLowerCase() ?? '';
+    return mensaje.includes('cancel');
   }
 
   private asignarFoto(indice: number, foto: FotoProducto): void {
