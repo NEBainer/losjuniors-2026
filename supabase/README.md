@@ -390,3 +390,61 @@ confianza que sobre Storage.
 - Tablas de los puntos siguientes del TFI (estadías, lista de espera,
   pedidos, encuestas, etc.) — se agregan a medida que el equipo avance
   con esas partes de la app.
+
+  ## Sistema de mail automático (puntos 7/8)
+
+Notifica al cliente por correo el estado de su registro (pendiente al
+registrarse, aceptado/rechazado cuando dueño/supervisor lo confirma).
+No requiere ninguna tabla ni columna nueva — invoca una Edge Function
+con los datos que la base ya tenía.
+
+**Arquitectura:** Edge Function `enviar-correo-estado`, invocada desde
+`cliente.service.ts` (estado 'pendiente') y `usuarios.service.ts`
+(estado 'aceptado'/'rechazado', dentro de `setEstadoCliente`).
+
+## Bug encontrado y resuelto: SMTP directo no funciona desde Edge Functions
+
+El primer intento usó SMTP directo (Gmail, vía `denomailer`) desde la
+Edge Function. Nunca llegó a enviar nada — los logs mostraban `booted`
+seguido de `shutdown` con `reason: "EarlyDrop"` después de ~75
+segundos, sin ningún error explícito.
+
+**Causa:** Deno Deploy (la infraestructura donde corren las Edge
+Functions de Supabase) bloquea las conexiones salientes a los puertos
+SMTP (25, 465, 587) como medida antispam — está documentado incluso en
+ejemplos oficiales de Supabase. La conexión a `smtp.gmail.com:465`
+quedaba colgada indefinidamente hasta que la plataforma mataba la
+función por inactividad.
+
+**Solución:** se migró a **Brevo** (API HTTP, no SMTP) — funciona
+porque usa el puerto 443 (HTTPS), no bloqueado. Se descartó Resend
+antes de esto porque exige dominio propio verificado para mandar a
+destinatarios que no sean el dueño de la cuenta; Brevo permite mandar
+a cualquier destinatario verificando solo el mail remitente (sin DNS),
+con 300 mails/día gratis.
+
+**Limitación aceptada:** sin dominio propio con SPF/DKIM, hay más
+chance de que el mail caiga en spam (especialmente en Gmail/Yahoo).
+No bloqueante para la entrega, pero avisar de esto al mostrar la demo.
+
+## Bug encontrado y resuelto: CORS faltante bloqueaba el envío desde la app
+
+Con la función ya usando Brevo, seguía sin llegar ningún mail — los
+logs mostraban `"request.method": "OPTIONS"` con `500`. El navegador
+manda automáticamente una petición `OPTIONS` (preflight) antes del
+`POST` real; la función intentaba leer `req.json()` también en ese
+caso, fallaba, y el navegador cortaba ahí sin llegar a mandar la
+petición real con los datos del mail.
+
+**Solución:** manejar `OPTIONS` explícitamente al principio del
+`Deno.serve()`, devolviendo los headers de CORS antes que nada, y
+agregar esos mismos headers a todas las respuestas (incluidas las de
+error).
+
+## Pendiente
+
+- `verify_jwt = true` en `supabase/config.toml` para
+  `enviar-correo-estado` (mejora de seguridad: sin esto, cualquiera con
+  la clave pública de la app podría invocar la función directo y mandar
+  mails arbitrarios).
+- Dominio propio para mejorar deliverability (opcional, no bloqueante).
