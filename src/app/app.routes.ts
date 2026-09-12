@@ -55,4 +55,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/bebida-alta/bebida.alta.component').then(m => m.BebidaAltaComponent),
     canActivate: [authGuard, guardPerfil(['cantinero'])]
   },
+  {
+    // ⚠️ TEMPORAL para probar la pantalla — el punto 11 en el TP se llega
+    // escaneando el QR de la mesa (punto 10), no navegando a una ruta fija.
+    // Cuando esté armado ese flujo, sacar esta ruta o adaptarla (capaz
+    // termine siendo 'mesa/:mesaId/carta' o similar) y decidir si necesita
+    // guard — hoy no tiene ninguno.
+    path: 'carta',
+    loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
+  },
 ];
