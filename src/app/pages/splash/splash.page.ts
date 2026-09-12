@@ -1,19 +1,17 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { IonContent, IonHeader, IonTitle, IonToolbar } from '@ionic/angular';
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { SplashInicioComponent } from '../../splash/splash.inicio.component';
 
 @Component({
   selector: 'app-splash',
-  templateUrl: './splash.page.html',
-  styleUrls: ['./splash.page.scss'],
-  imports: [IonContent, IonHeader, IonTitle, IonToolbar, CommonModule, FormsModule]
+  standalone: true,
+  imports: [SplashInicioComponent],
+  template: `<app-splash-inicio (splashListo)="irALogin()" />`,
 })
-export class SplashPage implements OnInit {
+export class SplashPage {
+  constructor(private router: Router) {}
 
-  constructor() { }
-
-  ngOnInit() {
+  irALogin(): void {
+    this.router.navigate(['/login'], { replaceUrl: true });
   }
-
 }

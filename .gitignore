@@ -24,6 +24,13 @@ android/app/build/
 # Ionic
 www/
 
+# Android
+.idea/
+
 # CLAUDE
 CLAUDE.local.md
 enunciado-tfi.md
+AVANCES.md
+
+# Documentacion personal (solo en rama Bainer, no se pushea desde dev)
+docs/

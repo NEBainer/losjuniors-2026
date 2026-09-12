@@ -1,0 +1,96 @@
+<ion-content class="fondo-app">
+
+  <!-- Spinner con logo en toda espera (requisito excluyente del enunciado) -->
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Procesando...</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal">
+
+    <div class="cabecera-pendientes">
+      <button class="boton-icono" (click)="volver()" title="Volver al panel">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </button>
+      <div class="titulo">
+        <h1>Clientes pendientes</h1>
+        <p>Aceptá o rechazá las solicitudes de registro</p>
+      </div>
+      <button class="boton-icono" (click)="cargar()" [disabled]="cargando()" title="Refrescar listado">
+        <ion-icon name="refresh-outline"></ion-icon>
+      </button>
+    </div>
+
+    <!-- Info/errores con controles propios, NO alerts -->
+    @if (mensajeError()) {
+      <div class="mensaje mensaje-error">
+        <ion-icon name="warning"></ion-icon>
+        <span>{{ mensajeError() }}</span>
+      </div>
+    }
+    @if (mensajeOk()) {
+      <div class="mensaje mensaje-ok">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <span>{{ mensajeOk() }}</span>
+      </div>
+    }
+
+    @if (!cargando() && pendientes().length === 0) {
+      <div class="estado-vacio">
+        <ion-icon name="people-outline"></ion-icon>
+        <p>No hay clientes pendientes de aprobación.</p>
+      </div>
+    }
+
+    <div class="lista-pendientes">
+      @for (cliente of pendientes(); track cliente.id) {
+        <div class="cliente-card">
+
+          <div class="avatar">
+            @if (cliente.fotoUrl) {
+              <img [src]="cliente.fotoUrl" [alt]="'Foto de ' + cliente.nombres + ' ' + cliente.apellidos" />
+            } @else {
+              <span class="inicial">{{ cliente.inicial }}</span>
+            }
+          </div>
+
+          <div class="datos">
+            <h3>{{ cliente.apellidos }}, {{ cliente.nombres }}</h3>
+          </div>
+
+          @if (confirmandoId() === cliente.id) {
+            <div class="acciones acciones-confirmar">
+              <span class="pregunta">
+                ¿{{ accion() === 'aceptado' ? 'Aceptar' : 'Rechazar' }} a este cliente?
+              </span>
+              <button class="btn btn-si" (click)="confirmar(cliente)" [disabled]="procesandoId() === cliente.id">
+                Sí
+              </button>
+              <button class="btn btn-no" (click)="cancelarConfirmacion()" [disabled]="procesandoId() === cliente.id">
+                No
+              </button>
+            </div>
+          } @else {
+            <div class="acciones">
+              <button class="btn btn-aceptar" (click)="pedirConfirmacion(cliente.id, 'aceptado')">
+                <ion-icon name="checkmark-outline"></ion-icon>
+                <span>Aceptar</span>
+              </button>
+              <button class="btn btn-rechazar" (click)="pedirConfirmacion(cliente.id, 'rechazado')">
+                <ion-icon name="close-outline"></ion-icon>
+                <span>Rechazar</span>
+              </button>
+            </div>
+          }
+
+        </div>
+      }
+    </div>
+
+  </div>
+</ion-content>

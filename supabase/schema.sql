@@ -1,8 +1,10 @@
 -- =========================================================
 -- ESQUEMA DE BASE DE DATOS - APP RESTAURANTE (TFI UTN)
--- v2 - Preparación inicial + políticas RLS (puntos 1, 2, 3, 4, 11)
--- Ver supabase/README.md para el detalle completo de decisiones,
--- pruebas realizadas y pendientes.
+-- v3 - Preparación inicial + políticas RLS (puntos 1, 2, 3, 4, 11)
+-- v3 (09/09/2026): índices únicos parciales de usuarios (dni/cuil/email)
+-- + policy de Storage para que dueño/supervisor suban la foto de un
+-- empleado nuevo. Ver supabase/README.md para el detalle completo de
+-- decisiones, pruebas realizadas y pendientes.
 -- =========================================================
 
 -- =========================================================
@@ -29,6 +31,12 @@ create type tipo_producto as enum ('plato', 'bebida', 'postre');
 create type tipo_mesa as enum ('vip', 'estandar', 'movilidad_reducida');
 create type estado_mesa as enum ('vacia', 'ocupada');
 
+-- Estado de aprobación del cliente registrado (puntos 5, 6, 7, 8).
+-- El alta de cliente (punto 5) inserta 'pendiente'; dueño/supervisor lo
+-- pasan a 'aceptado' o 'rechazado'. NULL = usuario que no requiere
+-- aprobación (empleados, dueño, supervisor).
+create type estado_aprobacion as enum ('pendiente', 'aceptado', 'rechazado');
+
 -- =========================================================
 -- 2. TABLA: usuarios
 -- Vinculada 1 a 1 con auth.users (Supabase Auth maneja la contraseña).
@@ -47,7 +55,26 @@ create table usuarios (
   created_at timestamptz not null default now()
 );
 
+-- Estado de aprobación (puntos 5-8). Columna aparte y nullable: los
+-- usuarios ya existentes (seeds, empleados) quedan en NULL = "no requiere
+-- aprobación". Sólo el cliente registrado usa este campo.
+alter table usuarios add column estado_aprobacion estado_aprobacion;
+
 create index idx_usuarios_perfil on usuarios(perfil);
+
+-- Índices únicos PARCIALES (no NOT NULL): dni/cuil/email no pueden
+-- repetirse entre usuarios, pero siguen siendo opcionales a nivel DB
+-- porque el cliente_anonimo (punto 9) no los completa. "Obligatorio
+-- según el perfil" se valida en el form Angular (Validators.required
+-- condicional), no acá. Agregado 09/09/2026.
+create unique index if not exists usuarios_dni_unico
+  on usuarios (dni) where dni is not null;
+
+create unique index if not exists usuarios_cuil_unico
+  on usuarios (cuil) where cuil is not null;
+
+create unique index if not exists usuarios_email_unico
+  on usuarios (email) where email is not null;
 
 alter table usuarios enable row level security;
 
@@ -141,6 +168,18 @@ for select
 to authenticated
 using ( perfil_actual() in ('dueño', 'supervisor') );
 
+-- UPDATE: dueño/supervisor aceptan o rechazan clientes registrados
+-- pendientes (puntos 6, 7, 8). Versión "intermedia": acotada a
+-- perfil = 'cliente_registrado', no un UPDATE genérico sobre toda la
+-- tabla. El with check repite la condición para que en el mismo update
+-- no se pueda cambiar el perfil de la fila y escaparse del scope.
+create policy "usuarios_dueño_supervisor_actualiza_clientes"
+on usuarios
+for update
+to authenticated
+using ( perfil_actual() in ('dueño','supervisor') and perfil = 'cliente_registrado' )
+with check ( perfil_actual() in ('dueño','supervisor') and perfil = 'cliente_registrado' );
+
 -- productos --------------------------------------------------
 
 create policy "productos_lectura_autenticados"
@@ -173,6 +212,16 @@ create policy "mesas_dueño_supervisor_inserta"
 on mesas
 for insert
 to authenticated
+with check ( perfil_actual() in ('dueño', 'supervisor') );
+
+-- UPDATE: dueño/supervisor modifican la disponibilidad de una mesa
+-- (punto 4: "permitir la gestión de mesas, dando la posibilidad de
+-- modificar la disponibilidad").
+create policy "mesas_dueño_supervisor_actualiza"
+on mesas
+for update
+to authenticated
+using ( perfil_actual() in ('dueño', 'supervisor') )
 with check ( perfil_actual() in ('dueño', 'supervisor') );
 
 -- producto_fotos ------------------------------------------------
@@ -278,6 +327,10 @@ insert into usuarios (id, apellidos, nombres, dni, cuil, email, perfil) values
   ('0ef1c165-5c3e-4154-b838-0cffea487630', 'López',     'Martín',  '30555666', '20305556667', 'cocinero@test.com',   'cocinero'),
   ('1ebd312c-d187-418b-b06c-2c0a84e7be2b', 'Díaz',      'Camila',  '30666777', '27306667778', 'cantinero@test.com',  'cantinero'),
   ('711748ed-5c4a-4d51-b765-956467fd1342', 'Torres',    'Julián',  '30777888', '20307778889', 'cliente@test.com',    'cliente_registrado');
+
+-- Cliente de prueba en estado 'pendiente' para probar el listado del
+-- punto 6 mientras el alta de cliente registrado (punto 5) no exista.
+update usuarios set estado_aprobacion = 'pendiente' where email = 'cliente@test.com';
 
 -- =========================================================
 -- 8. PRODUCTOS DE PRUEBA (5 platos + 5 bebidas)
@@ -428,3 +481,43 @@ using (
   and (storage.foldername(name))[1] = 'mesas'
   and perfil_actual() in ('dueño', 'supervisor')
 );
+
+-- ============================================================
+-- Punto 1: alta de empleado — dueño/supervisor suben la foto del
+-- EMPLEADO NUEVO (carpeta ajena, no la propia).
+-- Agregado 09/09/2026 — hueco detectado al diseñar el flujo del punto 1.
+-- Sin esta policy, "storage_fotos_usuario_sube_propia" rechaza el
+-- insert con 403: esa policy solo permite subir a la carpeta del
+-- propio auth.uid(), y acá quien sube (el dueño) no es el dueño de la
+-- carpeta de destino (la del empleado recién creado).
+-- ============================================================
+create policy "storage_fotos_dueño_supervisor_sube_usuarios"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'fotos'
+  and (storage.foldername(name))[1] = 'usuarios'
+  and perfil_actual() in ('dueño', 'supervisor')
+);
+
+-- ============================================================
+-- Punto 5: autorregistro de cliente registrado
+-- Agregado 03/09/2026 — hueco detectado en revisión de merge de `dev`.
+-- Sin esta policy, ClienteService.registrarCliente() falla con 403:
+-- no había ninguna policy de INSERT en `usuarios` para que un cliente
+-- nuevo se dé de alta a sí mismo (solo existía la de dueño/supervisor
+-- dando de alta empleados).
+-- ============================================================
+create policy "usuarios_cliente_se_autorregistra"
+on usuarios
+for insert
+to authenticated
+with check (
+  auth.uid() = id
+  and perfil = 'cliente_registrado'
+  and estado_aprobacion = 'pendiente'
+);
+-- El with check fija perfil y estado_aprobacion para que un cliente
+-- no pueda insertarse con otro perfil (ej. 'dueño') ni autoaprobarse
+-- (ej. estado_aprobacion = 'aceptado') en el mismo insert.
