@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Camera } from '@capacitor/camera';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
+import { redimensionarImagen } from './imagen.util';
 import { PerfilUsuario } from '../models/usuario.model';
 
 // Perfiles que puede tener un empleado dado de alta por este flujo. Tienen
@@ -58,7 +59,8 @@ export class EmpleadoService {
     const rutaFoto = `usuarios/${idNuevoEmpleado}/foto.jpg`;
 
     try {
-      const blob = await (await fetch(datos.fotoWebPath)).blob();
+      const blobOriginal = await (await fetch(datos.fotoWebPath)).blob();
+      const blob = await redimensionarImagen(blobOriginal);
       const { error: errorFoto } = await this.supabase.storage
         .from('fotos')
         .upload(rutaFoto, blob, { contentType: 'image/jpeg', upsert: true });

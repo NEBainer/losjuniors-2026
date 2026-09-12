@@ -6,10 +6,12 @@
 // Dos clientes Supabase, cada uno con un único propósito (no se mezclan):
 //
 // - "invocante": ANON key + el JWT que llega en el header Authorization
-//   del request. SOLO se usa para leer el perfil de quien llama (sin
-//   filtro adicional: la policy usuarios_pueden_ver_su_propio_perfil ya
-//   garantiza que esto devuelve como máximo la fila del propio invocante).
-//   Si no es dueño ni supervisor, se corta acá con 403.
+//   del request. SOLO se usa para resolver el id real del invocante
+//   (auth.getUser) y leer su perfil filtrando por ese id explícitamente.
+//   No alcanza con un select sin filtro: dueño/supervisor tienen además
+//   una policy de SELECT que les permite ver TODAS las filas de `usuarios`,
+//   así que un .single() sin .eq() rompe con "multiple rows" en vez de
+//   traer la propia fila. Si no es dueño ni supervisor, se corta con 403.
 //
 // - "admin": SERVICE_ROLE key. SOLO se usa para auth.admin.createUser().
 //   Es la única operación de este archivo que ninguna policy de RLS
@@ -64,9 +66,17 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: authHeader } },
   });
 
+  const jwt = authHeader.replace(/^Bearer\s+/i, "");
+  const { data: userData, error: errorUser } = await clienteInvocante.auth.getUser(jwt);
+
+  if (errorUser || !userData?.user) {
+    return jsonResponse({ error: "NO_AUTORIZADO" }, 401);
+  }
+
   const { data: perfilData, error: errorPerfil } = await clienteInvocante
     .from("usuarios")
     .select("perfil")
+    .eq("id", userData.user.id)
     .single();
 
   if (errorPerfil || !perfilData || !["dueño", "supervisor"].includes(perfilData.perfil)) {
