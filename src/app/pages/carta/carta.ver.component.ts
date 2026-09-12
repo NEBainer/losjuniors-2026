@@ -14,29 +14,6 @@ import { addIcons } from 'ionicons';
 import { fastFoodOutline, wineOutline, timeOutline, pricetagOutline, refreshOutline, restaurantOutline } from 'ionicons/icons';
 import { ProductoService, ProductoCarta } from '../producto/producto.service';
 import { CarruselFotosComponent } from './carrusel-fotos.component';
-
-/**
- * carta.ver.component.ts
- * -----------------------
- * Punto 11 del TP: el cliente escanea el QR de la mesa y ve el listado
- * completo de productos (platos y bebidas — "postres" hoy vive adentro
- * de "platos", ver nota en producto.service.ts) con foto, nombre, precio,
- * descripción y tiempo estimado de elaboración.
- *
- * A diferencia de plato.alta/bebida.alta, ACÁ NO hay una capa separada de
- * "página de ruta" + "formulario compartido" — es un solo componente con
- * `ion-page`, `ion-header` e `ion-content` todos juntos. No hay necesidad
- * de reutilizar este formulario en dos rutas distintas, así que esa doble
- * capa (la que nos rompió el flex en plato/bebida-alta) no aplica acá y
- * la evito a propósito.
- *
- * NO incluye el carrito ni "hacer el pedido" (eso es el punto 12, en otra
- * pantalla) — esto es solo la vista de la carta.
- *
- * Ruteo: todavía no sé cómo van a conectarlo con el flujo de QR de mesa
- * (punto 10, que no armé yo). Es un componente standalone y autocontenido
- * — se puede colgar de la ruta que corresponda cuando esté ese flujo.
- */
 @Component({
   selector: 'app-carta-ver',
   standalone: true,
@@ -122,11 +99,6 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
   `,
   styles: [`
 :host {
-  /* Mismo aprendizaje que en producto.alta: este host tiene que crecer
-     como flex-item dentro del .ion-page de más afuera Y ser
-     flex-container column para ion-header/ion-content de acá adentro.
-     Acá los dos roles los cumple el mismo elemento (no hay wrapper
-     intermedio), así que alcanza con esto. */
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;

@@ -42,59 +42,8 @@ import { addIcons } from 'ionicons';
 import { camera, images, close, addCircleOutline, refreshOutline, textOutline, documentTextOutline, timeOutline, pricetagOutline, createOutline, checkmarkCircle, closeCircle } from 'ionicons/icons';
 import { Camera, MediaTypeSelection } from '@capacitor/camera';
 import { Haptics, NotificationType } from '@capacitor/haptics';
-
-/**
- * producto.alta.component.ts
- * ---------------------------
- * Alta de plato (perfil cocinero, punto 2 del TP) y alta de bebida (perfil
- * cantinero, punto 3) — mismo formulario, dos etiquetas. Un solo componente
- * con @Input() tipo decide el texto y qué se emite, en vez de mantener dos
- * pantallas casi idénticas por separado.
- *
- * Reescrito de cero (09/2026) para resolver de raíz varios quilombos que
- * habían quedado del primer intento: formulario que se congelaba con un
- * error de tipeo, borrador de datos que se perdía si alguien salía sin
- * querer, y el botón "volver" que no siempre preguntaba antes de tirar
- * todo lo cargado. Ver notas en cada sección.
- *
- * Uso:
- *   <app-producto-alta
- *     tipo="plato"
- *     [nombresExistentes]="nombresDeLaCarta"
- *     [guardando]="guardandoEnSupabase"
- *     [errorGuardado]="errorDelUltimoIntento"
- *     (guardar)="onGuardarProducto($event)"
- *     (cancelar)="volver()"
- *   />
- *
- * Este componente NO habla con Supabase directamente — solo arma y valida
- * los datos, y los emite por (guardar). La pantalla que lo use hace el
- * insert real (mismo patrón que ya usan con AuthService.client: un solo
- * dueño de la conexión, todo lo demás lo recibe inyectado/emitido).
- *
- * Fotos: a diferencia del alta de empleado/cliente (que fuerza cámara), acá
- * el TP permite elegir cámara O galería, por eso hay un selector propio
- * (no depende de un action-sheet nativo) usando la API vigente del plugin:
- *   Camera.takePhoto()         -> cámara
- *   Camera.chooseFromGallery() -> galería
- * (getPhoto() quedó deprecado en la versión instalada).
- *
- * Vibración en error: Haptics.notification({ type: NotificationType.Error })
- * se dispara con formulario inválido o fotos faltantes — cumple "vibración
- * en TODOS los errores" sin usar alert().
- *
- * Borrador automático: mientras se tipea, los campos de texto se van
- * guardando en localStorage (con debounce, para no escribir en cada tecla).
- * Si el cocinero/cantinero cierra la app o se corta la luz a mitad de carga,
- * al volver a entrar el formulario aparece tal como lo dejaron. Las FOTOS
- * no se pueden restaurar así (son blobs temporales de la cámara/galería,
- * mueren si se reinicia la app) — eso se avisa si corresponde.
- */
-
 export interface FotoProducto {
-  /** Para mostrar en <img src>, sirve tanto en web como en nativo. */
   webPath: string;
-  /** Solo nativo (iOS/Android) — lo necesita quien suba el archivo real a Storage. */
   uri?: string;
 }
 
@@ -115,7 +64,7 @@ interface BorradorProducto {
   guardadoEn: number;
 }
 
-const TIEMPO_MAXIMO_MINUTOS = 480; // 8 horas — tope razonable, evita cargas por error tipo "9999".
+const TIEMPO_MAXIMO_MINUTOS = 480; 
 const PRECIO_MAXIMO = 999999.99;
 const DEMORA_AUTOGUARDADO_MS = 800;
 const DURACION_AVISO_BORRADOR_MS = 5000;
@@ -285,7 +234,6 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
 
 </form>
 
-<!-- selector cámara/galería, propio, sin depender de un plugin nativo aparte -->
 <div class="velo-selector" *ngIf="mostrarSelector()" (click)="mostrarSelector.set(false)">
   <div class="hoja-selector" (click)="$event.stopPropagation()">
     <button type="button" class="opcion-selector" (click)="elegirFuente('camara')">
@@ -303,7 +251,6 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   </div>
 </div>
 
-<!-- confirmación al querer salir con datos sin guardar -->
 <div class="velo-confirmar" *ngIf="mostrarConfirmarSalida()">
   <div class="tarjeta-confirmar" role="alertdialog" aria-modal="true">
     <p class="titulo-confirmar">¿Salir sin terminar de cargar {{ tipo === 'plato' ? 'el plato' : 'la bebida' }}?</p>
@@ -320,8 +267,6 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
     </div>
   </div>
 </div>
-
-<!-- spinner con logo mientras se guarda -->
 <div class="velo-guardando" *ngIf="guardando">
   <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-spinner" />
   <ion-spinner name="crescent" color="light"></ion-spinner>
@@ -338,23 +283,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   --dorado: #c68a34;
   --texto-gris: #9c9186;
   --rojo-error: #b3261e;
-  color-scheme: only light; /* el TP prohíbe modo oscuro — forzamos también los controles nativos del navegador */
-
-  /* CLAVE: este componente vive ADENTRO de app-plato-alta/app-bebida-alta
-     (que sí son ion-page con su propio flex+altura correctos), pero es acá,
-     un nivel más adentro, donde vive el <ion-header>/<ion-content> real.
-     Causa raíz confirmada con Playwright (medido antes/después, no
-     adivinado): .ion-page pone display:flex/flex-direction:column sobre
-     la página, pero este host —un custom element cualquiera— es
-     display:block por default, así que queda como flex-item que NO
-     crece (flex:0 1 auto) y tampoco propaga el contexto flex hacia
-     ion-header/ion-content, un nivel más abajo. Resultado medido antes
-     del fix: ion-content quedaba en 56px (solo la altura del header) con
-     el <form> real de 574px recortado por el overflow:hidden. El fix
-     necesita AMBAS partes: que este host crezca como flex-item
-     (flex: 1 1 auto; min-height: 0) Y que siga siendo flex-container
-     column para sus propios hijos — un "height: 100%" solo, como en mi
-     primer intento, no alcanza. */
+  color-scheme: only light; /
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -489,7 +418,7 @@ ion-header ion-toolbar {
 .imagen-foto {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* el TP prohíbe recortar imágenes — "cover" recortaba */
+  object-fit: contain; 
   display: block;
 }
 
@@ -749,10 +678,6 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
 
     this.restaurarBorradorSiExiste();
 
-    // Autoguardado: cada cambio en el form (con un pequeño debounce para no
-    // escribir en localStorage en cada tecla) queda como borrador. Se corta
-    // solo cuando el componente se destruye — sin necesidad de un
-    // ngOnDestroy manual gracias a takeUntilDestroyed.
     this.formulario.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.programarAutoguardado());
@@ -767,9 +692,6 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
       const terminoDeGuardar = this.guardandoAnterior && !this.guardando;
       if (terminoDeGuardar && this.envioEnCurso) {
         if (!this.errorGuardado) {
-          // Se guardó bien: limpiamos el borrador y dejamos el formulario
-          // listo para una carga nueva. Si falló, dejamos todo como está —
-          // errorGuardado ya se muestra, y así no hacemos re-tipear nada.
           this.limpiarBorrador();
           this.formulario.reset();
           this.fotos.set([null, null, null]);
@@ -845,12 +767,6 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
         }
       }
     } catch (error) {
-      // El TP pide vibración en TODOS los errores — pero cancelar el
-      // selector nativo (el usuario tocó "atrás" o cerró el diálogo de
-      // permisos) no es un error, es una decisión del usuario. Solo
-      // vibramos ante una falla real (permisos denegados, plugin no
-      // disponible, etc.), distinguiendo por el mensaje que devuelve
-      // Capacitor para la cancelación.
       const fueCancelado =
         error instanceof Error &&
         /cancel|denied/i.test(error.message ?? '');
@@ -892,10 +808,7 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
     });
   }
 
-  /** Botón "atrás" del header: si hay datos sin guardar, confirmamos antes de salir. */
   protected alPresionarVolver(evento: Event): void {
-    // ion-back-button navega solo por su cuenta (defaultHref) si no frenamos
-    // el evento — lo hacemos siempre nosotros, para decidir con calma.
     evento.preventDefault();
     this.intentarCancelar();
   }
@@ -921,11 +834,9 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
     try {
       await Haptics.notification({ type: NotificationType.Error });
     } catch {
-      // Web sin soporte de vibración - no rompe el flujo.
     }
   }
 
-  // --- Borrador en localStorage -------------------------------------------
 
   private claveBorrador(): string {
     return `la-mesa:borrador:${this.tipo}`;
@@ -962,7 +873,6 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
     try {
       localStorage.setItem(this.claveBorrador(), JSON.stringify(borrador));
     } catch {
-      // Cuota llena / modo privado / lo que sea — no bloqueamos la carga por esto.
     }
   }
 
@@ -970,7 +880,6 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
     try {
       localStorage.removeItem(this.claveBorrador());
     } catch {
-      // Idem — no es crítico.
     }
   }
 
@@ -991,7 +900,6 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
       this.mostrarAvisoBorrador.set(true);
       setTimeout(() => this.mostrarAvisoBorrador.set(false), DURACION_AVISO_BORRADOR_MS);
     } catch {
-      // Borrador corrupto o localStorage no disponible — seguimos con el form vacío.
     }
   }
 }

@@ -3,16 +3,6 @@ import { CommonModule } from '@angular/common';
 import { IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { chevronBack, chevronForward, imageOutline } from 'ionicons/icons';
-
-/**
- * carrusel-fotos.component.ts
- * ----------------------------
- * Visor de fotos de solo lectura (no confundir con el selector de
- * cámara/galería de producto.alta — ese sube fotos, este solo las muestra).
- * Se usa en carta.ver.component.ts para el punto 11: cada foto en su
- * propio contenedor, sin recortar (object-fit: contain), centrada, con
- * flechas para "visualizar otra imagen" cuando hay más de una.
- */
 @Component({
   selector: 'app-carrusel-fotos',
   standalone: true,
@@ -57,7 +47,7 @@ import { chevronBack, chevronForward, imageOutline } from 'ionicons/icons';
 .foto {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* el TP prohíbe recortar imágenes */
+  object-fit: contain; 
   display: block;
 }
 
