@@ -90,9 +90,9 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 | Integrante | Branch | Período | Módulos desarrollados |
 |---|---|---|---|
 | **Ezequiel Bainer** | `Bainer` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Creación y administración del repositorio GitHub.</li><li>Organización general del proyecto.</li><li>Actualización y mantenimiento del README.</li><li>Investigación inicial de Ionic.</li><li>Investigación inicial de Android Studio.</li><li>Investigación inicial de Capacitor.</li><li>Alta de mesa (punto 4): formulario con foto por cámara y generación de QR.</li><li>Listado y gestión de mesas (punto 4): alternar disponibilidad, refresco automático de la lista al volver del alta, guard de ruta por perfil (dueño/supervisor).</li><li>Validaciones del formulario de alta de mesa: mensajes de error visibles por campo, foto obligatoria, bloqueo de notación no numérica (<code>e</code>/<code>+</code>/<code>-</code>) en los campos de número y comensales.</li></ul></details> |
-| **Maximiliano Arcieri** | `Arcieri` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Configuración inicial de Supabase.</li><li>Diseño de entidades.</li><li>Creación del esquema inicial de base de datos.</li><li>Implementación de autenticación.</li><li>Configuración de políticas RLS.</li><li>Pantalla de dueño/supervisor con listado de clientes pendientes y botones aceptar/rechazar (integrada con las políticas RLS).</li><li>Filtrado del panel de control por perfil (dueño/supervisor ven clientes pendientes; cocinero/cantinero ven solo la card de lista de pedidos).</li><li>Base de datos para alta de empleados (punto 1): índices únicos parciales de DNI/CUIL/email y policy de Storage para que dueño/supervisor suban la foto de un empleado nuevo.</li></ul></details> |
-| **Noelia Storgato** | `Storgato` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Formulario de Login.</li><li>Pantalla de accesos rápidos.</li><li>Implementación de Logout.</li><li>Guards de ruta por perfil.</li><li>Creación del proyecto Ionic.</li><li>Flujo de cliente registrado: pantalla de alta, estado "pendiente" y notificación visual del cambio de estado.</li><li>Migración de las pantallas de registro a Signals para reflejar los datos de Supabase sin depender de zone.js.</li></ul></details> |
-| **Lucía Cicchelli** | `Cicchelli` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Diseño del ícono de la aplicación.</li><li>Desarrollo de la pantalla de inicio (Splash Screen) estática y animada para el sistema "LA MESA".</li><li>Maquetación modular utilizando Angular y SCSS con paleta cromática temática.</li><li>Implementación de animaciones CSS3 mediante <code>@keyframes</code>, <code>clip-path</code>, efecto de estampado y entradas escalonadas de elementos visuales.</li><li>Botón para omitir la animación.</li><li>Adaptación responsive para distintos dispositivos.</li><li>Compatibilidad con <code>prefers-reduced-motion</code>.</li><li>Implementación de las pantallas de alta de plato y bebida (puntos 2 y 3), reutilizando el patrón de formulario del equipo — en su rama, todavía sin integrar a <code>dev</code>.</li></ul></details> |
+| **Maximiliano Arcieri** | `Arcieri` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Configuración inicial de Supabase.</li><li>Diseño de entidades.</li><li>Creación del esquema inicial de base de datos.</li><li>Implementación de autenticación.</li><li>Configuración de políticas RLS.</li><li>Pantalla de dueño/supervisor con listado de clientes pendientes y botones aceptar/rechazar (integrada con las políticas RLS).</li><li>Filtrado del panel de control por perfil (dueño/supervisor ven clientes pendientes; cocinero/cantinero ven solo la card de lista de pedidos).</li><li>Base de datos para alta de empleados (punto 1): índices únicos parciales de DNI/CUIL/email y policy de Storage para que dueño/supervisor suban la foto de un empleado nuevo.</li><li>Alta de empleados (punto 1) completa: Edge Function <code>crear-empleado</code>, service, página de formulario, guard de ruta y card de acceso en el panel para dueño/supervisor.</li><li>Fix de compresión de foto: la imagen de la cámara superaba el límite de 5 MB del bucket <code>fotos</code> de Storage; se resolvió redimensionando/comprimiendo antes de subir (<code>imagen.util.ts</code>, pensado para reusarse en mesas y productos).</li><li>Integración final de <code>dev</code>: unificó los puntos 2/3 (alta de plato/bebida) de Cicchelli con el punto 1 (alta de empleado) propio.</li></ul></details> |
+| **Noelia Storgato** | `Storgato` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Formulario de Login.</li><li>Pantalla de accesos rápidos.</li><li>Implementación de Logout.</li><li>Guards de ruta por perfil.</li><li>Creación del proyecto Ionic.</li><li>Flujo de cliente registrado: pantalla de alta, estado "pendiente" y notificación visual del cambio de estado.</li><li>Migración de las pantallas de registro a Signals para reflejar los datos de Supabase sin depender de zone.js.</li><li>Mascotas ilustradas en las pantallas de Login y Registro de cliente.</li><li>Escaneo de DNI argentino (código PDF417 del dorso) con ML Kit para autocompletar nombre, apellido y DNI en el registro de cliente.</li></ul></details> |
+| **Lucía Cicchelli** | `Cicchelli` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Diseño del ícono de la aplicación.</li><li>Desarrollo de la pantalla de inicio (Splash Screen) estática y animada para el sistema "LA MESA".</li><li>Maquetación modular utilizando Angular y SCSS con paleta cromática temática.</li><li>Implementación de animaciones CSS3 mediante <code>@keyframes</code>, <code>clip-path</code>, efecto de estampado y entradas escalonadas de elementos visuales.</li><li>Botón para omitir la animación.</li><li>Adaptación responsive para distintos dispositivos.</li><li>Compatibilidad con <code>prefers-reduced-motion</code>.</li><li>Alta de plato y bebida (puntos 2 y 3), ya integrada a <code>dev</code>: formularios con foto, reutilizando el patrón de formulario del equipo.</li><li>Vista de la carta (punto 11): listado de platos y bebidas con foto, precio, descripción y tiempo estimado, pensado para el flujo de escaneo de QR de mesa (punto 10); todavía sin conectar a ese flujo ni al carrito (punto 12).</li></ul></details> |
 
 ---
 
@@ -119,8 +119,13 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 | Alta de mesa (punto 4: formulario, foto, QR) | ✅ |
 | Listado y gestión de disponibilidad de mesas (punto 4) | ✅ |
 | Base de datos lista para alta de empleados (punto 1: índices únicos + policy de Storage) | ✅ |
-| Alta de empleados desde la app (punto 1: falta la Edge Function y la pantalla) | 🔄 |
-| Alta de plato y bebida (puntos 2 y 3) | 🔄 |
+| Alta de empleados desde la app (punto 1: Edge Function + service + pantalla + guard) | ✅ |
+| Alta de plato y bebida (puntos 2 y 3), integrada a `dev` | ✅ |
+| Vista de la carta para el cliente (punto 11: platos, bebidas, foto, precio, tiempo) | ✅ |
+| Mascotas en Login/Registro + escaneo de DNI (PDF417) con ML Kit | ✅ |
+| Fix de compresión de fotos antes de subir a Storage (bug de tamaño máximo) | ✅ |
+| Conectar la carta con el flujo de escaneo de QR de mesa (punto 10) | 🔄 |
+| Carrito y confirmación de pedido (punto 12) | ⏳ |
 | Formato del contenido del QR como deep link (mesas, ingreso al local, propinas) | ⏳ A definir en equipo |
 
 ---
@@ -134,13 +139,17 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 <table>
 <tr>
-<td align="center" width="50%">
+<td align="center" width="34%">
 <b>Ícono de la aplicación</b><br><br>
 <img src="image-2.png" alt="Ícono de la aplicación" width="160">
 </td>
-<td align="center" width="50%">
+<td align="center" width="33%">
 <b>Splash Screen (modo claro)</b><br><br>
 <img src="captura-splash.jpg" alt="Splash Screen en modo claro, fondo crema" width="220">
+</td>
+<td align="center" width="33%">
+<b>Splash Screen (animado)</b><br><br>
+<img src="splashGiff.gif" alt="Splash Screen animado" width="220">
 </td>
 </tr>
 </table>
@@ -153,7 +162,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 </td>
 <td align="center" width="50%">
 <b>Registro de cliente</b><br><br>
-<img src="captura-registro-cliente.jpg" alt="Registro de cliente" width="220">
+<img src="captura-registro-cliente.jpg" alt="Registro de cliente, con mascota y botón para escanear el DNI" width="220">
 </td>
 </tr>
 <tr>
@@ -162,15 +171,16 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 <img src="captura-panel-dueno.jpg" alt="Panel de Control, perfil dueño" width="220">
 </td>
 <td align="center">
-<b>Panel de Control — Cocinero</b><br><br>
-<img src="captura-panel-cocinero.jpg" alt="Panel de Control, perfil cocinero" width="220">
-<br><sub>Mismo panel, filtrado por perfil: sin la card de Gestión de Mesas.</sub>
+<b>Panel de Control — Cantinero</b><br><br>
+<img src="captura-panel-cantinero.jpg" alt="Panel de Control, perfil cantinero" width="220">
+<br><sub>Mismo panel, filtrado por perfil: Ver la Carta, Lista de Pedidos y Agregar Bebida.</sub>
 </td>
 </tr>
 <tr>
 <td align="center">
-<b>Gestión de Mesas (listado)</b><br><br>
-<img src="captura-gestion-mesas.jpg" alt="Listado de gestión de mesas" width="220">
+<b>Panel de Control — Cliente</b><br><br>
+<img src="captura-panel-cliente.jpg" alt="Panel de Control, perfil cliente" width="220">
+<br><sub>Filtrado al mínimo: solo puede Ver la Carta.</sub>
 </td>
 <td align="center">
 <b>Acceso restringido por URL</b><br><br>
@@ -180,19 +190,39 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 </tr>
 <tr>
 <td align="center">
+<b>Gestión de Mesas (listado)</b><br><br>
+<img src="captura-gestion-mesas.jpg" alt="Listado de gestión de mesas" width="220">
+</td>
+<td align="center">
 <b>Alta de Mesa</b><br><br>
 <img src="captura-alta-mesa.jpg" alt="Formulario de alta de mesa" width="220">
 </td>
+</tr>
+<tr>
 <td align="center">
 <b>Alta de Mesa — validación</b><br><br>
 <img src="captura-alta-mesa-validacion.jpg" alt="Formulario de alta de mesa mostrando errores de validación por campo" width="220">
 <br><sub>Envío con campos vacíos: error por campo + foto obligatoria.</sub>
 </td>
+<td align="center">
+<b>Clientes Pendientes</b><br><br>
+<img src="captura-clientes-pendientes.jpg" alt="Listado de clientes pendientes de aprobación" width="220">
+</td>
+</tr>
+<tr>
+<td align="center">
+<b>Alta de Empleado</b><br><br>
+<img src="captura-alta-empleado.jpg" alt="Formulario de alta de empleado, con foto obligatoria y escaneo de DNI" width="220">
+</td>
+<td align="center">
+<b>Alta de Bebida</b><br><br>
+<img src="captura-alta-bebida.jpg" alt="Formulario de alta de bebida" width="220">
+</td>
 </tr>
 <tr>
 <td align="center" colspan="2">
-<b>Clientes Pendientes</b><br><br>
-<img src="captura-clientes-pendientes.jpg" alt="Listado de clientes pendientes de aprobación" width="320">
+<b>Carta (vista del cliente)</b><br><br>
+<img src="captura-carta.jpg" alt="Listado de platos de la carta, con foto, precio, descripción y tiempo estimado" width="260">
 </td>
 </tr>
 </table>
