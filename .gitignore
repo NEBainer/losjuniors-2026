@@ -31,6 +31,7 @@ www/
 CLAUDE.local.md
 enunciado-tfi.md
 AVANCES.md
+.claude/
 
 # Documentacion personal (solo en rama Bainer, no se pushea desde dev)
 docs/
