@@ -1,12 +1,14 @@
 import {
   Component,
   DestroyRef,
+  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   OnInit,
   Output,
   SimpleChanges,
+  ViewChild,
   computed,
   inject,
   signal,
@@ -37,7 +39,7 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { camera, images, close, addCircleOutline, refreshOutline } from 'ionicons/icons';
+import { camera, images, close, addCircleOutline, refreshOutline, textOutline, documentTextOutline, timeOutline, pricetagOutline, createOutline, checkmarkCircle, closeCircle } from 'ionicons/icons';
 import { Camera, MediaTypeSelection } from '@capacitor/camera';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 
@@ -160,24 +162,19 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="fondo-carta">
+<ion-content class="fondo-carta" #contenido>
 <form [formGroup]="formulario" (ngSubmit)="alEnviar()" class="formulario" novalidate>
 
   <div class="aviso-borrador" role="status" *ngIf="mostrarAvisoBorrador()">
     <ion-icon name="refresh-outline"></ion-icon>
-    <span>Recuperamos lo que habías empezado a cargar. Las fotos hay que volver a elegirlas.</span>
+    <span>Borrador recuperado — volvé a elegir las fotos.</span>
     <button type="button" class="cerrar-aviso" (click)="mostrarAvisoBorrador.set(false)" aria-label="Cerrar aviso">
       <ion-icon name="close"></ion-icon>
     </button>
   </div>
 
-  <p class="ayuda">
-    Completá los datos {{ tipo === 'plato' ? 'del plato' : 'de la bebida' }} para
-    {{ tipo === 'plato' ? 'agregarlo' : 'agregarla' }} a la carta.
-  </p>
-
   <ion-item fill="outline" class="campo" [class.campo-error]="tocadoInvalido('nombre')">
-    <ion-label position="stacked">Nombre</ion-label>
+    <ion-label position="stacked"><ion-icon name="text-outline" class="icono-etiqueta"></ion-icon> Nombre</ion-label>
     <ion-input
       formControlName="nombre"
       type="text"
@@ -190,7 +187,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   </ion-note>
 
   <ion-item fill="outline" class="campo" [class.campo-error]="tocadoInvalido('descripcion')">
-    <ion-label position="stacked">Descripción</ion-label>
+    <ion-label position="stacked"><ion-icon name="document-text-outline" class="icono-etiqueta"></ion-icon> Descripción</ion-label>
     <ion-textarea
       formControlName="descripcion"
       autoGrow="true"
@@ -205,7 +202,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   <div class="fila-doble">
     <div class="mitad">
       <ion-item fill="outline" class="campo" [class.campo-error]="tocadoInvalido('tiempoElaboracion')">
-        <ion-label position="stacked">Tiempo (min)</ion-label>
+        <ion-label position="stacked"><ion-icon name="time-outline" class="icono-etiqueta"></ion-icon> Tiempo (min)</ion-label>
         <ion-input
           formControlName="tiempoElaboracion"
           type="number"
@@ -222,7 +219,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
 
     <div class="mitad">
       <ion-item fill="outline" class="campo" [class.campo-error]="tocadoInvalido('precio')">
-        <ion-label position="stacked">Precio</ion-label>
+        <ion-label position="stacked"><ion-icon name="pricetag-outline" class="icono-etiqueta"></ion-icon> Precio</ion-label>
         <ion-input
           formControlName="precio"
           type="number"
@@ -242,7 +239,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   </div>
 
   <p class="etiqueta-fotos">
-    Fotos (3)
+    <ion-icon name="camera" class="icono-etiqueta"></ion-icon> Fotos (3)
     <ion-note color="danger" *ngIf="intentoGuardar() && !fotosCompletas()">
       &nbsp;— faltan fotos
     </ion-note>
@@ -258,7 +255,9 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
       (click)="abrirSelector(i)"
     >
       <img *ngIf="foto" [src]="foto.webPath" [alt]="'Foto ' + (i + 1) + ' del producto'" class="imagen-foto" />
-      <div class="marca-cambiar" *ngIf="foto">Cambiar</div>
+      <div class="marca-cambiar" *ngIf="foto" aria-hidden="true">
+        <ion-icon name="create-outline"></ion-icon>
+      </div>
 
       <div class="marcador-vacio" *ngIf="!foto">
         <ion-icon name="add-circle-outline"></ion-icon>
@@ -310,8 +309,14 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
     <p class="titulo-confirmar">¿Salir sin terminar de cargar {{ tipo === 'plato' ? 'el plato' : 'la bebida' }}?</p>
     <p class="texto-confirmar">Guardamos tu progreso — vas a poder retomarlo la próxima vez que entres acá.</p>
     <div class="botones-confirmar">
-      <button type="button" class="boton-seguir" (click)="mostrarConfirmarSalida.set(false)">Seguir cargando</button>
-      <button type="button" class="boton-salir" (click)="confirmarSalida()">Salir</button>
+      <button type="button" class="boton-seguir" (click)="mostrarConfirmarSalida.set(false)">
+        <ion-icon name="checkmark-circle"></ion-icon>
+        <span>Seguir</span>
+      </button>
+      <button type="button" class="boton-salir" (click)="confirmarSalida()">
+        <ion-icon name="close-circle"></ion-icon>
+        <span>Salir</span>
+      </button>
     </div>
   </div>
 </div>
@@ -320,34 +325,13 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
 <div class="velo-guardando" *ngIf="guardando">
   <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-spinner" />
   <ion-spinner name="crescent" color="light"></ion-spinner>
-  <p>Guardando {{ tipo === 'plato' ? 'el plato' : 'la bebida' }}…</p>
+  <p>Guardando…</p>
 </div>
 
 </ion-content>
   `,
   styles: [`
 :host {
-  /*
-   * Este componente vive un nivel adentro de la página de ruta real
-   * (plato.alta / bebida.alta, que son las que llevan la clase .ion-page
-   * y por lo tanto display:flex;flex-direction:column). Sin este bloque,
-   * el host de este componente queda con el display:block por default de
-   * cualquier custom element, así que dentro del flex de .ion-page se
-   * comporta como un flex-item que NO crece (flex:0 1 auto) y encima no
-   * pasa el flex-context hacia abajo — el resultado es que <ion-content>
-   * (que necesita ser flex-item de un padre display:flex para poder crecer
-   * con su propio flex:1 interno) queda con altura "auto" y colapsa a la
-   * altura de <ion-header> nomás, aunque el <form> de adentro sí tenga
-   * altura real (queda recortado por el overflow:hidden de ion-content).
-   * display:flex;flex-direction:column + flex:1 1 auto acá reproduce la
-   * misma cadena que usan las páginas que sí andan bien (donde ion-header
-   * / ion-content son hijos directos del componente con .ion-page).
-   */
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
-
   --crema: #f4eada;
   --marron: #7a3a22;
   --marron-osc: #5b2a17;
@@ -355,6 +339,30 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   --texto-gris: #9c9186;
   --rojo-error: #b3261e;
   color-scheme: only light; /* el TP prohíbe modo oscuro — forzamos también los controles nativos del navegador */
+
+  /* CLAVE: este componente vive ADENTRO de app-plato-alta/app-bebida-alta
+     (que sí son ion-page con su propio flex+altura correctos), pero es acá,
+     un nivel más adentro, donde vive el <ion-header>/<ion-content> real.
+     Causa raíz confirmada con Playwright (medido antes/después, no
+     adivinado): .ion-page pone display:flex/flex-direction:column sobre
+     la página, pero este host —un custom element cualquiera— es
+     display:block por default, así que queda como flex-item que NO
+     crece (flex:0 1 auto) y tampoco propaga el contexto flex hacia
+     ion-header/ion-content, un nivel más abajo. Resultado medido antes
+     del fix: ion-content quedaba en 56px (solo la altura del header) con
+     el <form> real de 574px recortado por el overflow:hidden. El fix
+     necesita AMBAS partes: que este host crezca como flex-item
+     (flex: 1 1 auto; min-height: 0) Y que siga siendo flex-container
+     column para sus propios hijos — un "height: 100%" solo, como en mi
+     primer intento, no alcanza. */
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+ion-content {
+  flex: 1 1 auto;
 }
 
 ion-header ion-toolbar {
@@ -407,11 +415,11 @@ ion-header ion-toolbar {
   flex-shrink: 0;
 }
 
-.ayuda {
-  color: var(--marron);
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 0.95rem;
-  margin: 0 0 16px;
+.icono-etiqueta {
+  font-size: 0.9em;
+  vertical-align: -2px;
+  margin-right: 2px;
+  color: var(--dorado);
 }
 
 .campo {
@@ -481,10 +489,7 @@ ion-header ion-toolbar {
 .imagen-foto {
   width: 100%;
   height: 100%;
-  /* object-fit: cover recortaría la foto para llenar el cuadrado — el TP pide
-     mostrarla completa sin recortar, así que contain (con el fondo del
-     contenedor asomando en los bordes que no llenen el cuadro). */
-  object-fit: contain;
+  object-fit: contain; /* el TP prohíbe recortar imágenes — "cover" recortaba */
   display: block;
 }
 
@@ -493,9 +498,11 @@ ion-header ion-toolbar {
   inset: auto 0 0 0;
   background: rgba(90, 42, 23, 0.75);
   color: #fff;
-  font-size: 0.7rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 3px 0;
+  font-size: 0.9rem;
 }
 
 .marcador-vacio {
@@ -619,6 +626,10 @@ ion-header ion-toolbar {
   padding: 12px;
   border-radius: 999px;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   font-family: 'EB Garamond', Georgia, serif;
   font-weight: 600;
   font-size: 0.95rem;
@@ -627,9 +638,17 @@ ion-header ion-toolbar {
   background: var(--marron);
   color: var(--crema);
 }
+.boton-seguir ion-icon {
+  color: #6fcf7d;
+  font-size: 1.2rem;
+}
 .boton-salir {
   background: transparent;
   color: var(--texto-gris);
+}
+.boton-salir ion-icon {
+  color: var(--rojo-error);
+  font-size: 1.2rem;
 }
 
 .velo-guardando {
@@ -674,6 +693,9 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
   protected readonly mostrarAvisoBorrador = signal(false);
   private indiceFotoActiva: number | null = null;
 
+  @ViewChild('contenido', { read: ElementRef })
+  private contenidoRef?: ElementRef<HTMLElement>;
+
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -710,6 +732,13 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
       close,
       'add-circle-outline': addCircleOutline,
       'refresh-outline': refreshOutline,
+      'text-outline': textOutline,
+      'document-text-outline': documentTextOutline,
+      'time-outline': timeOutline,
+      'pricetag-outline': pricetagOutline,
+      'create-outline': createOutline,
+      'checkmark-circle': checkmarkCircle,
+      'close-circle': closeCircle,
     });
   }
 
@@ -750,6 +779,21 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
       }
       this.guardandoAnterior = this.guardando;
     }
+  }
+
+  /**
+   * Fuerza un recálculo síncrono de layout leyendo `offsetHeight` del
+   * contenido real — es lo mismo que hace Chrome por su cuenta cuando
+   * inspeccionás un elemento en DevTools (necesita su geometría exacta
+   * para dibujar el recuadro de resaltado). Comprobado a mano: eso
+   * arreglaba el formulario cuando ni un resize real de ventana ni un
+   * evento sintético lo hacían. Pensado para llamarse una sola vez,
+   * desde `ionViewDidEnter` de la página que envuelve este formulario.
+   */
+  public forzarRecalculoLayout(): void {
+    if (!this.contenidoRef) return;
+    // La lectura en sí (no el valor) es lo que fuerza el reflow.
+    void this.contenidoRef.nativeElement.offsetHeight;
   }
 
   protected tocadoInvalido(campo: string): boolean {
@@ -801,22 +845,20 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
         }
       }
     } catch (error) {
-      if (this.esCancelacionDeUsuario(error)) {
-        // El usuario cerró el selector nativo sin elegir nada — no es un error.
-        console.warn('Selección de foto cancelada por el usuario', error);
-        return;
+      // El TP pide vibración en TODOS los errores — pero cancelar el
+      // selector nativo (el usuario tocó "atrás" o cerró el diálogo de
+      // permisos) no es un error, es una decisión del usuario. Solo
+      // vibramos ante una falla real (permisos denegados, plugin no
+      // disponible, etc.), distinguiendo por el mensaje que devuelve
+      // Capacitor para la cancelación.
+      const fueCancelado =
+        error instanceof Error &&
+        /cancel|denied/i.test(error.message ?? '');
+      console.warn('No se pudo obtener la foto', error);
+      if (!fueCancelado) {
+        await this.vibrarError();
       }
-      // Falla real (sin permisos, sin cámara disponible, etc.) — esto sí es
-      // un error del flujo, así que vibra como cualquier otro error del form.
-      console.error('No se pudo obtener la foto', error);
-      await this.vibrarError();
     }
-  }
-
-  /** Los plugins nativos no estandarizan un código de "cancelado", pero sí el texto del mensaje. */
-  private esCancelacionDeUsuario(error: unknown): boolean {
-    const mensaje = (error as { message?: string } | undefined)?.message?.toLowerCase() ?? '';
-    return mensaje.includes('cancel');
   }
 
   private asignarFoto(indice: number, foto: FotoProducto): void {
