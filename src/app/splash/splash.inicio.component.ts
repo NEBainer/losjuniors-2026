@@ -58,10 +58,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
           Ariceri, Maximiliano<br />
           Storgato, Noelia
         </div>
-        <div class="item separador" style="--i:5">
-          <span class="linea" style="border-top-style: dotted"></span>
-        </div>
-        <div class="item pie" style="--i:6">Trabajo Final Integrador</div>
+        <div class="item pie" style="--i:5">Trabajo Final Integrador</div>
       </div>
     </div>
     </div>
@@ -281,7 +278,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
   margin: 0.9em 0;
 }
 .separador .linea {
-  width: 40px;
+  width: 135px;
   height: 2px;
   background: var(--dorado);
 }
@@ -292,6 +289,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
   transform: rotate(45deg);
 }
 .separador.punteado .linea {
+  width: 135px;
   background: none;
   border-top: 2px dotted var(--texto-gris);
 }
