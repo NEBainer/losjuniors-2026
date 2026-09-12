@@ -32,6 +32,11 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'empleados/alta',
+    loadComponent: () => import('./pages/alta-empleado/alta-empleado.page').then((m) => m.AltaEmpleadoPage),
+    canActivate: [authGuard, guardPerfil(['dueño', 'supervisor'])]
+  },
+  {
     path: 'clientes-pendientes',
     loadComponent: () =>
       import('./pages/clientes-pendientes/clientes-pendientes.page').then((m) => m.ClientesPendientesPage),

@@ -24,6 +24,9 @@ android/app/build/
 # Ionic
 www/
 
+# Supabase CLI (cache local de link/deploy, no es código del proyecto)
+supabase/.temp/
+
 # Android
 .idea/
 

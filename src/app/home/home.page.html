@@ -39,6 +39,13 @@
           <p>Aprobación de ingreso</p>
         </div>
       }
+      @if (puedeVerAltaEmpleado()) {
+        <div class="modulo-card" (click)="irAAltaEmpleado()">
+          <ion-icon name="personAddOutline"></ion-icon>
+          <h3>Empleados</h3>
+          <p>Alta de personal</p>
+        </div>
+      }
     </div>
 
     <div class="seccion-logout">

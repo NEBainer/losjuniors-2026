@@ -6,7 +6,7 @@ import { PerfilUsuario } from '../core/models/usuario.model';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
-import { listOutline, logOutOutline, peopleOutline, restaurantOutline } from 'ionicons/icons';
+import { listOutline, logOutOutline, peopleOutline, personAddOutline, restaurantOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-home',
@@ -31,13 +31,16 @@ export class HomePage {
   readonly puedeVerClientesPendientes = computed(() =>
     this.esUnoDe(this.perfil(), ['dueño', 'supervisor']),
   );
+  readonly puedeVerAltaEmpleado = computed(() =>
+    this.esUnoDe(this.perfil(), ['dueño', 'supervisor']),
+  );
 
   constructor(
     private authService: AuthService,
     private usuariosService: UsuariosService,
     private router: Router,
   ) {
-    addIcons({ logOutOutline, restaurantOutline, listOutline, peopleOutline });
+    addIcons({ logOutOutline, restaurantOutline, listOutline, peopleOutline, personAddOutline });
   }
 
   // Lifecycle de Ionic: corre cada vez que se entra a la pantalla
@@ -53,6 +56,10 @@ export class HomePage {
 
   irAClientesPendientes() {
     this.router.navigate(['/clientes-pendientes']);
+  }
+
+  irAAltaEmpleado() {
+    this.router.navigate(['/empleados/alta']);
   }
 
   irAGestionMesas() {
