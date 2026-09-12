@@ -6,7 +6,7 @@ import { ClienteService } from '../../core/services/cliente.service';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
-import { camera, warning ,personAddOutline, cameraOutline, warningOutline} from 'ionicons/icons';
+import { camera, warning ,personAddOutline, cameraOutline, warningOutline, qrCodeOutline} from 'ionicons/icons';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
 
@@ -45,7 +45,7 @@ export class RegistroClientePage  implements OnInit {
       clave: ['', [Validators.required, Validators.minLength(6)]]
     });
 
-    addIcons({ camera, warning, warningOutline, personAddOutline, cameraOutline });
+    addIcons({ camera, warning, warningOutline, personAddOutline, cameraOutline, qrCodeOutline });
    }
 
   async ngOnInit() {
@@ -83,6 +83,7 @@ export class RegistroClientePage  implements OnInit {
       await this.clienteService.registrarCliente({
         id: data.user.id, nombres, apellidos, dni, email, fotoUrl
       });
+      await this.clienteService.enviarCorreoEstado(email, `${nombres} ${apellidos}`, 'pendiente');
 
       this.cargando.set(false);
       this.router.navigate(['/registro-pendiente'], { state: { clienteId: data.user.id } });

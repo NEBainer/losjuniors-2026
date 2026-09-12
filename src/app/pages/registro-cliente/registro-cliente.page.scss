@@ -4,21 +4,21 @@
 
 .contenedor-registro {
   min-height: 100%;
-  padding: 24px 20px 40px;
+  padding: 12px 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
 }
 
 .encabezado {
   text-align: center;
   color: var(--ion-color-primary-contrast);
-  margin-bottom: 8px;
+  margin-bottom: 0; // antes: 8px
 
   .mascota-encabezado {
-    width: 76px;
+    width: 72px;
     height: auto;
-    margin: 0 auto 4px;
+    margin: 20px auto 0;
     display: block;
   }
 
@@ -32,14 +32,15 @@
 .fila-acciones-iniciales {
   display: flex;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
+  margin-top: -4px;
 }
 
 .contenedor-foto,
 .contenedor-qr {
   position: relative; 
-  width: 120px;
-  height: 120px;
+  width: 92px;
+  height: 92px;
   border-radius: 50%;
   background: var(--ion-color-step-100);
   border: 3px solid var(--ion-color-primary-contrast);
@@ -53,15 +54,17 @@
 
 .icono-camara,
 .icono-qr {
-  font-size: 32px;
+  font-size: 26px;
   color: var(--ion-color-primary);
 }
 
+.contenedor-foto span,
 .contenedor-qr span {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--ion-text-color);
   text-align: center;
   padding: 0 6px;
+  white-space: nowrap;
 }
 
   .foto-preview {
@@ -84,19 +87,19 @@
 .formulario {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   background: var(--ion-color-step-100);
   border-radius: 16px;
-  padding: 20px 16px;
+  padding: 14px 16px;
 }
 
 .campo {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 
   ion-label {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--ion-text-color);
   }
@@ -107,8 +110,10 @@
     --placeholder-color: rgba(99, 42, 18, 0.5);
     --padding-start: 12px;
     --padding-end: 12px;
+    --padding-top: 8px;
+    --padding-bottom: 8px; 
     border-radius: 10px;
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .error-campo {

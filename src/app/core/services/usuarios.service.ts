@@ -79,7 +79,7 @@ export class UsuariosService {
       .update({ estado_aprobacion: estado })
       .eq('id', id)
       .eq('perfil', 'cliente_registrado')
-      .select('id');
+      .select('id, email, nombres');
 
     if (error || !data || data.length === 0) {
       await Haptics.impact({ style: ImpactStyle.Heavy });
