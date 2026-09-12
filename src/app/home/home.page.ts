@@ -6,7 +6,7 @@ import { PerfilUsuario } from '../core/models/usuario.model';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
-import { fastFoodOutline, listOutline, logOutOutline, peopleOutline, restaurantOutline, wineOutline } from 'ionicons/icons';
+import { fastFoodOutline, listOutline, logOutOutline, peopleOutline, restaurantOutline, wineOutline, bookOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-home',
@@ -44,7 +44,7 @@ export class HomePage {
     private router: Router,
   ) {
 
-    addIcons({ logOutOutline, restaurantOutline, listOutline, peopleOutline, fastFoodOutline, wineOutline });
+    addIcons({ logOutOutline, restaurantOutline, listOutline, peopleOutline, fastFoodOutline, wineOutline, bookOutline });
   }
 
   // Lifecycle de Ionic: corre cada vez que se entra a la pantalla
@@ -72,6 +72,14 @@ export class HomePage {
 
   irAAltaBebida() {
     this.router.navigate(['/cantinero/bebida-alta']);
+  }
+
+  // Punto 11: ver la carta completa. No depende de ningún perfil en
+  // particular (a diferencia del resto de las tarjetas) — cualquier
+  // usuario logueado la puede consultar, igual que la vería un cliente
+  // escaneando el QR de la mesa.
+  irALaCarta() {
+    this.router.navigate(['/carta']);
   }
 
   async ejecutarCierreSesion() {

@@ -18,6 +18,11 @@
     </div>
 
     <div class="grilla-modulos">
+      <div class="modulo-card" (click)="irALaCarta()">
+        <ion-icon name="book-outline"></ion-icon>
+        <h3>Ver la Carta</h3>
+        <p>Menú completo</p>
+      </div>
       @if (puedeVerMesas()) {
         <div class="modulo-card" (click)="irAGestionMesas()">
           <ion-icon name="restaurantOutline"></ion-icon>
