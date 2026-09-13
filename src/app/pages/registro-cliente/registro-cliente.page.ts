@@ -1,29 +1,50 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { IonButton, IonContent, IonIcon, IonInput, IonLabel, IonSpinner } from '@ionic/angular';
+import {
+  AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators,
+} from '@angular/forms';
+import { IonButton, IonContent, IonFooter, IonIcon, IonInput, IonLabel, IonModal, IonSpinner } from '@ionic/angular';
 import { ClienteService } from '../../core/services/cliente.service';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
-import { camera, warning ,personAddOutline, cameraOutline, warningOutline} from 'ionicons/icons';
+import {
+  camera, closeOutline, warning, personAddOutline, cameraOutline, warningOutline, eyeOutline, eyeOffOutline,
+  qrCodeOutline,
+} from 'ionicons/icons';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { DniScannerService } from '../../core/services/dni-scanner.service';
+
+// Las dos contraseñas deben coincidir. Va en el FormGroup (no en un solo
+// control) porque necesita comparar dos campos entre sí.
+function clavesCoincidenValidator(): ValidatorFn {
+  return (grupo: AbstractControl): ValidationErrors | null => {
+    const clave = grupo.get('clave')?.value;
+    const confirmarClave = grupo.get('confirmarClave')?.value;
+    return clave === confirmarClave ? null : { clavesNoCoinciden: true };
+  };
+}
 
 @Component({
   selector: 'app-registro-cliente',
   templateUrl: './registro-cliente.page.html',
   styleUrls: ['./registro-cliente.page.scss'],
-  imports: [CommonModule, ReactiveFormsModule, IonContent, IonButton, IonInput, IonSpinner, IonIcon, IonLabel],
+  imports: [
+    CommonModule, ReactiveFormsModule, IonContent, IonFooter, IonButton, IonInput, IonSpinner, IonIcon, IonLabel,
+    IonModal,
+  ],
 })
 export class RegistroClientePage  implements OnInit {
   formulario: FormGroup;
   readonly fotoUri = signal<string | null>(null);
+  readonly fotoAmpliada = signal(false);
   readonly cargando = signal(false);
   readonly mensajeError = signal('');
   readonly escaneando = signal(false);
   readonly lectorQrDisponible = signal(false);
   readonly datosVienenDeQr = signal(false);
+  readonly mostrarClave = signal(false);
+  readonly mostrarConfirmarClave = signal(false);
 
   constructor(
     private fb: FormBuilder,
@@ -37,10 +58,14 @@ export class RegistroClientePage  implements OnInit {
       apellidos: ['', [Validators.required, Validators.minLength(2)]],
       dni: ['', [Validators.required, Validators.pattern(/^\d{7,8}$/)]],
       email: ['', [Validators.required, Validators.email]],
-      clave: ['', [Validators.required, Validators.minLength(6)]]
-    });
+      clave: ['', [Validators.required, Validators.minLength(6)]],
+      confirmarClave: ['', [Validators.required]],
+    }, { validators: clavesCoincidenValidator() });
 
-    addIcons({ camera, warning, warningOutline, personAddOutline, cameraOutline });
+    addIcons({
+      camera, warning, warningOutline, personAddOutline, cameraOutline, closeOutline, eyeOutline, eyeOffOutline,
+      qrCodeOutline,
+    });
    }
 
   async ngOnInit() {
@@ -111,6 +136,14 @@ export class RegistroClientePage  implements OnInit {
     } finally {
       this.escaneando.set(false);
     }
+  }
+
+  toggleMostrarClave() {
+    this.mostrarClave.update((valor) => !valor);
+  }
+
+  toggleMostrarConfirmarClave() {
+    this.mostrarConfirmarClave.update((valor) => !valor);
   }
 
   private async dispararError(mensaje: string) {

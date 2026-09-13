@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { IonContent, IonIcon } from '@ionic/angular';
+import { IonContent, IonFooter, IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { arrowBack, camera, checkmarkCircle, restaurantOutline, warning } from 'ionicons/icons';
 import { toDataURL } from 'qrcode';
@@ -15,7 +15,7 @@ import { MesaService } from '../../core/services/mesa.service';
   templateUrl: './mesa-alta.page.html',
   styleUrls: ['./mesa-alta.page.scss'],
   standalone: true,
-  imports: [IonContent, IonIcon, CommonModule, ReactiveFormsModule],
+  imports: [IonContent, IonFooter, IonIcon, CommonModule, ReactiveFormsModule],
 })
 export class MesaAltaPage implements OnInit {
   formularioMesa: FormGroup;
@@ -26,6 +26,7 @@ export class MesaAltaPage implements OnInit {
   mensajeError = '';
 
   fotoUri: string | null = null;
+  fotoTocada = false;
 
   mesaCreada: { numero: number; qr_code: string } | null = null;
   qrDataUrl: string | null = null;
@@ -45,9 +46,14 @@ export class MesaAltaPage implements OnInit {
   ) {
     addIcons({ arrowBack, camera, checkmarkCircle, restaurantOutline, warning });
 
+    // Pattern además de min/required: un <input type="number"> deja tipear
+    // "e"/"+"/"-" (notación científica), que el navegador acepta como número
+    // válido pero rompería el dato guardado (ej. "1e2" -> 100). El pattern
+    // rechaza cualquier caracter que no sea un dígito.
+    const soloDigitos = Validators.pattern(/^[0-9]+$/);
     this.formularioMesa = this.fb.group({
-      numero: ['', [Validators.required, Validators.min(1)]],
-      cantidad_comensales: ['', [Validators.required, Validators.min(1)]],
+      numero: ['', [Validators.required, Validators.min(1), soloDigitos]],
+      cantidad_comensales: ['', [Validators.required, Validators.min(1), soloDigitos]],
       tipo: ['estandar', [Validators.required]],
     });
   }
@@ -72,7 +78,11 @@ export class MesaAltaPage implements OnInit {
   }
 
   async darDeAlta() {
-    if (this.formularioMesa.invalid) {
+    this.formularioMesa.markAllAsTouched();
+    this.fotoTocada = true;
+
+    if (this.formularioMesa.invalid || !this.fotoUri) {
+      this.cdr.detectChanges();
       this.dispararError('Por favor, complete correctamente los campos requeridos.');
       return;
     }
@@ -109,7 +119,13 @@ export class MesaAltaPage implements OnInit {
     this.mesaCreada = null;
     this.qrDataUrl = null;
     this.fotoUri = null;
+    this.fotoTocada = false;
     this.formularioMesa.reset({ numero: '', cantidad_comensales: '', tipo: 'estandar' });
+  }
+
+  campoInvalido(nombre: string): boolean {
+    const control = this.formularioMesa.get(nombre);
+    return !!control && control.invalid && control.touched;
   }
 
   volver() {

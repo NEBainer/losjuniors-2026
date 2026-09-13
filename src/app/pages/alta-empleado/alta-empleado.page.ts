@@ -4,8 +4,8 @@ import {
   AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators,
 } from '@angular/forms';
 import {
-  IonButton, IonCol, IonContent, IonGrid, IonIcon, IonInput, IonModal, IonRow, IonSelect, IonSelectOption,
-  IonSpinner, IonToast,
+  IonButton, IonCol, IonContent, IonFooter, IonGrid, IonIcon, IonInput, IonLabel, IonModal, IonRow, IonSelect,
+  IonSelectOption, IonSpinner, IonToast,
 } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -36,8 +36,8 @@ function soloDigitos(valor: string | null): string {
   styleUrls: ['./alta-empleado.page.scss'],
   standalone: true,
   imports: [
-    CommonModule, ReactiveFormsModule, IonContent, IonButton, IonInput, IonSpinner, IonIcon,
-    IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonModal, IonToast,
+    CommonModule, ReactiveFormsModule, IonContent, IonFooter, IonButton, IonInput, IonSpinner, IonIcon,
+    IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonModal, IonToast, IonLabel,
   ],
 })
 export class AltaEmpleadoPage implements OnInit {

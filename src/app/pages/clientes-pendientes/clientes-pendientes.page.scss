@@ -106,8 +106,13 @@
 
 /* Listado */
 .lista-pendientes {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  // Con pocos pendientes (o solo uno) el listado se centra en vez de
+  // quedar pegado arriba con un hueco vacío abajo (diseno-visual.md: no
+  // se admiten espacios neutros/vacíos).
+  justify-content: center;
   gap: 16px;
 }
 
@@ -231,8 +236,8 @@
     gap: 20px;
 
     .logo-spinner {
-      width: 80px;
-      height: 80px;
+      width: 140px;
+      height: 140px;
       object-fit: contain;
     }
 

@@ -1,12 +1,14 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { 
+import {
   IonButton,
-  IonContent, IonFab, IonFabButton, IonFabList, IonIcon
+  IonContent, IonFab, IonFabButton, IonFabList, IonFooter, IonIcon
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { business, eye, restaurant, person, warning, flash, list, pizza, wine } from 'ionicons/icons';
+import {
+  business, eye, restaurant, person, warning, flash, list, pizza, wine, eyeOutline, eyeOffOutline,
+} from 'ionicons/icons';
 import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
@@ -17,7 +19,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
   styleUrls: ['./login.page.scss'],
   standalone: true,
   imports: [
-    IonContent, IonFab, IonFabButton, IonFabList, IonIcon,
+    IonContent, IonFab, IonFabButton, IonFabList, IonFooter, IonIcon,
    CommonModule, ReactiveFormsModule, IonButton
   ]
 })
@@ -25,6 +27,7 @@ export class LoginPage implements OnInit {
   formularioLogin: FormGroup;
   cargando: boolean = false;
   mensajeError: string = '';
+  mostrarClave: boolean = false;
 
   // Accesos rapidos, usando las credenciales de prueba del script
   // ---- PASARLOS A UNA VARIABLE DE ENTORNO ----
@@ -44,7 +47,7 @@ export class LoginPage implements OnInit {
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
-    addIcons({ business, eye, list, restaurant, pizza, wine, person, warning, flash });
+    addIcons({ business, eye, list, restaurant, pizza, wine, person, warning, flash, eyeOutline, eyeOffOutline });
 
     this.formularioLogin = this.fb.group({
       correo: ['', [Validators.required, Validators.email]],
@@ -105,6 +108,10 @@ export class LoginPage implements OnInit {
       this.mensajeError = '';
       this.cdr.detectChanges();
     }, 4000);
+  }
+
+  toggleMostrarClave() {
+    this.mostrarClave = !this.mostrarClave;
   }
 
   irARegistro() {

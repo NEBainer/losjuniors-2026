@@ -5,10 +5,17 @@
 .contenedor-principal {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  // 100% (no 100dvh): dvh es el alto TOTAL de pantalla, sin descontar el
+  // ion-footer -- con eso sobraba justo lo que mide el footer y generaba
+  // un scroll mínimo pero constante (mismo bug encontrado y corregido en
+  // mesa-alta.page.scss).
+  min-height: 100%;
   padding: var(--app-padding);
-  padding-bottom: 36px; // ~2 dedos entre el último control y el borde
   gap: 14px;
+  // Reparte el espacio sobrante entre header/foto/formulario en vez de
+  // dejarlo todo junto como un hueco vacío abajo (diseno-visual.md: no se
+  // admiten espacios neutros/vacíos; probado en dispositivo real).
+  justify-content: space-evenly;
   color: var(--ion-text-color);
 }
 
@@ -75,11 +82,10 @@
   gap: 14px;
 }
 
-.contenedor-foto,
-.contenedor-qr {
+.contenedor-foto {
   position: relative;
-  width: 84px;
-  height: 84px;
+  width: 128px;
+  height: 128px;
   border-radius: 50%;
   background: var(--ion-color-step-100);
   border: 2px solid var(--ion-color-primary);
@@ -87,20 +93,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
   cursor: pointer;
 
   ion-icon {
-    font-size: 26px;
+    font-size: 34px;
     color: var(--ion-color-primary);
   }
 
   span {
-    font-size: 0.6rem;
+    font-size: 0.72rem;
     color: var(--ion-text-color);
     text-align: center;
-    padding: 0 6px;
-    line-height: 1.1;
+    padding: 0 8px;
+    line-height: 1.2;
   }
 }
 
@@ -144,23 +150,36 @@
   }
 
   ion-col {
-    padding: 4px;
+    padding: 8px;
   }
 }
 
 .campo {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  // Antes usábamos el label interno de ion-input (labelPlacement="stacked"),
+  // pero ese componente no expone ninguna forma de agrandar el espacio
+  // entre el label y el placeholder -- por eso pasamos a un <ion-label>
+  // aparte (mismo patrón que login/registro-cliente), donde este gap sí
+  // se puede ajustar (pedido explícito: "que respiren un poquito más").
+  gap: 6px;
+
+  ion-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ion-text-color);
+  }
 
   .input-formulario {
     --background: var(--ion-color-step-100);
     --color: var(--ion-text-color);
     --placeholder-color: rgba(99, 42, 18, 0.5);
-    --padding-start: 12px;
-    --padding-end: 12px;
+    --padding-start: 14px;
+    --padding-end: 14px;
+    --padding-top: 14px;
+    --padding-bottom: 14px;
     border-radius: 10px;
-    font-size: 0.95rem;
+    font-size: 1.05rem;
   }
 
   .error-campo {
@@ -170,11 +189,53 @@
   }
 }
 
+.pie-registrar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px var(--app-padding) calc(12px + env(safe-area-inset-bottom));
+  background: var(--ion-background-color);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
 .boton-registrar {
-  --border-radius: 12px;
-  height: 46px;
+  flex: 1 1 auto;
+  --border-radius: 999px;
+  height: 54px;
   font-weight: 700;
-  margin-top: 4px;
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+// Mismo patrón que registro-cliente.page.scss: mismo border-radius y
+// mayúsculas que .boton-registrar para que no parezcan dos estilos de
+// botón distintos.
+.boton-qr {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 54px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: none;
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+
+  ion-icon {
+    font-size: 22px;
+  }
+
+  span {
+    // Mismo tamaño que .boton-registrar (1.05rem) -- antes eran 0.8rem y
+    // no combinaban (probado en dispositivo real).
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
 }
 
 .boton-principal {
@@ -265,8 +326,8 @@
     gap: 25px;
 
     .logo-spinner {
-      width: 90px;
-      height: 90px;
+      width: 140px;
+      height: 140px;
       object-fit: contain;
     }
 

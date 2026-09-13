@@ -46,17 +46,6 @@
             <span>Foto (obligatoria)</span>
           }
         </div>
-
-        @if (lectorDisponible()) {
-          <div class="contenedor-qr" (click)="escanearDni()">
-            @if (escaneando()) {
-              <ion-spinner name="crescent"></ion-spinner>
-            } @else {
-              <ion-icon name="qr-code-outline" class="icono-qr"></ion-icon>
-              <span>Escanear DNI</span>
-            }
-          </div>
-        }
       </div>
 
       @if (datosVienenDeQr()) {
@@ -68,7 +57,8 @@
           <ion-row>
             <ion-col size="6">
               <div class="campo">
-                <ion-input formControlName="apellidos" label="Apellidos" labelPlacement="stacked" placeholder="Ej: Rodríguez" fill="solid" class="input-formulario"></ion-input>
+                <ion-label>Apellidos</ion-label>
+                <ion-input formControlName="apellidos" placeholder="Ej: Rodríguez" fill="solid" class="input-formulario"></ion-input>
                 @if (formulario.get('apellidos')?.touched && formulario.get('apellidos')?.invalid) {
                   <span class="error-campo">Mínimo 2 caracteres.</span>
                 }
@@ -76,7 +66,8 @@
             </ion-col>
             <ion-col size="6">
               <div class="campo">
-                <ion-input formControlName="nombres" label="Nombres" labelPlacement="stacked" placeholder="Ej: Julián" fill="solid" class="input-formulario"></ion-input>
+                <ion-label>Nombres</ion-label>
+                <ion-input formControlName="nombres" placeholder="Ej: Julián" fill="solid" class="input-formulario"></ion-input>
                 @if (formulario.get('nombres')?.touched && formulario.get('nombres')?.invalid) {
                   <span class="error-campo">Mínimo 2 caracteres.</span>
                 }
@@ -87,7 +78,8 @@
           <ion-row>
             <ion-col size="6">
               <div class="campo">
-                <ion-input formControlName="dni" label="DNI" labelPlacement="stacked" placeholder="Ej: 30111222" type="tel" inputmode="numeric" fill="solid" class="input-formulario"></ion-input>
+                <ion-label>DNI</ion-label>
+                <ion-input formControlName="dni" placeholder="Ej: 30111222" type="tel" inputmode="numeric" fill="solid" class="input-formulario"></ion-input>
                 @if (formulario.get('dni')?.touched && formulario.get('dni')?.invalid) {
                   <span class="error-campo">7 u 8 números.</span>
                 }
@@ -95,7 +87,8 @@
             </ion-col>
             <ion-col size="6">
               <div class="campo">
-                <ion-input formControlName="cuil" label="CUIL" labelPlacement="stacked" placeholder="Ej: 20301112223" type="tel" inputmode="numeric" fill="solid" class="input-formulario"></ion-input>
+                <ion-label>CUIL</ion-label>
+                <ion-input formControlName="cuil" placeholder="Ej: 20301112223" type="tel" inputmode="numeric" fill="solid" class="input-formulario"></ion-input>
                 @if (formulario.get('cuil')?.touched && formulario.get('cuil')?.invalid) {
                   <span class="error-campo">11 números.</span>
                 }
@@ -106,7 +99,8 @@
           <ion-row>
             <ion-col size="12">
               <div class="campo">
-                <ion-input formControlName="email" label="Correo electrónico" labelPlacement="stacked" placeholder="Ej: empleado@correo.com" type="email" fill="solid" class="input-formulario"></ion-input>
+                <ion-label>Correo electrónico</ion-label>
+                <ion-input formControlName="email" placeholder="Ej: empleado@correo.com" type="email" fill="solid" class="input-formulario"></ion-input>
                 @if (formulario.get('email')?.touched && formulario.get('email')?.invalid) {
                   <span class="error-campo">Ingresá un correo válido.</span>
                 }
@@ -115,17 +109,19 @@
           </ion-row>
 
           <ion-row>
-            <ion-col size="6">
+            <ion-col size="8">
               <div class="campo">
-                <ion-input formControlName="clave" label="Contraseña" labelPlacement="stacked" placeholder="Mínimo 6 caracteres" type="password" fill="solid" class="input-formulario"></ion-input>
+                <ion-label>Contraseña</ion-label>
+                <ion-input formControlName="clave" placeholder="Mínimo 6 caracteres" type="password" fill="solid" class="input-formulario"></ion-input>
                 @if (formulario.get('clave')?.touched && formulario.get('clave')?.invalid) {
                   <span class="error-campo">Mínimo 6 caracteres.</span>
                 }
               </div>
             </ion-col>
-            <ion-col size="6">
+            <ion-col size="4">
               <div class="campo">
-                <ion-select formControlName="perfil" label="Perfil" labelPlacement="stacked" fill="solid" interface="popover" class="input-formulario">
+                <ion-label>Perfil</ion-label>
+                <ion-select formControlName="perfil" fill="solid" interface="popover" class="input-formulario">
                   @for (p of perfiles; track p.valor) {
                     <ion-select-option [value]="p.valor">{{ p.etiqueta }}</ion-select-option>
                   }
@@ -134,14 +130,6 @@
             </ion-col>
           </ion-row>
         </ion-grid>
-
-        <ion-button type="submit" expand="block" class="boton-registrar" [disabled]="guardando()">
-          @if (guardando()) {
-            <ion-spinner name="crescent"></ion-spinner>
-          } @else {
-            Dar de alta
-          }
-        </ion-button>
       </form>
     }
   </div>
@@ -167,3 +155,29 @@
     (didDismiss)="mostrarExito.set(false)">
   </ion-toast>
 </ion-content>
+
+<!-- Fijo abajo (correcciones-profesor: botón "Guardar" fijo y grande + QR
+     cerca del pulgar, las dos en el mismo footer -- mismo patrón que
+     registro-cliente.page.html). Queda siempre a mano, sin scrollear con
+     el resto del formulario. -->
+@if (!cargando() && tienePermiso()) {
+  <ion-footer class="pie-registrar">
+    @if (lectorDisponible()) {
+      <button type="button" class="boton-qr" (click)="escanearDni()" aria-label="Escanear DNI">
+        @if (escaneando()) {
+          <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+          <ion-icon name="qr-code-outline"></ion-icon>
+          <span>Escanear DNI</span>
+        }
+      </button>
+    }
+    <ion-button type="button" expand="block" class="boton-registrar" [disabled]="guardando()" (click)="darDeAlta()">
+      @if (guardando()) {
+        <ion-spinner name="crescent"></ion-spinner>
+      } @else {
+        Dar de alta
+      }
+    </ion-button>
+  </ion-footer>
+}

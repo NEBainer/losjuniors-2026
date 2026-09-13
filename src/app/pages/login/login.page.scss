@@ -5,14 +5,18 @@
 .contenedor-principal {
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly; 
-  min-height: 100vh;
+  justify-content: space-evenly;
+  // 100% (no 100vh): vh es el alto TOTAL de pantalla, sin descontar el
+  // ion-footer -- con eso sobraba justo lo que mide el footer y generaba
+  // un scroll mínimo pero constante (mismo bug encontrado y corregido en
+  // mesa-alta/alta-empleado/mesas-gestión).
+  min-height: 100%;
   padding: 25px;
   color: var(--ion-text-color);
 }
 
 .mascota-login {
-  width: 210px;
+  width: 260px;
   height: auto;
   display: block;
   margin: 0 auto 8px;
@@ -38,7 +42,14 @@
   }
 }
 
+// Overlay fijo, no parte del flujo -- así no empuja el resto del
+// contenido ni el botón fijo de abajo (correcciones-profesor 13-09).
 .mensaje-error {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  z-index: 20;
   background-color: var(--ion-color-danger);
   color: var(--ion-color-primary-contrast);
   padding: 15px;
@@ -71,6 +82,7 @@
     }
 
     input {
+      width: 100%;
       background-color: var(--ion-color-step-100);
       border: 2px solid transparent;
       padding: 16px;
@@ -83,15 +95,63 @@
         outline: none;
         border-color: var(--ion-color-primary);
       }
-      
+
       &::placeholder {
         color: rgba(99, 42, 18, 0.5);
         }
     }
+
+    .input-con-icono {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      input {
+        // deja lugar para que el ícono de ojo no tape lo que se está tipeando
+        padding-right: 46px;
+      }
+
+      .boton-ojo {
+        position: absolute;
+        right: 12px;
+        background: none;
+        border: none;
+        padding: 4px;
+        display: flex;
+        color: var(--ion-text-color);
+        opacity: 0.6;
+
+        ion-icon {
+          font-size: 22px;
+        }
+      }
+    }
     }
 }
 
+// Sin estilos propios quedaba alineado a la izquierda por default (pedido
+// del usuario: "se va para el costado").
+.enlace-registro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+
+  span {
+    font-size: 0.95rem;
+    opacity: 0.85;
+  }
+
+  .boton-registro-link {
+    --color: var(--ion-color-primary);
+    font-weight: 700;
+    margin: 0;
+  }
+}
+
 .boton-principal {
+  width: 100%;
   background-color: var(--ion-color-primary);
   color: var(--ion-color-primary-contrast);
   padding: 18px;
@@ -100,17 +160,23 @@
   font-size: 1.2rem;
   font-weight: 800;
   text-transform: uppercase;
-  margin-top: 15px;
   box-shadow: 0 4px 8px rgba(156, 59, 20, 0.3);
   transition: opacity 0.2s;
 
   &:disabled {
     opacity: 0.6;
   }
-  
+
   &:active {
     opacity: 0.8;
   }
+}
+
+// Fijo abajo (correcciones-profesor 13-09) -- ver comentario en el HTML.
+.pie-login {
+  padding: 14px 25px calc(14px + env(safe-area-inset-bottom));
+  background: var(--ion-background-color);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .overlay-cargando {
@@ -133,8 +199,8 @@
     gap: 25px;
 
     .logo-spinner {
-      width: 90px;
-      height: 90px;
+      width: 140px;
+      height: 140px;
       object-fit: contain;
     }
 

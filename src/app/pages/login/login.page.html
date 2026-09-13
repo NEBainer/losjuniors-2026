@@ -12,17 +12,9 @@
 
   <div class="contenedor-principal">
     <div class="cabecera-logo">
-      <img src="assets/mascota/gatito-login.png" alt="Mascota La Mesa" class="mascota-login" />
+      <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="mascota-login" />
       <h1>La Mesa</h1>
     </div>
-
-    <!-- Errores con controles personalizados-->
-    @if (mensajeError) {
-      <div class="mensaje-error">
-        <ion-icon name="warning"></ion-icon>
-        <span>{{ mensajeError }}</span>
-      </div>
-    }
 
     <!-- Validacion de datos en todos los formularios -->
     <form [formGroup]="formularioLogin" (ngSubmit)="iniciarSesion()" class="formulario">
@@ -33,12 +25,13 @@
 
       <div class="campo">
         <label>Contraseña</label>
-        <input type="password" formControlName="clave" placeholder="Ingrese su clave" />
+        <div class="input-con-icono">
+          <input [type]="mostrarClave ? 'text' : 'password'" formControlName="clave" placeholder="Ingrese su clave" />
+          <button type="button" class="boton-ojo" (click)="toggleMostrarClave()" [attr.aria-label]="mostrarClave ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+            <ion-icon [name]="mostrarClave ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+          </button>
+        </div>
       </div>
-
-      <button type="submit" class="boton-principal" [disabled]="cargando || formularioLogin.invalid">
-        Iniciar sesión
-      </button>
     </form>
     <div class="enlace-registro">
       <span>¿Todavía no tenés cuenta?</span>
@@ -51,12 +44,23 @@
     </div>
   </div>
 
+  <!-- Overlay, no adentro del flujo -- si empujara el resto del contenido
+       hacia abajo, podría llegar a tapar el botón fijo de abajo
+       (correcciones-profesor 13-09: ningún botón fijo puede generar
+       scroll). -->
+  @if (mensajeError) {
+    <div class="mensaje-error">
+      <ion-icon name="warning"></ion-icon>
+      <span>{{ mensajeError }}</span>
+    </div>
+  }
+
   <!-- Accesos rapidos -->
   <ion-fab vertical="bottom" horizontal="end" slot="fixed">
     <ion-fab-button color="tertiary">
       <ion-icon name="flash"></ion-icon>
     </ion-fab-button>
-    
+
     <ion-fab-list side="top">
       @for (usuario of accesosRapidos; track usuario.correo) {
         <ion-fab-button (click)="cargarAccesoRapido(usuario)" [title]="usuario.perfil">
@@ -66,3 +70,11 @@
     </ion-fab-list>
   </ion-fab>
 </ion-content>
+
+<!-- Fijo abajo (correcciones-profesor 13-09): antes vivía adentro del
+     <form>, sin garantía de quedar siempre a mano. -->
+<ion-footer class="pie-login">
+  <button type="button" class="boton-principal" [disabled]="cargando || formularioLogin.invalid" (click)="iniciarSesion()">
+    Iniciar sesión
+  </button>
+</ion-footer>

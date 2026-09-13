@@ -18,7 +18,13 @@ import { chevronBack, chevronForward, imageOutline } from 'ionicons/icons';
   standalone: true,
   imports: [CommonModule, IonIcon],
   template: `
-<div class="marco-foto">
+<div
+  class="marco-foto"
+  [class.marco-foto-pagina]="modo === 'pagina'"
+  (pointerdown)="alEmpezarArrastre($event)"
+  (pointerup)="alTerminarArrastre($event)"
+  (pointercancel)="cancelarArrastre()"
+>
   <img
     *ngIf="fotos.length; else sinFoto"
     [src]="fotos[indiceActual()]"
@@ -52,6 +58,16 @@ import { chevronBack, chevronForward, imageOutline } from 'ionicons/icons';
   background: #fffdf8;
   border: 1px solid rgba(198, 138, 52, 0.35);
   overflow: hidden;
+  touch-action: pan-y; /* deja el swipe horizontal libre para nosotros, sin pelear con el scroll vertical de la página */
+}
+
+/* Modo "página" (menú tipo Reels): la foto ocupa el 100% del alto que le
+   da su padre (<app-carrusel-fotos>, ver carta.ver.component.ts -- ese sí
+   tiene un tamaño flex resuelto) en vez de un aspect-ratio fijo. */
+.marco-foto-pagina {
+  aspect-ratio: unset;
+  width: 100%;
+  height: 100%;
 }
 
 .foto {
@@ -112,8 +128,15 @@ import { chevronBack, chevronForward, imageOutline } from 'ionicons/icons';
 export class CarruselFotosComponent {
   @Input({ required: true }) fotos: string[] = [];
   @Input() nombre = 'producto';
+  // 'tarjeta' (listado clásico, aspect-ratio fijo) o 'pagina' (menú tipo
+  // Reels: la foto ocupa toda la altura que le da el padre).
+  @Input() modo: 'tarjeta' | 'pagina' = 'tarjeta';
 
   protected readonly indiceActual = signal(0);
+
+  // Umbral en px para distinguir un swipe de un tap accidental.
+  private static readonly UMBRAL_SWIPE_PX = 40;
+  private inicioX: number | null = null;
 
   constructor() {
     addIcons({ 'chevron-back': chevronBack, 'chevron-forward': chevronForward, 'image-outline': imageOutline });
@@ -125,5 +148,26 @@ export class CarruselFotosComponent {
 
   protected anterior(): void {
     this.indiceActual.update((i) => (i - 1 + this.fotos.length) % this.fotos.length);
+  }
+
+  protected alEmpezarArrastre(evento: PointerEvent): void {
+    this.inicioX = evento.clientX;
+  }
+
+  protected alTerminarArrastre(evento: PointerEvent): void {
+    if (this.inicioX === null || this.fotos.length < 2) return;
+
+    const delta = evento.clientX - this.inicioX;
+    this.inicioX = null;
+
+    if (Math.abs(delta) < CarruselFotosComponent.UMBRAL_SWIPE_PX) return;
+    // Arrastrar hacia la izquierda (delta negativo) = foto siguiente, como
+    // deslizar la foto de abajo hacia arriba a la vista, igual que en
+    // cualquier carrusel horizontal.
+    delta < 0 ? this.siguiente() : this.anterior();
+  }
+
+  protected cancelarArrastre(): void {
+    this.inicioX = null;
   }
 }

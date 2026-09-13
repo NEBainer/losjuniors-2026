@@ -60,7 +60,11 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="fondo-carta">
+<!-- scrollY desactivado: el feed de abajo maneja su propio scroll con
+     scroll-snap (correcciones-profesor 13-09: "cada producto ocupa toda
+     la pantalla, formato página; scroll vertical pasa al
+     siguiente/anterior producto"). -->
+<ion-content class="fondo-carta" [scrollY]="false">
 
   <div class="velo-cargando" *ngIf="cargando()">
     <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-spinner" />
@@ -68,54 +72,45 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
     <p>Cargando…</p>
   </div>
 
-  <div class="contenedor" *ngIf="!cargando()">
+  <div class="estado-error" *ngIf="!cargando() && error()">
+    <ion-note color="danger">{{ error() }}</ion-note>
+    <ion-button fill="outline" size="small" (click)="cargarCarta()">
+      <ion-icon name="refresh-outline" slot="start"></ion-icon>
+      Reintentar
+    </ion-button>
+  </div>
 
-    <div class="estado-error" *ngIf="error()">
-      <ion-note color="danger">{{ error() }}</ion-note>
-      <ion-button fill="outline" size="small" (click)="cargarCarta()">
-        <ion-icon name="refresh-outline" slot="start"></ion-icon>
-        Reintentar
-      </ion-button>
-    </div>
+  <div class="estado-vacio" *ngIf="!cargando() && !error() && !productos().length">
+    <ion-icon name="restaurant-outline"></ion-icon>
+    <p>Sin productos todavía</p>
+  </div>
 
-    <ng-container *ngIf="!error()">
+  <!-- Un producto = una página completa. Scroll vertical con snap pasa al
+       siguiente/anterior; el swipe horizontal sobre la foto (adentro de
+       app-carrusel-fotos) pasa a la siguiente/anterior imagen de ESE
+       producto, sin interferir con el scroll de la página. -->
+  <div class="feed" *ngIf="!cargando() && !error() && productos().length">
+    <article class="pagina-producto" *ngFor="let producto of productos()">
+      <span class="etiqueta-categoria">
+        <ion-icon [name]="producto.tipo === 'plato' ? 'fast-food-outline' : 'wine-outline'"></ion-icon>
+        {{ producto.tipo === 'plato' ? 'Plato' : 'Bebida' }}
+      </span>
 
-      <div class="estado-vacio" *ngIf="!platos().length && !bebidas().length">
-        <ion-icon name="restaurant-outline"></ion-icon>
-        <p>Sin productos todavía</p>
+      <app-carrusel-fotos
+        modo="pagina"
+        [fotos]="producto.fotos"
+        [nombre]="producto.nombre"
+      ></app-carrusel-fotos>
+
+      <div class="info-producto-pagina">
+        <div class="fila-nombre-precio">
+          <h3 class="nombre-producto">{{ producto.nombre }}</h3>
+          <span class="precio-producto"><ion-icon name="pricetag-outline"></ion-icon>{{ formatearPrecio(producto.precio) }}</span>
+        </div>
+        <p class="descripcion-producto">{{ producto.descripcion }}</p>
+        <p class="tiempo-producto"><ion-icon name="time-outline"></ion-icon> {{ producto.tiempoElaboracionMinutos }} min</p>
       </div>
-
-      <section class="seccion" *ngIf="platos().length">
-        <h2 class="titulo-seccion"><ion-icon name="fast-food-outline"></ion-icon> Platos</h2>
-        <article class="tarjeta-producto" *ngFor="let producto of platos()">
-          <app-carrusel-fotos [fotos]="producto.fotos" [nombre]="producto.nombre"></app-carrusel-fotos>
-          <div class="info-producto">
-            <div class="fila-nombre-precio">
-              <h3 class="nombre-producto">{{ producto.nombre }}</h3>
-              <span class="precio-producto"><ion-icon name="pricetag-outline"></ion-icon>{{ formatearPrecio(producto.precio) }}</span>
-            </div>
-            <p class="descripcion-producto">{{ producto.descripcion }}</p>
-            <p class="tiempo-producto"><ion-icon name="time-outline"></ion-icon> {{ producto.tiempoElaboracionMinutos }} min</p>
-          </div>
-        </article>
-      </section>
-
-      <section class="seccion" *ngIf="bebidas().length">
-        <h2 class="titulo-seccion"><ion-icon name="wine-outline"></ion-icon> Bebidas</h2>
-        <article class="tarjeta-producto" *ngFor="let producto of bebidas()">
-          <app-carrusel-fotos [fotos]="producto.fotos" [nombre]="producto.nombre"></app-carrusel-fotos>
-          <div class="info-producto">
-            <div class="fila-nombre-precio">
-              <h3 class="nombre-producto">{{ producto.nombre }}</h3>
-              <span class="precio-producto"><ion-icon name="pricetag-outline"></ion-icon>{{ formatearPrecio(producto.precio) }}</span>
-            </div>
-            <p class="descripcion-producto">{{ producto.descripcion }}</p>
-            <p class="tiempo-producto"><ion-icon name="time-outline"></ion-icon> {{ producto.tiempoElaboracionMinutos }} min</p>
-          </div>
-        </article>
-      </section>
-
-    </ng-container>
+    </article>
   </div>
 
 </ion-content>
@@ -143,6 +138,9 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
 
 ion-content {
   flex: 1 1 auto;
+  // Contenedor de posicionamiento para .feed/.estado-error/.estado-vacio
+  // (position:absolute; inset:0).
+  position: relative;
 }
 
 ion-header ion-toolbar {
@@ -161,75 +159,112 @@ ion-header ion-toolbar {
   background-size: 64px 64px;
 }
 
-.contenedor {
-  padding: 16px;
-  padding-bottom: 40px;
-}
-
 .estado-error {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 14px;
-  background: rgba(179, 38, 30, 0.08);
-  border: 1px solid var(--rojo-error);
-  border-radius: 10px;
-  margin-bottom: 16px;
-}
-
-.estado-vacio {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.estado-vacio {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
   text-align: center;
   color: var(--texto-gris);
   font-family: 'EB Garamond', Georgia, serif;
-  padding: 40px 20px;
+  box-sizing: border-box;
 }
 .estado-vacio ion-icon {
   font-size: 2.5rem;
   color: var(--dorado);
 }
 
-.seccion {
-  margin-bottom: 24px;
+/* Feed vertical tipo "página" (correcciones-profesor 13-09): cada
+   producto ocupa el 100% del alto disponible y el scroll con snap pasa
+   al siguiente/anterior, uno a la vez -- como Reels/TikTok pero para el
+   menú. El swipe horizontal de fotos (adentro de app-carrusel-fotos) es
+   independiente de este scroll vertical. */
+.feed {
+  // position:absolute + inset:0 en vez de height:100% -- probado en
+  // dispositivo real: ion-content con [scrollY]="false" no le da una
+  // altura definida a su wrapper interno, así que un height:100% acá
+  // colapsaba al alto del contenido en vez de llenar la pantalla. Con
+  // position:absolute alcanza con que ion-content (el host, no su scroll
+  // interno) sea el contenedor de posicionamiento -- eso sí tiene la
+  // altura real asignada por flex más arriba.
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+.feed::-webkit-scrollbar {
+  display: none;
 }
 
-.titulo-seccion {
-  color: var(--marron);
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 1.3rem;
-  font-weight: 700;
-  margin: 0 0 12px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid var(--dorado);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.tarjeta-producto {
-  display: flex;
-  gap: 12px;
-  background: rgba(255, 253, 248, 0.6);
-  border: 1px solid rgba(198, 138, 52, 0.3);
-  border-radius: 14px;
-  padding: 10px;
-  margin-bottom: 14px;
-}
-.tarjeta-producto app-carrusel-fotos {
-  flex: 0 0 120px;
-  width: 120px;
-}
-
-.info-producto {
-  flex: 1;
-  min-width: 0;
+.pagina-producto {
+  height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 12px;
+  padding: 16px;
+  // El contenido llegaba hasta abajo de todo, tapado por la barra de
+  // gestos de Android (probado en dispositivo real) -- el box-sizing:
+  // border-box hace que este padding le reste alto a la foto (que se
+  // adapta sola, es la única flexible) en vez de desbordar la página.
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+// app-carrusel-fotos es un componente Angular (etiqueta HTML propia), no
+// un <div> -- sin esto, el navegador lo trata como display:inline y el
+// hijo flex real de .pagina-producto queda sin ningún tamaño definido.
+// Los estilos de flex puestos solo en el <div class="marco-foto"> de
+// ADENTRO del componente no alcanzan: ese div necesita que SU padre
+// (esta etiqueta) tenga una altura ya resuelta para poder llenarla al
+// 100% (probado en dispositivo real: cada foto, según su relación de
+// aspecto natural, terminaba ocupando un tamaño distinto).
+.pagina-producto app-carrusel-fotos {
+  display: block;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+}
+
+.etiqueta-categoria {
+  align-self: flex-start;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--marron);
+  color: var(--crema);
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-producto-pagina {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .fila-nombre-precio {
@@ -242,7 +277,7 @@ ion-header ion-toolbar {
 .nombre-producto {
   color: var(--marron-osc);
   font-family: 'EB Garamond', Georgia, serif;
-  font-size: 1.05rem;
+  font-size: 1.4rem;
   font-weight: 700;
   margin: 0;
 }
@@ -250,7 +285,7 @@ ion-header ion-toolbar {
 .precio-producto {
   color: var(--marron);
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
@@ -259,9 +294,9 @@ ion-header ion-toolbar {
 
 .descripcion-producto {
   color: var(--texto-gris);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   margin: 0;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .tiempo-producto {
@@ -287,8 +322,8 @@ ion-header ion-toolbar {
   z-index: 20001;
 }
 .logo-spinner {
-  width: 96px;
-  height: 96px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
 }
   `],
@@ -300,8 +335,15 @@ export class CartaVerComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   private readonly carta = signal<ProductoCarta[]>([]);
 
-  protected readonly platos = computed(() => this.carta().filter((p) => p.tipo === 'plato'));
-  protected readonly bebidas = computed(() => this.carta().filter((p) => p.tipo === 'bebida'));
+  // Un solo feed (platos primero, bebidas después) en vez de dos listados
+  // separados: el formato "página" pide un scroll vertical continuo que
+  // pase de un producto al siguiente, no una lista agrupada por sección
+  // (correcciones-profesor 13-09). La categoría de cada uno se distingue
+  // con la etiqueta que se ve en cada página, no con un título de sección.
+  protected readonly productos = computed(() => {
+    const todos = this.carta();
+    return [...todos.filter((p) => p.tipo === 'plato'), ...todos.filter((p) => p.tipo === 'bebida')];
+  });
 
   constructor() {
     addIcons({
