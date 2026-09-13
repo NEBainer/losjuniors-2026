@@ -110,7 +110,7 @@
 
   .modulo-card {
     background-color: var(--ion-color-step-100);
-    border: 2px solid darken(#EADDCB, 15%);
+    border: 2px solid var(--ion-color-step-150);
     border-radius: 12px;
     padding: 30px 20px;
     text-align: center;
@@ -294,7 +294,7 @@
     justify-content: center;
     gap: 10px;
     background-color: var(--ion-color-danger);
-    color: #FCF7EE;
+    color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
     padding: 18px;
     border: none;
     border-radius: 8px;

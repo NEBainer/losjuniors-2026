@@ -27,11 +27,7 @@ export class ClienteService {
 
     if (error) throw error;
 
-    const { data } = this.supabaseService.client.storage
-      .from('fotos')
-      .getPublicUrl(nombreArchivo);
-
-    return data.publicUrl;
+    return nombreArchivo;
   }
 
   async registrarCliente(datos: {
@@ -54,6 +50,17 @@ export class ClienteService {
     });
 
     if (error) throw error;
+  }
+
+  async enviarCorreoEstado(email: string, nombre: string, estado: 'pendiente' | 'aceptado' | 'rechazado', motivo?: string) {
+    try {
+      await this.supabaseService.client.functions.invoke('enviar-correo-estado', {
+        body: { email, nombre, estado, motivo }
+      });
+    } catch (error) {
+      console.error('No se pudo enviar el correo de notificación', error);
+      // Que falle el mail no debe bloquear el registro.
+    }
   }
 
   escucharCambioEstado(clienteId: string, callback: (estado: EstadoCliente) => void) {

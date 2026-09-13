@@ -102,6 +102,7 @@ export class RegistroClientePage  implements OnInit {
       await this.clienteService.registrarCliente({
         id: data.user.id, nombres, apellidos, dni, email, fotoUrl
       });
+      await this.clienteService.enviarCorreoEstado(email, `${nombres} ${apellidos}`, 'pendiente');
 
       this.cargando.set(false);
       this.router.navigate(['/registro-pendiente'], { state: { clienteId: data.user.id } });

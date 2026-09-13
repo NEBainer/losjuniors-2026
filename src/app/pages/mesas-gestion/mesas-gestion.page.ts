@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonContent, IonFooter, IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { add, arrowBack, restaurantOutline, warning } from 'ionicons/icons';
+import { addOutline, arrowBack, restaurantOutline, warning } from 'ionicons/icons';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { AuthService } from '../../core/services/auth.service';
@@ -34,7 +34,7 @@ export class MesasGestionPage {
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
-    addIcons({ add, arrowBack, restaurantOutline, warning });
+    addIcons({ addOutline, arrowBack, restaurantOutline, warning });
   }
 
   // Lifecycle de Ionic: corre cada vez que se entra a la pantalla (incluido
