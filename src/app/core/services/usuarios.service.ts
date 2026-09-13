@@ -87,6 +87,11 @@ export class UsuariosService {
         'No se pudo actualizar el estado del cliente. Verificá que tu perfil sea dueño o supervisor.'
       );
     }
+
+    const cliente = data[0];
+    this.sb.functions.invoke('enviar-correo-estado', {
+      body: { email: cliente.email, nombre: cliente.nombres, estado }
+    }).catch((err) => console.error('No se pudo enviar el correo', err));
   }
 
   // El bucket `fotos` es público: a partir de un path guardado en

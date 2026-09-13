@@ -5,11 +5,7 @@
 .contenedor-principal {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
-  padding: var(--app-padding);
-  padding-bottom: 36px; // ~2 dedos entre el último control y el borde
   gap: 14px;
-  color: var(--ion-text-color);
 }
 
 .cabecera-pagina {
@@ -243,50 +239,4 @@
       font-size: 1.4rem;
     }
   }
-}
-
-.overlay-cargando {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(26, 37, 44, 0.92);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: var(--ion-background-color);
-
-  .contenedor-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 25px;
-
-    .logo-spinner {
-      width: 90px;
-      height: 90px;
-      object-fit: contain;
-    }
-
-    .spinner-css {
-      width: 45px;
-      height: 45px;
-      border: 4px solid rgba(252, 247, 238, 0.3);
-      border-top-color: var(--ion-color-primary);
-      border-radius: 50%;
-      animation: girar 1s linear infinite;
-    }
-
-    p {
-      font-weight: 600;
-      font-size: 1.1rem;
-      letter-spacing: 0.5px;
-    }
-  }
-}
-
-@keyframes girar {
-  to { transform: rotate(360deg); }
 }

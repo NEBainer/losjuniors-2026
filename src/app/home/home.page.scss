@@ -37,7 +37,7 @@
 
   .modulo-card {
     background-color: var(--ion-color-step-100);
-    border: 2px solid darken(#EADDCB, 15%);
+    border: 2px solid var(--ion-color-step-150);
     border-radius: 12px;
     padding: 30px 20px;
     text-align: center;
@@ -79,7 +79,7 @@
     justify-content: center;
     gap: 10px;
     background-color: var(--ion-color-danger);
-    color: #FCF7EE;
+    color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
     padding: 18px;
     border: none;
     border-radius: 8px;
@@ -87,45 +87,4 @@
     font-weight: bold;
     text-transform: uppercase;
   }
-}
-
-/* Spinner Reutilizable */
-.overlay-cargando {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(26, 37, 44, 0.95);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: var(--ion-background-color);
-
-  .contenedor-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-
-    .logo-spinner {
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-    }
-
-    .spinner-css {
-      width: 40px;
-      height: 40px;
-      border: 4px solid var(--ion-background-color);
-      border-top-color: var(--ion-color-primary);
-      border-radius: 50%;
-      animation: girar 1s linear infinite;
-    }
-  }
-}
-
-@keyframes girar {
-  to { transform: rotate(360deg); }
 }

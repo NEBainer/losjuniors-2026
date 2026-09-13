@@ -5,6 +5,7 @@ import { ClienteService } from '../../core/services/cliente.service';
 import { Router } from '@angular/router';
 import { addIcons } from 'ionicons';
 import { checkmarkCircle, closeCircle, mailOutline, timeOutline } from 'ionicons/icons';
+import { SupabaseService } from '../../core/services/supabase.service';
 
 @Component({
   selector: 'app-registro-pendiente',
@@ -16,15 +17,28 @@ export class RegistroPendientePage implements OnInit, OnDestroy {
   readonly estado = signal<'pendiente' | 'aceptado' | 'rechazado'>('pendiente');
   private canal: any;
 
-  constructor(private clienteService: ClienteService, private router: Router) { 
+  constructor(
+    private clienteService: ClienteService, 
+    private supabaseService: SupabaseService,
+    private router: Router) { 
     addIcons({ checkmarkCircle, closeCircle, timeOutline, mailOutline });
   }
 
-  ngOnInit() {
+  async ngOnInit() {
     const clienteId = history.state.clienteId;
     if (!clienteId) {
       this.router.navigate(['/login']);
       return;
+    }
+
+    const { data } = await this.supabaseService.client
+      .from('usuarios')
+      .select('estado_aprobacion')
+      .eq('id', clienteId)
+      .single();
+
+    if (data?.estado_aprobacion) {
+      this.estado.set(data.estado_aprobacion);
     }
 
     this.canal = this.clienteService.escucharCambioEstado(clienteId, (nuevoEstado) => {

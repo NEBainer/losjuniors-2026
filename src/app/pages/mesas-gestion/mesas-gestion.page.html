@@ -1,16 +1,16 @@
 <ion-content class="fondo-app">
-  <div class="contenedor-principal">
+  <div class="contenedor-principal contenedor-app">
     <div class="cabecera-pagina">
-      <button class="boton-volver" (click)="volver()" type="button">
-        <ion-icon name="arrow-back"></ion-icon>
+      <button class="boton-icono-circular" (click)="volver()" type="button">
+        <ion-icon name="arrow-back-outline"></ion-icon>
       </button>
       <div>
         <h1>Gestión de Mesas</h1>
         <p>Asignación y estado</p>
       </div>
       @if (tienePermiso) {
-        <button class="boton-agregar" (click)="irAAltaDeMesa()" type="button">
-          <ion-icon name="add"></ion-icon>
+        <button class="boton-icono-circular" (click)="irAAltaDeMesa()" type="button">
+          <ion-icon name="add-outline"></ion-icon>
         </button>
       }
     </div>
