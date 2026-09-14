@@ -35,3 +35,8 @@ AVANCES.md
 
 # Documentacion personal (solo en rama Bainer, no se pushea desde dev)
 docs/
+
+# Ignorar archivos de documentación interna
+correcciones-profesor.md
+CLAUDE.md
+diseno-visual.md
