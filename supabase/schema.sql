@@ -521,3 +521,25 @@ with check (
 -- El with check fija perfil y estado_aprobacion para que un cliente
 -- no pueda insertarse con otro perfil (ej. 'dueño') ni autoaprobarse
 -- (ej. estado_aprobacion = 'aceptado') en el mismo insert.
+
+-- ============================================================
+-- Login / accesos rápidos (corrección profesor 13-09-2026)
+-- Los botones de acceso rápido del login tienen que reflejar usuarios
+-- reales (foto, nombre, perfil), no una lista hardcodeada. El login
+-- todavía no tiene sesión, y las policies de SELECT sobre `usuarios`
+-- exigen auth.uid() -> un cliente anónimo no puede leer la tabla
+-- directamente. Esta vista bypassea esa RLS (corre con los permisos de
+-- su dueño, no del rol que consulta) exponiendo solo las columnas que
+-- hacen falta para el botón -- nunca dni/cuil. foto_url no es sensible:
+-- el bucket `fotos` ya es público.
+-- Un usuario representativo por perfil (el más antiguo), excluyendo
+-- cliente_anonimo porque ese no requiere login.
+-- ============================================================
+create view public.accesos_rapidos as
+select distinct on (perfil)
+  perfil, nombres, apellidos, foto_url, email
+from usuarios
+where perfil <> 'cliente_anonimo'
+order by perfil, created_at asc;
+
+grant select on public.accesos_rapidos to anon;

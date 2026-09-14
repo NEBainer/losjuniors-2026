@@ -42,6 +42,10 @@
           Registrate como cliente
         </ion-button>
     </div>
+
+    <!-- Accesos rápidos: componente externo, trae usuarios reales de la DB
+         (corrección profesor 13-09) -->
+    <app-accesos-rapidos (seleccionado)="onAccesoRapidoSeleccionado($event)"></app-accesos-rapidos>
   </div>
 
   <!-- Overlay, no adentro del flujo -- si empujara el resto del contenido
@@ -54,21 +58,6 @@
       <span>{{ mensajeError }}</span>
     </div>
   }
-
-  <!-- Accesos rapidos -->
-  <ion-fab vertical="bottom" horizontal="end" slot="fixed">
-    <ion-fab-button color="tertiary">
-      <ion-icon name="flash"></ion-icon>
-    </ion-fab-button>
-
-    <ion-fab-list side="top">
-      @for (usuario of accesosRapidos; track usuario.correo) {
-        <ion-fab-button (click)="cargarAccesoRapido(usuario)" [title]="usuario.perfil">
-          <ion-icon [name]="usuario.icono"></ion-icon>
-        </ion-fab-button>
-      }
-    </ion-fab-list>
-  </ion-fab>
 </ion-content>
 
 <!-- Fijo abajo (correcciones-profesor 13-09): antes vivía adentro del

@@ -1,0 +1,24 @@
+@if (accesos.length > 0) {
+  <div class="accesos-rapidos">
+    <span class="titulo">Acceso rápido</span>
+    <div class="lista">
+      @for (acceso of accesos; track acceso.email) {
+        <button
+          type="button"
+          class="acceso"
+          (click)="elegir(acceso)"
+          [attr.aria-label]="'Entrar como ' + acceso.perfilLabel + ', ' + acceso.nombres">
+          <span class="avatar">
+            @if (acceso.fotoUrl) {
+              <img [src]="acceso.fotoUrl" [alt]="'Foto de ' + acceso.nombres" />
+            } @else {
+              <span class="inicial">{{ acceso.inicial }}</span>
+            }
+          </span>
+          <span class="nombre">{{ acceso.nombres }}</span>
+          <span class="perfil">{{ acceso.perfilLabel }}</span>
+        </button>
+      }
+    </div>
+  </div>
+}
