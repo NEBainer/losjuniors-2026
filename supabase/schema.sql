@@ -580,3 +580,20 @@ on lista_espera
 for delete
 to authenticated
 using ( perfil_actual() in ('metre', 'dueño', 'supervisor') );
+
+-- =========================================================
+-- v5 (14/09/2026): política de INSERT faltante para cliente
+-- anónimo. Se detectó al probar el punto 9: `clientes_se_
+-- autorregistran` exige perfil = 'cliente_registrado', así que
+-- un insert con perfil = 'cliente_anonimo' no calzaba en ninguna
+-- policy existente -> 403 (42501).
+-- =========================================================
+
+create policy "clientes_anonimos_se_autorregistran"
+on usuarios
+for insert
+to authenticated
+with check (
+  auth.uid() = id
+  and perfil = 'cliente_anonimo'
+);

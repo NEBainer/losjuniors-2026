@@ -413,6 +413,10 @@ confianza que sobre Storage.
   Falta la pantalla del metre viendo la lista en vivo — corresponde al
   punto 10, coordinar con quien lo desarrolle.
 - Punto 10: asignación de mesa desde la lista de espera — no empezado.
+- Punto 9 (cliente anónimo): **funcionando de punta a punta** —
+  ingreso vía QR + registro anónimo + lista de espera confirmados
+  en dispositivo real (14/09/2026). Falta la pantalla del metre
+  viendo la lista en vivo — corresponde al punto 10.
 
   ## Sistema de mail automático (puntos 7/8)
 
@@ -463,6 +467,23 @@ petición real con los datos del mail.
 `Deno.serve()`, devolviendo los headers de CORS antes que nada, y
 agregar esos mismos headers a todas las respuestas (incluidas las de
 error).
+
+## Bug encontrado y resuelto: faltaba policy de INSERT para cliente anónimo
+
+Al probar el ingreso anónimo (punto 9), el insert en `usuarios`
+fallaba con 403 (`42501 - new row violates row-level security
+policy`). Causa: la policy `clientes_se_autorregistran` (armada para
+el punto 5) exige explícitamente `perfil = 'cliente_registrado'` en
+su `with check` — no contempla ningún otro perfil. Como el cliente
+anónimo inserta con `perfil = 'cliente_anonimo'`, ninguna policy
+existente lo autorizaba.
+
+**Lección para el resto del equipo**: cada perfil nuevo que se
+autorregistre en `usuarios` (sin pasar por el alta de un dueño/
+supervisor) necesita su propia policy de INSERT explícita — no
+alcanza con "ya hay una policy de autorregistro", hay que revisar
+si esa policy filtra por perfil específico antes de asumir que
+cubre un caso nuevo.
 
 ## Pendiente
 

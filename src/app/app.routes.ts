@@ -69,4 +69,12 @@ export const routes: Routes = [
     path: 'carta',
     loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
   },
-];
+  {
+    path: 'lista-espera',
+    loadComponent: () => import('./pages/lista-espera/lista-espera.page').then( m => m.ListaEsperaPage)
+  },
+  {
+    path: 'ingreso-anonimo',
+    loadComponent: () => import('./pages/ingreso-anonimo/ingreso-anonimo.page').then( m => m.IngresoAnonimoPage)
+  },
+]
