@@ -521,3 +521,62 @@ with check (
 -- El with check fija perfil y estado_aprobacion para que un cliente
 -- no pueda insertarse con otro perfil (ej. 'dueño') ni autoaprobarse
 -- (ej. estado_aprobacion = 'aceptado') en el mismo insert.
+
+-- =========================================================
+-- v4 (13/09/2026): Punto 9 — cliente anónimo + lista de espera.
+-- Ver supabase/README.md para el detalle de decisiones.
+-- =========================================================
+
+-- El cliente anónimo (punto 9) solo carga nombre y foto, sin
+-- apellido. La columna era NOT NULL desde el diseño original
+-- (pensada para empleados/clientes registrados); se afloja acá.
+alter table usuarios alter column apellidos drop not null;
+
+-- =========================================================
+-- Punto 9: lista de espera del cliente anónimo (y registrado,
+-- cuando llega sin reserva). Separada de `usuarios` porque es un
+-- estado transitorio ("estoy esperando mesa ahora"), no un dato
+-- permanente del perfil.
+-- =========================================================
+
+create table lista_espera (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null unique references usuarios(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table lista_espera enable row level security;
+
+-- El cliente (anónimo o registrado) se anota a sí mismo.
+create policy "lista_espera_cliente_se_anota"
+on lista_espera
+for insert
+to authenticated
+with check ( auth.uid() = cliente_id );
+
+-- El cliente ve su propia fila (para saber que sigue en la lista).
+create policy "lista_espera_cliente_ve_su_fila"
+on lista_espera
+for select
+to authenticated
+using ( auth.uid() = cliente_id );
+
+-- El cliente puede sacarse a sí mismo de la lista.
+create policy "lista_espera_cliente_se_retira"
+on lista_espera
+for delete
+to authenticated
+using ( auth.uid() = cliente_id );
+
+-- El metre/dueño/supervisor ven y gestionan toda la lista (punto 10).
+create policy "lista_espera_metre_ve_todo"
+on lista_espera
+for select
+to authenticated
+using ( perfil_actual() in ('metre', 'dueño', 'supervisor') );
+
+create policy "lista_espera_metre_elimina"
+on lista_espera
+for delete
+to authenticated
+using ( perfil_actual() in ('metre', 'dueño', 'supervisor') );

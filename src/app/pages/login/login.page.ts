@@ -12,6 +12,7 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { QrAppService } from '../../core/services/qr-app.service';
 
 @Component({
   selector: 'app-login',
@@ -45,7 +46,8 @@ export class LoginPage implements OnInit {
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private qrAppService: QrAppService
   ) {
     addIcons({ business, eye, list, restaurant, pizza, wine, person, warning, flash, eyeOutline, eyeOffOutline });
 
@@ -116,5 +118,21 @@ export class LoginPage implements OnInit {
 
   irARegistro() {
     this.router.navigate(['/registro-cliente']);
+  }
+
+  async escanearIngreso() {
+    try {
+      const datos = await this.qrAppService.escanear();
+      if (!datos) return; // el usuario canceló el escaneo
+
+      if (datos.tipo === 'ingreso_local') {
+        this.router.navigate(['/ingreso-anonimo']);
+      } else {
+        this.dispararError('Ese código no es el de ingreso al local.');
+      }
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : 'No se pudo leer el código.';
+      this.dispararError(mensaje);
+    }
   }
 }

@@ -76,6 +76,22 @@ plano, desactualizado respecto al código real de `cliente.service.ts`
 y a la policy ya deployada — ninguno de los dos estaba mal, era solo
 este documento.)*
 
+**Cliente anónimo: `signInAnonymously()`, no un ID generado en el cliente**
+El punto 9 pide que el cliente anónimo se identifique sin mail/contraseña.
+En vez de generar un UUID cualquiera del lado de Angular (que no tendría
+ningún respaldo de RLS), se usa `supabase.auth.signInAnonymously()`:
+crea un usuario real en `auth.users`, sin credenciales, pero que cuenta
+como `authenticated` para todas las políticas ya existentes. Requiere
+tener **"Anonymous Sign-Ins"** activado en Authentication → Providers
+(activado el 13/09/2026).
+
+**`lista_espera` en tabla aparte, no una columna en `usuarios`**
+Es un estado transitorio ("está esperando mesa ahora mismo"), distinto
+de los datos permanentes del perfil. Separarlo evita mezclar el ciclo
+de vida de "soy cliente de La Mesa" con el de "estoy físicamente en el
+local ahora". `cliente_id` es `unique`: un cliente no puede anotarse
+dos veces a la lista de espera.
+
 ## Función auxiliar: `perfil_actual()`
 
 Se usa en todas las políticas RLS que dependen del perfil del usuario
@@ -155,6 +171,7 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
 - `storage.objects` (a través de las políticas del bucket `fotos`, no es
   una tabla propia del esquema pero se administra con el mismo mecanismo
   de RLS)
+- `lista_espera`
 
 ## Políticas RLS creadas
 
@@ -390,6 +407,12 @@ confianza que sobre Storage.
 - Tablas de los puntos siguientes del TFI (estadías, lista de espera,
   pedidos, encuestas, etc.) — se agregan a medida que el equipo avance
   con esas partes de la app.
+- ~~Realtime en `lista_espera`~~ — agregada a la publicación
+  `supabase_realtime` el 13/09/2026, mismo mecanismo que `usuarios`.
+- Punto 9 (cliente anónimo): DB lista y confirmada (policies + Realtime).
+  Falta la pantalla del metre viendo la lista en vivo — corresponde al
+  punto 10, coordinar con quien lo desarrolle.
+- Punto 10: asignación de mesa desde la lista de espera — no empezado.
 
   ## Sistema de mail automático (puntos 7/8)
 
