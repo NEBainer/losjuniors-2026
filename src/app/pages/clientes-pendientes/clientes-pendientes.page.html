@@ -11,17 +11,17 @@
     </div>
   }
 
-  <div class="contenedor-principal">
+  <div class="contenedor-principal contenedor-app">
 
     <div class="cabecera-pendientes">
-      <button class="boton-icono" (click)="volver()" title="Volver al panel">
+      <button class="boton-icono-circular" (click)="volver()" title="Volver al panel">
         <ion-icon name="arrow-back-outline"></ion-icon>
       </button>
       <div class="titulo">
         <h1>Clientes pendientes</h1>
         <p>Aceptá o rechazá las solicitudes de registro</p>
       </div>
-      <button class="boton-icono" (click)="cargar()" [disabled]="cargando()" title="Refrescar listado">
+      <button class="boton-icono-circular" (click)="cargar()" [disabled]="cargando()" title="Refrescar listado">
         <ion-icon name="refresh-outline"></ion-icon>
       </button>
     </div>

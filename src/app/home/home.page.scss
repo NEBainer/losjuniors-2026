@@ -8,7 +8,80 @@
   justify-content: space-between;
   min-height: 100vh;
   padding: 20px;
+  // El botón de logout quedaba tapado por la barra de gestos de Android
+  // (probado en dispositivo real, correcciones-profesor 13-09: "ningún
+  // botón fijo puede generar scroll" -- acá el problema era que ni
+  // aparecía completo).
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
   color: var(--ion-text-color);
+
+  // Panel del dueño/supervisor (correcciones-profesor 13-09): la pantalla
+  // se reparte en dos mitades fijas -- accesos rápidos arriba, pendientes
+  // abajo -- en vez de dejar que la grilla crezca libre como en el resto
+  // de los perfiles.
+  &.panel-dueno {
+    height: 100vh;
+    min-height: 0;
+
+    .cabecera-dashboard {
+      flex-shrink: 0;
+      margin-bottom: 10px;
+
+      h1 {
+        font-size: 1.5rem;
+      }
+      p {
+        font-size: 0.9rem;
+      }
+    }
+
+    .grilla-modulos {
+      // flex-grow libre (no una mitad fija): si hay pocos pendientes,
+      // esta sección crece y ocupa el espacio que la lista de abajo no
+      // necesita, en vez de dejar un hueco vacío (diseno-visual.md: no se
+      // admiten espacios neutros/vacíos).
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      // filas parejas que se estiran para llenar la altura disponible --
+      // si centrara el contenido (align-content: center) quedaba un hueco
+      // vacío arriba y abajo de las tarjetas cuando hay pocas.
+      grid-auto-rows: 1fr;
+      gap: 14px;
+
+      .modulo-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 18px 10px;
+
+        ion-icon {
+          font-size: 2.6rem;
+        }
+
+        h3 {
+          font-size: 1.2rem;
+        }
+
+        p {
+          font-size: 0.9rem;
+        }
+      }
+    }
+
+    .seccion-logout {
+      flex-shrink: 0;
+      margin-top: 10px;
+
+      .boton-logout {
+        padding: 10px;
+        font-size: 1rem;
+      }
+    }
+  }
 }
 
 .cabecera-dashboard {
@@ -37,7 +110,7 @@
 
   .modulo-card {
     background-color: var(--ion-color-step-100);
-    border: 2px solid darken(#EADDCB, 15%);
+    border: 2px solid var(--ion-color-step-150);
     border-radius: 12px;
     padding: 30px 20px;
     text-align: center;
@@ -69,6 +142,148 @@
   }
 }
 
+.seccion-pendientes {
+  // Tope de 50% (el "50% inferior" que pidió el profe), pero SIN forzarlo
+  // a estirarse cuando hay pocos pendientes: con flex 0 1 auto la caja se
+  // achica a lo que ocupa la lista real y el sobrante se lo lleva
+  // .grilla-modulos, en vez de quedar un cartel vacío.
+  flex: 0 1 auto;
+  max-height: 50%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--ion-color-step-100);
+  border: 2px solid darken(#EADDCB, 15%);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 8px;
+
+  .cabecera-pendientes {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+
+    ion-icon {
+      font-size: 1.4rem;
+      color: var(--ion-color-primary);
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin: 0;
+    }
+  }
+
+  .estado-vacio-pendientes {
+    text-align: center;
+    opacity: 0.7;
+    margin: auto 0;
+  }
+
+  .mensaje {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+  .mensaje-error {
+    background: rgba(179, 38, 30, 0.15);
+    color: var(--ion-color-danger);
+  }
+  .mensaje-ok {
+    background: rgba(45, 122, 62, 0.15);
+    color: var(--ion-color-success, #2d7a3e);
+  }
+
+  .lista-pendientes-embebida {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .fila-pendiente {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--ion-background-color);
+    border-radius: 10px;
+    padding: 8px 10px;
+
+    .avatar-chico {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: var(--ion-color-step-150, #ddd);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-weight: bold;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .nombre-pendiente {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .acciones-chicas,
+  .acciones-confirmar-chicas {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-chico {
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .btn-detalle {
+    background: var(--ion-color-step-150, #e5dcca);
+    color: var(--ion-text-color);
+  }
+  .btn-aceptar {
+    background: var(--ion-color-success, #2d7a3e);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    ion-icon {
+      font-size: 1rem;
+    }
+  }
+  .btn-si {
+    background: var(--ion-color-success, #2d7a3e);
+    color: #fff;
+  }
+  .btn-no {
+    background: var(--ion-color-danger);
+    color: #fff;
+  }
+}
+
 .seccion-logout {
   margin-top: 30px;
   
@@ -79,7 +294,7 @@
     justify-content: center;
     gap: 10px;
     background-color: var(--ion-color-danger);
-    color: #FCF7EE;
+    color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
     padding: 18px;
     border: none;
     border-radius: 8px;
@@ -110,8 +325,10 @@
     gap: 20px;
 
     .logo-spinner {
-      width: 80px;
-      height: 80px;
+      // 140px (no 80px): el logo ahora tiene texto ("LA MESA DESDE 2026")
+      // adentro, más chico no se lee (pedido explícito del usuario).
+      width: 140px;
+      height: 140px;
       object-fit: contain;
     }
 

@@ -1,0 +1,183 @@
+<ion-content class="fondo-app">
+  @if (guardando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Dando de alta al empleado...</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal contenedor-app">
+    <div class="cabecera-pagina">
+      <button class="boton-icono-circular" (click)="volver()" type="button">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </button>
+      <div>
+        <h1>Alta de Empleado</h1>
+        <p>Panel de Control</p>
+      </div>
+    </div>
+
+    @if (cargando()) {
+      <p class="texto-centrado">Verificando permisos...</p>
+    } @else if (!tienePermiso()) {
+      <div class="acceso-denegado">
+        <ion-icon name="warning-outline"></ion-icon>
+        <p>Solo el dueño o el supervisor pueden dar de alta un empleado.</p>
+        <button class="boton-principal" (click)="volver()" type="button">Volver al inicio</button>
+      </div>
+    } @else {
+      @if (mensajeError()) {
+        <div class="banner-error">
+          <ion-icon name="warning-outline"></ion-icon>
+          <span>{{ mensajeError() }}</span>
+        </div>
+      }
+
+      <div class="fila-acciones-iniciales">
+        <div class="contenedor-foto" (click)="capturarFoto()">
+          @if (fotoUri()) {
+            <img [src]="fotoUri()" alt="Foto del empleado" class="foto-preview" (click)="$event.stopPropagation(); fotoAmpliada.set(true)" />
+            <span class="etiqueta-cambiar">Tocar para cambiar</span>
+          } @else {
+            <ion-icon name="camera-outline" class="icono-camara"></ion-icon>
+            <span>Foto (obligatoria)</span>
+          }
+        </div>
+      </div>
+
+      @if (datosVienenDeQr()) {
+        <p class="aviso-qr">✓ Apellido, nombre y DNI cargados desde el DNI. El CUIL es manual.</p>
+      }
+
+      <form [formGroup]="formulario" (ngSubmit)="darDeAlta()" class="formulario">
+        <ion-grid class="grilla-campos">
+          <ion-row>
+            <ion-col size="6">
+              <div class="campo">
+                <ion-label>Apellidos</ion-label>
+                <ion-input formControlName="apellidos" placeholder="Ej: Rodríguez" fill="solid" class="input-formulario"></ion-input>
+                @if (formulario.get('apellidos')?.touched && formulario.get('apellidos')?.invalid) {
+                  <span class="error-campo">Mínimo 2 caracteres.</span>
+                }
+              </div>
+            </ion-col>
+            <ion-col size="6">
+              <div class="campo">
+                <ion-label>Nombres</ion-label>
+                <ion-input formControlName="nombres" placeholder="Ej: Julián" fill="solid" class="input-formulario"></ion-input>
+                @if (formulario.get('nombres')?.touched && formulario.get('nombres')?.invalid) {
+                  <span class="error-campo">Mínimo 2 caracteres.</span>
+                }
+              </div>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="6">
+              <div class="campo">
+                <ion-label>DNI</ion-label>
+                <ion-input formControlName="dni" placeholder="Ej: 30111222" type="tel" inputmode="numeric" fill="solid" class="input-formulario"></ion-input>
+                @if (formulario.get('dni')?.touched && formulario.get('dni')?.invalid) {
+                  <span class="error-campo">7 u 8 números.</span>
+                }
+              </div>
+            </ion-col>
+            <ion-col size="6">
+              <div class="campo">
+                <ion-label>CUIL</ion-label>
+                <ion-input formControlName="cuil" placeholder="Ej: 20301112223" type="tel" inputmode="numeric" fill="solid" class="input-formulario"></ion-input>
+                @if (formulario.get('cuil')?.touched && formulario.get('cuil')?.invalid) {
+                  <span class="error-campo">11 números.</span>
+                }
+              </div>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12">
+              <div class="campo">
+                <ion-label>Correo electrónico</ion-label>
+                <ion-input formControlName="email" placeholder="Ej: empleado@correo.com" type="email" fill="solid" class="input-formulario"></ion-input>
+                @if (formulario.get('email')?.touched && formulario.get('email')?.invalid) {
+                  <span class="error-campo">Ingresá un correo válido.</span>
+                }
+              </div>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="8">
+              <div class="campo">
+                <ion-label>Contraseña</ion-label>
+                <ion-input formControlName="clave" placeholder="Mínimo 6 caracteres" type="password" fill="solid" class="input-formulario"></ion-input>
+                @if (formulario.get('clave')?.touched && formulario.get('clave')?.invalid) {
+                  <span class="error-campo">Mínimo 6 caracteres.</span>
+                }
+              </div>
+            </ion-col>
+            <ion-col size="4">
+              <div class="campo">
+                <ion-label>Perfil</ion-label>
+                <ion-select formControlName="perfil" fill="solid" interface="popover" class="input-formulario">
+                  @for (p of perfiles; track p.valor) {
+                    <ion-select-option [value]="p.valor">{{ p.etiqueta }}</ion-select-option>
+                  }
+                </ion-select>
+              </div>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </form>
+    }
+  </div>
+
+  <ion-modal [isOpen]="fotoAmpliada()" (didDismiss)="fotoAmpliada.set(false)" class="modal-foto">
+    <ng-template>
+      <div class="contenido-modal-foto">
+        <button class="boton-cerrar-modal" (click)="fotoAmpliada.set(false)" type="button">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+        @if (fotoUri()) {
+          <img [src]="fotoUri()" alt="Foto del empleado ampliada" />
+        }
+      </div>
+    </ng-template>
+  </ion-modal>
+
+  <ion-toast
+    [isOpen]="mostrarExito()"
+    message="Empleado creado correctamente."
+    duration="3000"
+    color="success"
+    (didDismiss)="mostrarExito.set(false)">
+  </ion-toast>
+</ion-content>
+
+<!-- Fijo abajo (correcciones-profesor: botón "Guardar" fijo y grande + QR
+     cerca del pulgar, las dos en el mismo footer -- mismo patrón que
+     registro-cliente.page.html). Queda siempre a mano, sin scrollear con
+     el resto del formulario. -->
+@if (!cargando() && tienePermiso()) {
+  <ion-footer class="pie-registrar">
+    @if (lectorDisponible()) {
+      <button type="button" class="boton-qr" (click)="escanearDni()" aria-label="Escanear DNI">
+        @if (escaneando()) {
+          <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+          <ion-icon name="qr-code-outline"></ion-icon>
+          <span>Escanear DNI</span>
+        }
+      </button>
+    }
+    <ion-button type="button" expand="block" class="boton-registrar" [disabled]="guardando()" (click)="darDeAlta()">
+      @if (guardando()) {
+        <ion-spinner name="crescent"></ion-spinner>
+      } @else {
+        Dar de alta
+      }
+    </ion-button>
+  </ion-footer>
+}

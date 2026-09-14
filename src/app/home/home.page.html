@@ -10,8 +10,8 @@
     </div>
   }
 
-  <div class="contenedor-principal">
-    
+  <div class="contenedor-principal contenedor-app" [class.panel-dueno]="esPanelDueno()">
+
     <div class="cabecera-dashboard">
       <h1>Panel de Control</h1>
       <p>Seleccione un módulo para operar</p>
@@ -25,40 +25,94 @@
       </div>
       @if (puedeVerMesas()) {
         <div class="modulo-card" (click)="irAGestionMesas()">
-          <ion-icon name="restaurantOutline"></ion-icon>
+          <ion-icon name="restaurant-outline"></ion-icon>
           <h3>Gestión de Mesas</h3>
           <p>Asignación y estado</p>
         </div>
       }
       @if (puedeVerPedidos()) {
         <div class="modulo-card">
-          <ion-icon name="listOutline"></ion-icon>
+          <ion-icon name="list-outline"></ion-icon>
           <h3>Lista de Pedidos</h3>
           <p>Comandas activas</p>
         </div>
       }
-      @if (puedeVerClientesPendientes()) {
-        <div class="modulo-card" (click)="irAClientesPendientes()">
-          <ion-icon name="peopleOutline"></ion-icon>
-          <h3>Clientes Pendientes</h3>
-          <p>Aprobación de ingreso</p>
+      @if (puedeVerAltaEmpleado()) {
+        <div class="modulo-card" (click)="irAAltaEmpleado()">
+          <ion-icon name="person-add-outline"></ion-icon>
+          <h3>Empleados</h3>
+          <p>Alta de personal</p>
         </div>
       }
-            @if (puedeAgregarPlato()) {
+      @if (puedeAgregarPlato()) {
         <div class="modulo-card" (click)="irAAltaPlato()">
-          <ion-icon name="fastFoodOutline"></ion-icon>
+          <ion-icon name="fast-food-outline"></ion-icon>
           <h3>Agregar Plato</h3>
           <p>Alta de nuevo plato</p>
         </div>
       }
       @if (puedeAgregarBebida()) {
         <div class="modulo-card" (click)="irAAltaBebida()">
-          <ion-icon name="wineOutline"></ion-icon>
+          <ion-icon name="wine-outline"></ion-icon>
           <h3>Agregar Bebida</h3>
           <p>Alta de nueva bebida</p>
         </div>
       }
     </div>
+
+    <!-- Panel del dueño/supervisor (correcciones-profesor 13-09): en vez de
+         una tarjeta que navega a otra pantalla, la lista de pendientes
+         queda embebida acá abajo, con scroll propio, como los últimos
+         movimientos de una billetera virtual. -->
+    @if (esPanelDueno()) {
+      <div class="seccion-pendientes">
+        <div class="cabecera-pendientes">
+          <ion-icon name="people-outline"></ion-icon>
+          <h2>Clientes pendientes</h2>
+        </div>
+
+        @if (mensajeErrorPendientes()) {
+          <div class="mensaje mensaje-error">{{ mensajeErrorPendientes() }}</div>
+        }
+        @if (mensajeOkPendientes()) {
+          <div class="mensaje mensaje-ok">{{ mensajeOkPendientes() }}</div>
+        }
+
+        @if (!cargandoPendientes() && pendientes().length === 0) {
+          <p class="estado-vacio-pendientes">No hay clientes pendientes de aprobación.</p>
+        }
+
+        <div class="lista-pendientes-embebida">
+          @for (cliente of pendientes(); track cliente.id) {
+            <div class="fila-pendiente">
+              <div class="avatar-chico">
+                @if (cliente.fotoUrl) {
+                  <img [src]="cliente.fotoUrl" [alt]="'Foto de ' + cliente.nombres" />
+                } @else {
+                  <span>{{ cliente.inicial }}</span>
+                }
+              </div>
+              <span class="nombre-pendiente">{{ cliente.apellidos }}, {{ cliente.nombres }}</span>
+
+              @if (confirmandoId() === cliente.id) {
+                <div class="acciones-confirmar-chicas">
+                  <span>¿Aceptar?</span>
+                  <button class="btn-chico btn-si" (click)="confirmarAceptar(cliente)" [disabled]="procesandoId() === cliente.id">Sí</button>
+                  <button class="btn-chico btn-no" (click)="cancelarConfirmacionPendiente()" [disabled]="procesandoId() === cliente.id">No</button>
+                </div>
+              } @else {
+                <div class="acciones-chicas">
+                  <button class="btn-chico btn-detalle" (click)="verDetalle(cliente)">Ver detalle</button>
+                  <button class="btn-chico btn-aceptar" (click)="pedirConfirmacionAceptar(cliente.id)">
+                    <ion-icon name="checkmark-outline"></ion-icon>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
 
     <div class="seccion-logout">
       <button class="boton-logout" (click)="ejecutarCierreSesion()" [disabled]="cargando">

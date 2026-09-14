@@ -27,6 +27,7 @@ import {
   IonButton,
   IonButtons,
   IonContent,
+  IonFooter,
   IonHeader,
   IonIcon,
   IonInput,
@@ -92,6 +93,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
     IonButtons,
     IonBackButton,
     IonContent,
+    IonFooter,
     IonItem,
     IonLabel,
     IonInput,
@@ -219,15 +221,6 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
     {{ errorGuardado }}
   </ion-note>
 
-  <ion-button
-    expand="block"
-    type="submit"
-    class="boton-guardar"
-    [disabled]="guardando"
-  >
-    {{ guardando ? 'Guardando…' : (tipo === 'plato' ? 'Guardar plato' : 'Guardar bebida') }}
-  </ion-button>
-
   <div class="cierre-decorativo" aria-hidden="true">
     <span class="linea-cierre"></span><span class="rombo-cierre"></span><span class="linea-cierre"></span>
   </div>
@@ -274,6 +267,20 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
 </div>
 
 </ion-content>
+
+<!-- Botón fijo abajo (correcciones-profesor 13-09): así queda siempre a
+     mano, aunque el formulario sea largo o el teclado esté abierto. -->
+<ion-footer class="pie-guardar">
+  <ion-button
+    expand="block"
+    type="button"
+    class="boton-guardar"
+    [disabled]="guardando"
+    (click)="alEnviar()"
+  >
+    {{ guardando ? 'Guardando…' : (tipo === 'plato' ? 'Guardar plato' : 'Guardar bebida') }}
+  </ion-button>
+</ion-footer>
   `,
   styles: [`
 :host {
@@ -312,8 +319,14 @@ ion-header ion-toolbar {
 
 .formulario {
   padding: 16px;
-  padding-bottom: 48px;
+  padding-bottom: 24px;
   display: block;
+}
+
+.pie-guardar {
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--crema);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .aviso-borrador {
@@ -452,7 +465,10 @@ ion-header ion-toolbar {
   --background: var(--marron);
   --background-activated: var(--marron-osc);
   --border-radius: 999px;
-  margin-top: 12px;
+  --padding-top: 18px;
+  --padding-bottom: 18px;
+  margin: 0;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
@@ -594,8 +610,8 @@ ion-header ion-toolbar {
   z-index: 20001;
 }
 .logo-spinner {
-  width: 96px;
-  height: 96px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
 }
   `],

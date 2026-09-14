@@ -1,5 +1,7 @@
 :root {
-  --ion-background-color: #FCF7EE; 
+  --app-padding: 16px;
+
+  --ion-background-color: #FCF7EE;
   
   --ion-text-color: #632A12; 
   
@@ -18,6 +20,14 @@
   --ion-color-success: #2E7D32;
   --ion-color-success-rgb: 46,125,50;
   --ion-color-success-contrast: #FCF7EE;
+
+  --ion-color-step-150: #D8C4A6;
+  --ion-color-step-500: #B89A72;
+  
+  --overlay-cargando-bg: rgba(26, 37, 44, 0.92);
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 
@@ -26,5 +36,137 @@
   :root {
     --ion-background-color: #FCF7EE !important;
     --ion-text-color: #632A12 !important;
+  }
+}
+
+// UTILIDADES COMPARTIDAS — 
+
+// Contenedor raíz de cualquier pantalla — padding lateral consistente
+// + respeto de la cámara/notch arriba, sin que cada page tenga que
+// calcularlo por separado.
+.contenedor-app {
+  min-height: 100dvh;
+  padding: calc(var(--app-padding) + var(--safe-top)) var(--app-padding) calc(var(--app-padding) + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  color: var(--ion-text-color);
+}
+
+.overlay-cargando {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--overlay-cargando-bg);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--ion-background-color);
+
+  .contenedor-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+
+    .logo-spinner {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+    }
+
+    .spinner-css {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(252, 247, 238, 0.3);
+      border-top-color: var(--ion-color-primary);
+      border-radius: 50%;
+      animation: girar 1s linear infinite;
+    }
+
+    p {
+      font-weight: 600;
+      font-size: 1.1rem;
+      letter-spacing: 0.5px;
+      margin: 0;
+    }
+  }
+}
+
+.overlay-cargando {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--overlay-cargando-bg);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--ion-background-color);
+
+  .contenedor-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+
+    .logo-spinner {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+    }
+
+    .spinner-css {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(252, 247, 238, 0.3);
+      border-top-color: var(--ion-color-primary);
+      border-radius: 50%;
+      animation: girar 1s linear infinite;
+    }
+
+    p {
+      font-weight: 600;
+      font-size: 1.1rem;
+      letter-spacing: 0.5px;
+      margin: 0;
+    }
+  }
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+.boton-icono-circular {
+  background-color: var(--ion-color-step-100);
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ion-color-primary);
+
+  ion-icon {
+    font-size: 1.4rem;
+  }
+
+  &.chico {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    ion-icon { font-size: 1.3rem; }
+  }
+
+  &.destacado {
+    background-color: var(--ion-color-primary);
+    color: var(--ion-color-primary-contrast);
   }
 }

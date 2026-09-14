@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { AuthService } from './auth.service';
-import { ClientePendiente, EstadoAprobacion, PerfilUsuario } from '../models/usuario.model';
+import { AccesoRapido, ClientePendiente, EstadoAprobacion, PerfilUsuario } from '../models/usuario.model';
 import { SupabaseService } from './supabase.service';
 
 @Injectable({
@@ -79,7 +79,7 @@ export class UsuariosService {
       .update({ estado_aprobacion: estado })
       .eq('id', id)
       .eq('perfil', 'cliente_registrado')
-      .select('id');
+      .select('id, email, nombres');
 
     if (error || !data || data.length === 0) {
       await Haptics.impact({ style: ImpactStyle.Heavy });
@@ -87,6 +87,29 @@ export class UsuariosService {
         'No se pudo actualizar el estado del cliente. Verificá que tu perfil sea dueño o supervisor.'
       );
     }
+
+    const cliente = data[0];
+    this.sb.functions.invoke('enviar-correo-estado', {
+      body: { email: cliente.email, nombre: cliente.nombres, estado }
+    }).catch((err) => console.error('No se pudo enviar el correo', err));
+  }
+
+  // Accesos rápidos del login (corrección profesor 13-09): un usuario
+  // real por perfil, leído en vivo desde la vista `accesos_rapidos` (sin
+  // sesión -> RLS de `usuarios` no aplica, por eso la vista aparte). Se
+  // consulta de nuevo en cada carga del login para reflejar cambios de
+  // foto sin tocar código.
+  async getAccesosRapidos(): Promise<AccesoRapido[]> {
+    const { data, error } = await this.sb
+      .from('accesos_rapidos')
+      .select('perfil, nombres, apellidos, foto_url, email');
+
+    if (error) {
+      await Haptics.impact({ style: ImpactStyle.Heavy });
+      throw new Error('No se pudieron obtener los accesos rápidos.');
+    }
+
+    return (data ?? []) as AccesoRapido[];
   }
 
   // El bucket `fotos` es público: a partir de un path guardado en

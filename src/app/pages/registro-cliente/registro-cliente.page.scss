@@ -4,87 +4,152 @@
 
 .contenedor-registro {
   min-height: 100%;
-  padding: 24px 20px 40px;
+  // Compacto a propósito (correcciones-profesor 13-09: todos los campos
+  // deben verse sin scroll) -- ver también encabezado/foto/formulario más
+  // abajo, todos achicados desde sus tamaños originales.
+  padding: 14px 20px 10px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
 }
 
 .encabezado {
   text-align: center;
   color: var(--ion-color-primary-contrast);
-  margin-bottom: 8px;
 
-  ion-icon {
-    font-size: 48px;
+  .mascota-encabezado {
+    // El logo tiene texto adentro ("LA MESA DESDE 2026") -- a 48px no se
+    // leía nada (pedido explícito del usuario). Se compensa el espacio
+    // achicando la foto de perfil más abajo.
+    width: 84px;
+    height: auto;
+    margin: 0 auto 2px;
+    display: block;
   }
 
   h1 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    margin: 8px 0 4px;
-  }
-
-  p {
-    font-size: 0.95rem;
-    opacity: 0.9;
+    margin: 4px 0 0;
   }
 }
 
+.fila-acciones-iniciales {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: -4px;
+}
+
 .contenedor-foto {
-  align-self: center;
-  width: 140px;
-  height: 140px;
+  position: relative;
+  width: 84px;
+  height: 84px;
   border-radius: 50%;
-  background: var(--ion-color-step-100); 
+  // Sin esto el <img> cuadrado de la foto ignora el border-radius del
+  // contenedor y se ve como un cuadrado adentro de un círculo (probado en
+  // dispositivo real).
+  overflow: hidden;
+  background: var(--ion-color-step-100);
   border: 3px solid var(--ion-color-primary-contrast);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  overflow: hidden;
+  gap: 2px;
   cursor: pointer;
 
   .icono-camara {
-    font-size: 36px;
+    font-size: 22px;
     color: var(--ion-color-primary);
   }
 
   span {
-    font-size: 0.75rem;
-    color: var(--ion-text-color);
-    padding: 0 8px;
-    text-align: center;
-  }
-
-  .foto-preview {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; 
-  }
-
-  .etiqueta-cambiar {
-    position: absolute;
+    font-size: 0.6rem;
   }
 }
+
+// Fijo abajo (correcciones-profesor: botón "Guardar" grande + QR cerca
+// del pulgar, las dos en un mismo footer). Un ion-footer real en vez de
+// position:fixed: probado en dispositivo, un botón flotante tapaba
+// campos del formulario al scrollear porque siempre queda en el mismo
+// punto de la pantalla sin importar qué haya debajo -- el footer reserva
+// su propio espacio y el contenido nunca queda oculto atrás.
+.pie-registro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
+  background: var(--ion-color-primary);
+}
+
+.boton-qr {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 52px;
+  padding: 0 16px;
+  // Mismo radio que .boton-registrar (ion-button --border-radius más
+  // abajo) para que no parezcan dos estilos de botón distintos.
+  border-radius: 999px;
+  border: none;
+  background: var(--ion-color-tertiary);
+  color: var(--ion-color-tertiary-contrast);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  font-weight: 600;
+
+  ion-icon {
+    font-size: 22px;
+  }
+
+  span {
+    font-size: 0.8rem;
+    font-weight: 700;
+    // ion-button pone mayúsculas por defecto (ver .boton-registrar); un
+    // <button> nativo no, así que se hace a mano para que combinen.
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+}
+
+.foto-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
+}
+
+.etiqueta-cambiar {
+  position: absolute;
+  bottom: 4ch;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  color: var(--ion-color-primary-contrast);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
 
 .formulario {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   background: var(--ion-color-step-100);
   border-radius: 16px;
-  padding: 20px 16px;
+  padding: 12px 14px;
 }
 
 .campo {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 
   ion-label {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--ion-text-color);
   }
@@ -95,26 +160,71 @@
     --placeholder-color: rgba(99, 42, 18, 0.5);
     --padding-start: 12px;
     --padding-end: 12px;
+    --padding-top: 8px;
+    --padding-bottom: 8px;
     border-radius: 10px;
-    font-size: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .input-con-icono {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    .input-formulario {
+      flex: 1 1 auto;
+      // deja lugar para que el ícono de ojo no tape lo que se está tipeando
+      --padding-end: 40px;
+    }
+
+    .boton-ojo {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      padding: 4px;
+      display: flex;
+      color: var(--ion-text-color);
+      opacity: 0.7;
+
+      ion-icon {
+        font-size: 20px;
+      }
+    }
   }
 
   .error-campo {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     color: var(--ion-color-danger);
     font-weight: 600;
   }
 }
 
+.aviso-qr {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--ion-color-primary-contrast);
+  margin: 0;
+}
+
+// Overlay fijo, no parte del flujo del formulario -- así no empuja el
+// resto del contenido ni provoca scroll al aparecer (correcciones-profesor
+// 13-09: todos los campos deben verse sin scroll).
 .banner-error {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 8px;
   background: var(--ion-color-danger);
   color: var(--ion-color-primary-contrast);
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-radius: 10px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
 
   ion-icon {
     font-size: 20px;
@@ -123,10 +233,53 @@
 }
 
 .boton-registrar {
+  flex: 1 1 auto;
   --background: var(--ion-color-tertiary);
   --color: var(--ion-color-tertiary-contrast);
-  --border-radius: 12px;
-  height: 48px;
+  --border-radius: 999px;
+  height: 52px;
   font-weight: 700;
-  margin-top: 8px;
+  margin: 0;
+}
+
+// Foto ampliada al tocar la miniatura (correcciones-profesor 05-09) --
+// mismo patrón que alta-empleado.page.scss.
+.modal-foto {
+  --width: 100%;
+  --height: 100%;
+  --background: rgba(26, 18, 12, 0.92);
+}
+
+.contenido-modal-foto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+
+  img {
+    max-width: 90%;
+    max-height: 80%;
+    border-radius: 12px;
+    object-fit: contain;
+  }
+
+  .boton-cerrar-modal {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+
+    ion-icon {
+      font-size: 1.4rem;
+    }
+  }
 }

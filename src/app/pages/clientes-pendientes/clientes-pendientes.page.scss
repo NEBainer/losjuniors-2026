@@ -5,9 +5,7 @@
 .contenedor-principal {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  padding: 20px;
-  color: var(--ion-text-color);
+  gap: 22px;
 }
 
 /* Cabecera con volver + refrescar */
@@ -42,7 +40,7 @@
     align-items: center;
     justify-content: center;
     background-color: var(--ion-color-step-100);
-    border: 2px solid #D8C4A6;
+    border: 2px solid var(--ion-color-step-150);
     border-radius: 10px;
     color: var(--ion-color-primary);
 
@@ -78,8 +76,8 @@
 }
 
 .mensaje-ok {
-  background-color: #2E6E4E;
-  color: #FCF7EE;
+  background-color: var(--ion-color-success); 
+  color: var(--ion-color-success-contrast);
 }
 
 /* Estado sin pendientes */
@@ -106,14 +104,19 @@
 
 /* Listado */
 .lista-pendientes {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  // Con pocos pendientes (o solo uno) el listado se centra en vez de
+  // quedar pegado arriba con un hueco vacío abajo (diseno-visual.md: no
+  // se admiten espacios neutros/vacíos).
+  justify-content: center;
   gap: 16px;
 }
 
 .cliente-card {
   background-color: var(--ion-color-step-100);
-  border: 2px solid #D8C4A6;
+  border: 2px solid var(--ion-color-step-150);
   border-radius: 12px;
   padding: 16px;
   display: grid;
@@ -199,8 +202,8 @@
 
   .btn-aceptar,
   .btn-si {
-    background-color: #2E6E4E;
-    color: #FCF7EE;
+    background-color: var(--ion-color-success); 
+    color: var(--ion-color-success-contrast);
   }
 
   .btn-rechazar,
@@ -231,8 +234,8 @@
     gap: 20px;
 
     .logo-spinner {
-      width: 80px;
-      height: 80px;
+      width: 140px;
+      height: 140px;
       object-fit: contain;
     }
 

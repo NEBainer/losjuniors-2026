@@ -1,15 +1,18 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { 
+import {
   IonButton,
-  IonContent, IonFab, IonFabButton, IonFabList, IonIcon
+  IonContent, IonFooter, IonIcon
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { business, eye, restaurant, person, warning, flash, list, pizza, wine } from 'ionicons/icons';
+import {
+  warning, eyeOutline, eyeOffOutline,
+} from 'ionicons/icons';
 import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { AccesosRapidosComponent } from '../../shared/accesos-rapidos/accesos-rapidos.component';
 
 @Component({
   selector: 'app-login',
@@ -17,26 +20,15 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
   styleUrls: ['./login.page.scss'],
   standalone: true,
   imports: [
-    IonContent, IonFab, IonFabButton, IonFabList, IonIcon,
-   CommonModule, ReactiveFormsModule, IonButton
+    IonContent, IonFooter, IonIcon,
+   CommonModule, ReactiveFormsModule, IonButton, AccesosRapidosComponent
   ]
 })
 export class LoginPage implements OnInit {
   formularioLogin: FormGroup;
   cargando: boolean = false;
   mensajeError: string = '';
-
-  // Accesos rapidos, usando las credenciales de prueba del script
-  // ---- PASARLOS A UNA VARIABLE DE ENTORNO ----
-  accesosRapidos = [
-    { perfil: 'Dueño', correo: 'dueno@test.com', clave: 'Test1234!', icono: 'business' },
-    { perfil: 'Supervisor', correo: 'supervisor@test.com', clave: 'Test1234!', icono: 'eye' },
-    { perfil: 'Metre', correo: 'metre@test.com', clave: 'Test1234!', icono: 'list' },
-    { perfil: 'Mozo', correo: 'mozo@test.com', clave: 'Test1234!', icono: 'restaurant' },
-    { perfil: 'Cocinero', correo: 'cocinero@test.com', clave: 'Test1234!', icono: 'pizza' },
-    { perfil: 'Cantinero', correo: 'cantinero@test.com', clave: 'Test1234!', icono: 'wine' },
-    { perfil: 'Cliente', correo: 'cliente@test.com', clave: 'Test1234!', icono: 'person' }
-  ];
+  mostrarClave: boolean = false;
 
   constructor(
     private fb: FormBuilder,
@@ -44,7 +36,7 @@ export class LoginPage implements OnInit {
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
-    addIcons({ business, eye, list, restaurant, pizza, wine, person, warning, flash });
+    addIcons({ warning, eyeOutline, eyeOffOutline });
 
     this.formularioLogin = this.fb.group({
       correo: ['', [Validators.required, Validators.email]],
@@ -54,11 +46,8 @@ export class LoginPage implements OnInit {
 
   ngOnInit() {}
 
-  async cargarAccesoRapido(usuario: any) {
-    this.formularioLogin.patchValue({
-      correo: usuario.correo,
-      clave: usuario.clave
-    });
+  async onAccesoRapidoSeleccionado(credenciales: { correo: string; clave: string }) {
+    this.formularioLogin.patchValue(credenciales);
     await this.iniciarSesion();
   }
 
@@ -105,6 +94,10 @@ export class LoginPage implements OnInit {
       this.mensajeError = '';
       this.cdr.detectChanges();
     }, 4000);
+  }
+
+  toggleMostrarClave() {
+    this.mostrarClave = !this.mostrarClave;
   }
 
   irARegistro() {

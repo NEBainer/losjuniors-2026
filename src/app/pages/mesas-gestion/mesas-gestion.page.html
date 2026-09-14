@@ -1,16 +1,16 @@
 <ion-content class="fondo-app">
-  <div class="contenedor-principal">
+  <div class="contenedor-principal contenedor-app">
     <div class="cabecera-pagina">
-      <button class="boton-volver" (click)="volver()" type="button">
-        <ion-icon name="arrow-back"></ion-icon>
+      <button class="boton-icono-circular" (click)="volver()" type="button">
+        <ion-icon name="arrow-back-outline"></ion-icon>
       </button>
       <div>
         <h1>Gestión de Mesas</h1>
         <p>Asignación y estado</p>
       </div>
       @if (tienePermiso) {
-        <button class="boton-agregar" (click)="irAAltaDeMesa()" type="button">
-          <ion-icon name="add"></ion-icon>
+        <button class="boton-icono-circular" (click)="irAAltaDeMesa()" type="button">
+          <ion-icon name="add-outline"></ion-icon>
         </button>
       }
     </div>
@@ -34,8 +34,7 @@
       @if (mesas.length === 0) {
         <div class="sin-mesas">
           <ion-icon name="restaurant-outline"></ion-icon>
-          <p>Todavía no hay mesas cargadas.</p>
-          <button class="boton-principal" (click)="irAAltaDeMesa()" type="button">Agregar la primera mesa</button>
+          <p>Todavía no hay mesas cargadas. Agregá la primera con el botón de abajo.</p>
         </div>
       } @else {
         <div class="lista-mesas">
@@ -69,3 +68,16 @@
     }
   </div>
 </ion-content>
+
+<!-- Fijo abajo (correcciones-profesor: "lo que se usa mucho va con acceso
+     directo" + ningún botón fijo puede generar scroll). Antes era un ícono
+     "+" en el header, que se scrolleaba junto con la lista de mesas y
+     quedaba inalcanzable con muchas mesas cargadas. -->
+@if (!cargando && tienePermiso) {
+  <ion-footer class="pie-agregar">
+    <button class="boton-principal" (click)="irAAltaDeMesa()" type="button">
+      <ion-icon name="add"></ion-icon>
+      Agregar mesa
+    </button>
+  </ion-footer>
+}

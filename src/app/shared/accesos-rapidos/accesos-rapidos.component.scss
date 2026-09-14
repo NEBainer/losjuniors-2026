@@ -1,0 +1,84 @@
+.accesos-rapidos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .titulo {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.7;
+  }
+
+  // Wrap, no scroll horizontal: un carrusel cortaba el último acceso a la
+  // mitad, violando la regla de diseno-visual.md de que los elementos se
+  // muestren siempre completos, nunca cortados. Con wrap pasan a una
+  // segunda línea en vez de exigir swipe.
+  .lista {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 8px;
+  }
+}
+
+.acceso {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 52px;
+  background: none;
+  border: none;
+  padding: 0;
+  // El <button> nativo resetea color a blanco (base de Ionic) -- sin esto
+  // el nombre/perfil queda invisible sobre el fondo claro.
+  color: var(--ion-text-color);
+
+  .avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: var(--ion-color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--ion-color-step-150);
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .inicial {
+      color: var(--ion-color-primary-contrast);
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+  }
+
+  .nombre {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--ion-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 52px;
+  }
+
+  .perfil {
+    font-size: 0.62rem;
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+
+  &:active {
+    opacity: 0.75;
+  }
+}
