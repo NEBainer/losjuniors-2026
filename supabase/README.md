@@ -76,6 +76,22 @@ plano, desactualizado respecto al código real de `cliente.service.ts`
 y a la policy ya deployada — ninguno de los dos estaba mal, era solo
 este documento.)*
 
+**Cliente anónimo: `signInAnonymously()`, no un ID generado en el cliente**
+El punto 9 pide que el cliente anónimo se identifique sin mail/contraseña.
+En vez de generar un UUID cualquiera del lado de Angular (que no tendría
+ningún respaldo de RLS), se usa `supabase.auth.signInAnonymously()`:
+crea un usuario real en `auth.users`, sin credenciales, pero que cuenta
+como `authenticated` para todas las políticas ya existentes. Requiere
+tener **"Anonymous Sign-Ins"** activado en Authentication → Providers
+(activado el 13/09/2026).
+
+**`lista_espera` en tabla aparte, no una columna en `usuarios`**
+Es un estado transitorio ("está esperando mesa ahora mismo"), distinto
+de los datos permanentes del perfil. Separarlo evita mezclar el ciclo
+de vida de "soy cliente de La Mesa" con el de "estoy físicamente en el
+local ahora". `cliente_id` es `unique`: un cliente no puede anotarse
+dos veces a la lista de espera.
+
 ## Función auxiliar: `perfil_actual()`
 
 Se usa en todas las políticas RLS que dependen del perfil del usuario
@@ -155,6 +171,7 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
 - `storage.objects` (a través de las políticas del bucket `fotos`, no es
   una tabla propia del esquema pero se administra con el mismo mecanismo
   de RLS)
+- `lista_espera`
 
 ## Políticas RLS creadas
 
@@ -390,6 +407,16 @@ confianza que sobre Storage.
 - Tablas de los puntos siguientes del TFI (estadías, lista de espera,
   pedidos, encuestas, etc.) — se agregan a medida que el equipo avance
   con esas partes de la app.
+- ~~Realtime en `lista_espera`~~ — agregada a la publicación
+  `supabase_realtime` el 13/09/2026, mismo mecanismo que `usuarios`.
+- Punto 9 (cliente anónimo): DB lista y confirmada (policies + Realtime).
+  Falta la pantalla del metre viendo la lista en vivo — corresponde al
+  punto 10, coordinar con quien lo desarrolle.
+- Punto 10: asignación de mesa desde la lista de espera — no empezado.
+- Punto 9 (cliente anónimo): **funcionando de punta a punta** —
+  ingreso vía QR + registro anónimo + lista de espera confirmados
+  en dispositivo real (14/09/2026). Falta la pantalla del metre
+  viendo la lista en vivo — corresponde al punto 10.
 
   ## Sistema de mail automático (puntos 7/8)
 
@@ -440,6 +467,23 @@ petición real con los datos del mail.
 `Deno.serve()`, devolviendo los headers de CORS antes que nada, y
 agregar esos mismos headers a todas las respuestas (incluidas las de
 error).
+
+## Bug encontrado y resuelto: faltaba policy de INSERT para cliente anónimo
+
+Al probar el ingreso anónimo (punto 9), el insert en `usuarios`
+fallaba con 403 (`42501 - new row violates row-level security
+policy`). Causa: la policy `clientes_se_autorregistran` (armada para
+el punto 5) exige explícitamente `perfil = 'cliente_registrado'` en
+su `with check` — no contempla ningún otro perfil. Como el cliente
+anónimo inserta con `perfil = 'cliente_anonimo'`, ninguna policy
+existente lo autorizaba.
+
+**Lección para el resto del equipo**: cada perfil nuevo que se
+autorregistre en `usuarios` (sin pasar por el alta de un dueño/
+supervisor) necesita su propia policy de INSERT explícita — no
+alcanza con "ya hay una policy de autorregistro", hay que revisar
+si esa policy filtra por perfil específico antes de asumir que
+cubre un caso nuevo.
 
 ## Pendiente
 
