@@ -92,6 +92,29 @@ de vida de "soy cliente de La Mesa" con el de "estoy físicamente en el
 local ahora". `cliente_id` es `unique`: un cliente no puede anotarse
 dos veces a la lista de espera.
 
+**Formato del QR de mesa: JSON discriminado por `tipo`, no texto plano**
+Decisión de equipo (16/09/2026): `{"tipo":"mesa","numero":N}`, siguiendo
+el mismo patrón que ya usa `QrAppService` para el QR de ingreso
+(`{"tipo":"ingreso_local"}`). Se usa `numero` y no `id`/uuid a propósito,
+para no tener que retipar `QrAppPayload` (que ya trae `numero: number`
+para el caso `'mesa'`) ni tocar el lector unificado que ya lee cualquier
+QR de la app. **Estado real:** la DB y el seed ya reflejan este formato
+(ver sección 9 de `schema.sql`), pero `mesa.service.ts` (punto 4)
+todavía genera el QR real como texto plano `MESA-{numero}` — falta
+coordinar esa actualización con quien tenga el punto 4 antes de que el
+punto 10/11 dependa de escanear una mesa real.
+
+**Vínculo cliente↔mesa asignada: columna en `mesas`, no tabla aparte**
+Para el punto 10 (metre asigna mesa a cliente) hacía falta alguna forma
+de saber qué cliente tiene asignada cada mesa. Se eligió agregar
+`mesas.cliente_actual_id` (nullable, referencia a `usuarios`) en vez de
+una tabla de asignaciones aparte: es una extensión directa del mismo
+estado transitorio que ya representa `disponibilidad` (vacía/ocupada),
+y evita el costo de una tabla + RLS + joins nuevos para lo que este
+punto necesita. Si más adelante hace falta un historial de qué cliente
+pasó por qué mesa (auditoría), ahí sí conviene una tabla aparte — no
+hace falta hoy.
+
 ## Función auxiliar: `perfil_actual()`
 
 Se usa en todas las políticas RLS que dependen del perfil del usuario
@@ -191,6 +214,32 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
   policy es la que habilita el **listado de clientes pendientes del
   punto 6** — no hizo falta una policy de SELECT nueva.
 
+- **`usuarios_metre_ve_en_lista_espera`** (agregada 16/09/2026 por
+  Maximiliano en el SQL Editor, punto 10) — el metre no está incluido en
+  `dueño_supervisor_ven_todos_usuarios` (esa policy es solo
+  dueño/supervisor), así que sin esto no podía leer nombre/foto de ningún
+  cliente en `lista_espera` — solo veía el `cliente_id` (UUID) de esa
+  tabla, sin poder resolverlo a un nombre real (confirmado con curl antes
+  del fix: `usuarios?select=...&id=eq.<cliente>` con token de metre
+  devolvía `[]`). Policy acotada, no una ampliación de la existente:
+
+  ```sql
+  create policy "usuarios_metre_ve_en_lista_espera"
+  on usuarios
+  for select
+  to authenticated
+  using (
+    perfil_actual() = 'metre'
+    and exists (
+      select 1 from lista_espera le where le.cliente_id = usuarios.id
+    )
+  );
+  ```
+
+  El metre solo ve las filas de `usuarios` que corresponden a alguien que
+  está *ahora mismo* en la lista de espera, no a cualquier empleado/cliente
+  de la base — más acotado que darle acceso total como dueño/supervisor.
+
 - `usuarios_dueño_supervisor_actualiza_clientes` — dueño/supervisor pueden
   hacer `UPDATE` de una fila de `usuarios` **solo si es de un
   `cliente_registrado`** (puntos 6, 7 y 8: aceptar/rechazar). Se eligió
@@ -222,9 +271,23 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
 
 **`mesas`**
 - `mesas_lectura_autenticados` — cualquier usuario logueado puede ver
-  número, tipo y disponibilidad de las mesas.
+  número, tipo y disponibilidad de las mesas. Esta misma policy alcanza
+  para que el cliente vea su propia mesa asignada (filtrando por
+  `cliente_actual_id = auth.uid()` desde el service) — no hizo falta una
+  policy de SELECT nueva para el punto 10.
 - `mesas_dueño_supervisor_inserta` — solo dueño/supervisor pueden dar de
   alta una mesa nueva.
+- `mesas_dueño_supervisor_actualiza` — dueño/supervisor pueden modificar
+  cualquier mesa sin restricción de estado (punto 4: gestión de mesas).
+- `mesas_metre_asigna` **(agregada 16/09/2026, punto 10)** — el metre
+  puede hacer `UPDATE` sobre una mesa **solo si en ese momento sigue
+  `disponibilidad = 'vacia'`**. Es la pieza que evita, a nivel DB, que
+  dos asignaciones casi simultáneas sobre la misma mesa pasen las dos:
+  la primera que llegue la pone en `'ocupada'`, la segunda ya no
+  encuentra la fila en `'vacia'` y queda bloqueada por la policy, sin
+  depender de que el front gane la carrera. Complementada por el índice
+  único parcial `mesas_cliente_actual_unico` sobre `cliente_actual_id`,
+  que además impide que un mismo cliente termine vinculado a dos mesas.
 
 **`producto_fotos`**
 - `producto_fotos_lectura_autenticados` — cualquier usuario logueado puede
@@ -301,9 +364,12 @@ cliente registrado, más al menos 5 platos, 5 bebidas y 5 mesas.
   listado del punto 11 funciona (cada producto trae sus 3 fotos
   correctamente relacionadas). Se reemplazan por fotos reales subidas a
   Supabase Storage cuando el cocinero/cantinero las carguen desde la app.
-- **5 mesas**, todas creadas por el usuario dueño de prueba. `qr_code` es
-  un valor placeholder (`MESA-1`, `MESA-2`, etc.) — falta definir con el
-  equipo el formato final de lo que se codifica en el QR real.
+- **5 mesas**, todas creadas por el usuario dueño de prueba. `qr_code`
+  ya tiene el formato decidido por el equipo (`{"tipo":"mesa","numero":N}`,
+  ver "Decisiones de diseño") — pero `mesa.service.ts` todavía no lo
+  genera así en la app real, sigue en texto plano `MESA-{numero}`. El
+  seed sirve para probar el punto 10/11 contra el formato correcto
+  aunque esa parte del punto 4 no esté actualizada todavía.
 - **1 cliente en estado `pendiente`**: se marcó `cliente@test.com` (Julián
   Torres) con `estado_aprobacion = 'pendiente'` a mano, para poder probar
   el listado del punto 6 antes de que exista el alta de cliente registrado
@@ -373,6 +439,49 @@ confirmar que Storage funciona — todavía falta un `insert`/`update`/
 `delete` directo con `curl` sobre esa tabla puntual, para tener la misma
 confianza que sobre Storage.
 
+**Prueba (16/09/2026) de `mesas_metre_asigna` + `mesas_cliente_actual_unico`
+(punto 10)** — 4 casos con `curl` contra Supabase real, usuarios de prueba
+del seed, sobre mesas ya existentes en la base (no las 5 del seed original,
+la tabla ya tiene filas cargadas por pruebas del punto 4):
+
+1. **Metre asigna una mesa `vacia`** (`PATCH /mesas?id=eq.<mesa_vacia>` con
+   `disponibilidad: 'ocupada', cliente_actual_id: <cliente>`) → `200`, la
+   fila se actualiza y el `select` de vuelta confirma el cambio.
+2. **Ese mismo metre intenta reasignar la misma mesa** (ya `ocupada`) a
+   otro cliente → `200` con body `[]` (0 filas: el `using` de la policy ya
+   no matchea porque `disponibilidad` dejó de ser `'vacia'`).
+3. **Mozo intenta asignar una mesa `vacia`** (mismo payload que el caso 1,
+   token de `mozo@test.com`) → `200` con body `[]` (bloqueado: `perfil_actual()
+   != 'metre'`).
+4. **Metre intenta asignar una segunda mesa `vacia` al mismo cliente** que
+   ya tiene una mesa asignada (caso 1) → `409`, `{"code":"23505", "message":
+   "duplicate key value violates unique constraint \"mesas_cliente_actual_unico\""}`.
+
+Confirma que la protección contra doble asignación funciona a nivel de
+datos, no solo que las policies compilan. Nota aparte, no relacionada con
+RLS: la mesa usada en la prueba (número 9991, creada 06/09) todavía tiene
+`qr_code = "MESA-9991"` en texto plano — evidencia real (no solo lectura de
+código) de que `mesa.service.ts` sigue sin generar el formato JSON acordado
+para el QR de mesa (ver gap #17 en `AVANCES.md`). La mesa se liberó
+(`disponibilidad: 'vacia', cliente_actual_id: null`) al terminar la prueba
+para no dejar estado de prueba ensuciando la demo.
+
+**Prueba (16/09/2026) de `usuarios_metre_ve_en_lista_espera` (punto 10)**
+— 4 casos con `curl`, cliente de prueba `cliente@test.com` anotado a mano
+en `lista_espera` para la prueba (se sacó al terminar):
+
+1. **Metre lee nombre/foto del cliente que está en la lista** (`GET
+   /usuarios?select=id,nombres,apellidos,foto_url&id=eq.<cliente>`) →
+   devuelve la fila completa (antes de la policy devolvía `[]`).
+2. **Metre lee el embed `lista_espera?select=...,usuarios(...)`** → el
+   objeto `usuarios` viene resuelto (nombre/apellido/foto), no `null`.
+3. **Metre intenta leer un usuario que NO está en la lista** (ej. el
+   cocinero de prueba) → `[]`. Confirma que la policy es acotada a
+   `lista_espera`, no una puerta abierta a toda la tabla.
+4. **Mozo intenta leer al mismo cliente que sí está en la lista** → `[]`.
+   Confirma que la policy es específica de `perfil_actual() = 'metre'`, no
+   alcanza a cualquier perfil autenticado.
+
 ## Pendiente (a propósito, según lo visto en clase)
 
 - Políticas de `UPDATE`/`DELETE` en `productos` y `mesas` (ej.: cocinero
@@ -412,7 +521,12 @@ confianza que sobre Storage.
 - Punto 9 (cliente anónimo): DB lista y confirmada (policies + Realtime).
   Falta la pantalla del metre viendo la lista en vivo — corresponde al
   punto 10, coordinar con quien lo desarrolle.
-- Punto 10: asignación de mesa desde la lista de espera — no empezado.
+- Punto 10: DB lista y confirmada (16/09/2026) — `mesas.cliente_actual_id`,
+  índice único parcial y policy `mesas_metre_asigna` corridos en el SQL
+  Editor. Falta toda la UI (vista del metre, asignación, escaneo de
+  confirmación del cliente, push notifications) y coordinar con quien
+  tenga el punto 4 la actualización de `mesa.service.ts` al formato de
+  QR ya decidido.
 - Punto 9 (cliente anónimo): **funcionando de punta a punta** —
   ingreso vía QR + registro anónimo + lista de espera confirmados
   en dispositivo real (14/09/2026). Falta la pantalla del metre
