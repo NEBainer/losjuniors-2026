@@ -16,6 +16,7 @@ export interface Mesa {
   disponibilidad: 'vacia' | 'ocupada';
   foto_url: string | null;
   qr_code: string;
+  cliente_actual_id: string | null;
 }
 
 @Injectable({
@@ -25,8 +26,10 @@ export class MesaService {
   private supabase = inject(SupabaseService).client;
 
   // Alta de mesa (punto 4): crea la fila en "mesas" y, si se tomó una foto,
-  // la sube antes al bucket "fotos/mesas". El qr_code se arma a partir del
-  // número de mesa, siguiendo el mismo formato que los datos de prueba.
+  // la sube antes al bucket "fotos/mesas". El qr_code se arma con el mismo
+  // formato JSON que lee QrAppService del lado del cliente (punto 11):
+  // {"tipo":"mesa","numero":N} — así el QR generado acá y el que escanea
+  // el cliente son el mismo contrato, sin parseo especial de string.
   async crearMesa(datos: NuevaMesa, creadoPor: string, fotoWebPath?: string) {
     let fotoUrl: string | null = null;
 
@@ -34,7 +37,7 @@ export class MesaService {
       fotoUrl = await this.subirFotoMesa(fotoWebPath);
     }
 
-    const qrCode = `MESA-${datos.numero}`;
+    const qrCode = JSON.stringify({ tipo: 'mesa', numero: datos.numero });
 
     const { data, error } = await this.supabase
       .from('mesas')
@@ -68,11 +71,29 @@ export class MesaService {
   async listarMesas(): Promise<Mesa[]> {
     const { data, error } = await this.supabase
       .from('mesas')
-      .select('id, numero, cantidad_comensales, tipo, disponibilidad, foto_url, qr_code')
+      .select('id, numero, cantidad_comensales, tipo, disponibilidad, foto_url, qr_code, cliente_actual_id')
       .order('numero', { ascending: true });
 
     if (error) {
       throw new Error('No se pudieron cargar las mesas.');
+    }
+
+    return data;
+  }
+
+  // Punto 11: resuelve la mesa a partir del número que viene en el QR
+  // escaneado ({"tipo":"mesa","numero":N}). null si no existe (QR de una
+  // mesa borrada, por ejemplo) en vez de tirar excepción — el llamador
+  // decide qué mensaje mostrar.
+  async buscarPorNumero(numero: number): Promise<Mesa | null> {
+    const { data, error } = await this.supabase
+      .from('mesas')
+      .select('id, numero, cantidad_comensales, tipo, disponibilidad, foto_url, qr_code, cliente_actual_id')
+      .eq('numero', numero)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error('No se pudo buscar la mesa.');
     }
 
     return data;

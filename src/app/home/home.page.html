@@ -10,6 +10,34 @@
     </div>
   }
 
+  <!-- Requisito excluyente "QR de mesa": panel de solo lectura para el
+       personal de sala (metre/mozo/dueño/supervisor). No navega a
+       ningún lado -- se cierra y listo. -->
+  @if (mesaInfoEscaneada(); as mesa) {
+    <div class="overlay-info-mesa" (click)="cerrarInfoMesa()">
+      <div class="tarjeta-info-mesa" (click)="$event.stopPropagation()">
+        <button class="boton-cerrar" (click)="cerrarInfoMesa()" title="Cerrar">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+
+        <div class="foto-info-mesa">
+          @if (mesa.foto_url) {
+            <img [src]="mesa.foto_url" alt="Foto de la mesa {{ mesa.numero }}" />
+          } @else {
+            <ion-icon name="restaurant-outline"></ion-icon>
+          }
+        </div>
+
+        <h2>Mesa {{ mesa.numero }}</h2>
+        <p class="tipo-info-mesa">{{ etiquetasTipo[mesa.tipo] }} · {{ mesa.cantidad_comensales }} comensales</p>
+
+        <span class="chip-disponibilidad-info" [class.ocupada]="mesa.disponibilidad === 'ocupada'">
+          {{ mesa.disponibilidad === 'vacia' ? 'Vacía' : 'Ocupada' }}
+        </span>
+      </div>
+    </div>
+  }
+
   <div class="contenedor-principal contenedor-app" [class.panel-dueno]="esPanelDueno()">
 
     <div class="cabecera-dashboard">
@@ -17,17 +45,42 @@
       <p>Seleccione un módulo para operar</p>
     </div>
 
+    @if (mensajeErrorEscaneo()) {
+      <div class="mensaje mensaje-error">{{ mensajeErrorEscaneo() }}</div>
+    }
+
     <div class="grilla-modulos">
       <div class="modulo-card" (click)="irALaCarta()">
         <ion-icon name="book-outline"></ion-icon>
         <h3>Ver la Carta</h3>
         <p>Menú completo</p>
       </div>
+      @if (puedeEscanearMesa()) {
+        <div class="modulo-card" (click)="escanearMesa()">
+          <ion-icon name="qr-code-outline"></ion-icon>
+          <h3>Escanear Mesa</h3>
+          <p>{{ escaneandoMesa() ? 'Buscando mesa...' : 'Ver menú y consultar al mozo' }}</p>
+        </div>
+      }
       @if (puedeVerMesas()) {
         <div class="modulo-card" (click)="irAGestionMesas()">
           <ion-icon name="restaurant-outline"></ion-icon>
           <h3>Gestión de Mesas</h3>
           <p>Asignación y estado</p>
+        </div>
+      }
+      @if (puedeVerConsultas()) {
+        <div class="modulo-card" (click)="irAConsultasMozo()">
+          <ion-icon name="chatbubbles-outline"></ion-icon>
+          <h3>Mensajes de Clientes</h3>
+          <p>Responder consultas de mesa</p>
+        </div>
+      }
+      @if (puedeVerInfoMesa()) {
+        <div class="modulo-card" (click)="escanearMesaInfo()">
+          <ion-icon name="information-circle-outline"></ion-icon>
+          <h3>Estado de Mesa</h3>
+          <p>{{ escaneandoInfoMesa() ? 'Buscando mesa...' : 'Escanear QR y ver ocupación' }}</p>
         </div>
       }
       @if (puedeVerPedidos()) {

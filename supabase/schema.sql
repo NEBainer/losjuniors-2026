@@ -618,3 +618,99 @@ with check (
   auth.uid() = id
   and perfil = 'cliente_anonimo'
 );
+
+-- =========================================================
+-- v6 (15-16/09/2026): YA APLICADO en la Supabase real por otro
+-- integrante — no volver a ejecutar. Se documenta acá para que el
+-- resto del equipo lo tenga (punto 10: metre asigna mesa).
+-- =========================================================
+
+alter table mesas add column cliente_actual_id uuid references usuarios(id) on delete set null;
+
+-- Único cliente vinculado por mesa a la vez.
+create unique index mesas_cliente_actual_unico
+on mesas (cliente_actual_id)
+where cliente_actual_id is not null;
+
+-- El metre asigna una mesa (UPDATE) solo si está vacía.
+create policy "mesas_metre_asigna"
+on mesas
+for update
+to authenticated
+using ( perfil_actual() = 'metre' and disponibilidad = 'vacia' );
+
+-- El metre necesita ver los datos (nombre, foto) de los clientes que
+-- están en la lista de espera para poder asignarles mesa — la RLS
+-- normal de `usuarios` no se lo permite.
+create policy "usuarios_metre_ve_en_lista_espera"
+on usuarios
+for select
+to authenticated
+using (
+  perfil_actual() = 'metre'
+  and id in (select cliente_id from lista_espera)
+);
+
+-- =========================================================
+-- v7 (2026): Punto 11 — "consulta al mozo". Chat simple entre el
+-- cliente vinculado a una mesa (mesas.cliente_actual_id) y
+-- cualquier mozo. Igual que lista_espera: tabla aparte, no una
+-- columna en otra tabla, porque es su propio hilo de conversación.
+--
+-- remitente_perfil / remitente_nombre van desnormalizados en la fila
+-- en vez de resolverse con un join a `usuarios` al leer: la RLS de
+-- `usuarios` no deja que un cliente vea el perfil de un mozo (ni al
+-- revés), así que un join se rompería. Se guardan una sola vez, al
+-- insertar el mensaje.
+-- =========================================================
+
+create table mensajes_mozo (
+  id uuid primary key default gen_random_uuid(),
+  mesa_id uuid not null references mesas(id) on delete cascade,
+  remitente_id uuid not null references usuarios(id) on delete cascade,
+  remitente_perfil perfil_usuario not null,
+  remitente_nombre text not null,
+  texto text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table mensajes_mozo enable row level security;
+
+-- El cliente vinculado a la mesa manda mensajes en su propio hilo.
+create policy "mensajes_mozo_cliente_envia"
+on mensajes_mozo
+for insert
+to authenticated
+with check (
+  auth.uid() = remitente_id
+  and perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and mesa_id in (select id from mesas where cliente_actual_id = auth.uid())
+);
+
+-- Cualquier mozo puede responder en cualquier mesa.
+create policy "mensajes_mozo_mozo_envia"
+on mensajes_mozo
+for insert
+to authenticated
+with check ( auth.uid() = remitente_id and perfil_actual() = 'mozo' );
+
+-- El cliente ve solo el hilo de su propia mesa.
+create policy "mensajes_mozo_cliente_ve_su_mesa"
+on mensajes_mozo
+for select
+to authenticated
+using (
+  perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and mesa_id in (select id from mesas where cliente_actual_id = auth.uid())
+);
+
+-- Todos los mozos ven todos los hilos (para poder atender cualquiera).
+create policy "mensajes_mozo_mozo_ve_todo"
+on mensajes_mozo
+for select
+to authenticated
+using ( perfil_actual() = 'mozo' );
+
+-- Pendiente (fuera del alcance de esta tanda): activar Realtime para
+-- esta tabla desde el dashboard (Database → Replication), igual que
+-- se hizo con lista_espera.

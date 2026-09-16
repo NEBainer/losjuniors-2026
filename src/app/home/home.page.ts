@@ -2,13 +2,16 @@ import { Component, computed, signal } from '@angular/core';
 import { IonContent, IonIcon } from '@ionic/angular';
 import { AuthService } from '../core/services/auth.service';
 import { UsuariosService } from '../core/services/usuarios.service';
+import { Mesa, MesaService } from '../core/services/mesa.service';
+import { QrAppService } from '../core/services/qr-app.service';
 import { ClientePendiente, PerfilUsuario } from '../core/models/usuario.model';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
 import {
-  bookOutline, checkmarkOutline, fastFoodOutline, listOutline, logOutOutline,
-  peopleOutline, personAddOutline, restaurantOutline, wineOutline,
+  bookOutline, chatbubblesOutline, checkmarkOutline, closeOutline, fastFoodOutline,
+  informationCircleOutline, listOutline, logOutOutline, peopleOutline, personAddOutline,
+  qrCodeOutline, restaurantOutline, wineOutline,
 } from 'ionicons/icons';
 
 // Fila lista para pintar en la lista embebida de pendientes: mismo patrón
@@ -45,6 +48,22 @@ export class HomePage {
   readonly puedeVerAltaEmpleado = computed(() =>
     this.esUnoDe(this.perfil(), ['dueño', 'supervisor']),
   );
+  // Punto 11: solo un cliente (registrado o anónimo) escanea la mesa —
+  // no tiene sentido para empleados.
+  readonly puedeEscanearMesa = computed(() =>
+    this.esUnoDe(this.perfil(), ['cliente_registrado', 'cliente_anonimo']),
+  );
+  // Punto 11: bandeja de consultas al mozo — solo el perfil mozo.
+  readonly puedeVerConsultas = computed(() =>
+    this.esUnoDe(this.perfil(), ['mozo']),
+  );
+  // Requisito excluyente "QR de mesa" (no es un punto numerado propio):
+  // el personal de sala escanea el mismo QR que el cliente, pero en vez
+  // de entrar al menú solo ve los datos de la mesa (número, capacidad,
+  // tipo, disponibilidad) -- no se vincula ni accede al chat/carta.
+  readonly puedeVerInfoMesa = computed(() =>
+    this.esUnoDe(this.perfil(), ['metre', 'mozo', 'dueño', 'supervisor']),
+  );
 
   // Panel especial del dueño/supervisor (correcciones-profesor 13-09):
   // mitad de arriba con los accesos rápidos, mitad de abajo con la lista
@@ -60,14 +79,29 @@ export class HomePage {
   readonly mensajeErrorPendientes = signal('');
   readonly mensajeOkPendientes = signal('');
 
+  readonly escaneandoMesa = signal(false);
+  readonly mensajeErrorEscaneo = signal('');
+
+  // Panel de solo lectura para el personal de sala (ver puedeVerInfoMesa).
+  readonly escaneandoInfoMesa = signal(false);
+  readonly mesaInfoEscaneada = signal<Mesa | null>(null);
+  readonly etiquetasTipo: Record<Mesa['tipo'], string> = {
+    estandar: 'Estándar',
+    vip: 'VIP',
+    movilidad_reducida: 'Movilidad reducida',
+  };
+
   constructor(
     private authService: AuthService,
     private usuariosService: UsuariosService,
+    private mesaService: MesaService,
+    private qrAppService: QrAppService,
     private router: Router,
   ) {
     addIcons({
       logOutOutline, restaurantOutline, listOutline, peopleOutline, personAddOutline,
-      fastFoodOutline, wineOutline, bookOutline, checkmarkOutline,
+      fastFoodOutline, wineOutline, bookOutline, checkmarkOutline, qrCodeOutline,
+      chatbubblesOutline, informationCircleOutline, closeOutline,
     });
   }
 
@@ -154,6 +188,10 @@ export class HomePage {
     this.router.navigate(['/mesas']);
   }
 
+  irAConsultasMozo() {
+    this.router.navigate(['/consultas-mozo']);
+  }
+
   irAAltaPlato() {
     this.router.navigate(['/cocinero/plato-alta']);
   }
@@ -168,6 +206,78 @@ export class HomePage {
   // escaneando el QR de la mesa.
   irALaCarta() {
     this.router.navigate(['/carta']);
+  }
+
+  // Punto 11: escanea el QR de la mesa ({"tipo":"mesa","numero":N}, ver
+  // QrAppService) y navega al menú de esa mesa puntual. Mismo patrón de
+  // manejo de errores que escanearIngreso() en login.page.ts.
+  async escanearMesa() {
+    this.escaneandoMesa.set(true);
+    try {
+      const datos = await this.qrAppService.escanear();
+      if (!datos) return; // el usuario canceló el escaneo
+
+      if (datos.tipo !== 'mesa') {
+        this.dispararErrorEscaneo('Ese código no es el de una mesa.');
+        return;
+      }
+
+      const mesa = await this.mesaService.buscarPorNumero(datos.numero);
+      if (!mesa) {
+        this.dispararErrorEscaneo(`No encontramos la mesa ${datos.numero}.`);
+        return;
+      }
+
+      this.router.navigate(['/mesa', mesa.numero, 'carta']);
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : 'No se pudo leer el código.';
+      this.dispararErrorEscaneo(mensaje);
+    } finally {
+      this.escaneandoMesa.set(false);
+    }
+  }
+
+  private async dispararErrorEscaneo(mensaje: string) {
+    this.mensajeErrorEscaneo.set(mensaje);
+    try {
+      await Haptics.impact({ style: ImpactStyle.Heavy });
+    } catch {
+      // Ignorar si el dispositivo/navegador no soporta vibración.
+    }
+    setTimeout(() => this.mensajeErrorEscaneo.set(''), 4000);
+  }
+
+  // Requisito excluyente "QR de mesa": mismo QR que escanearMesa(), pero
+  // acá el personal de sala solo consulta el estado de la mesa -- no se
+  // vincula a ella ni navega a ningún lado, se queda en el home.
+  async escanearMesaInfo() {
+    this.escaneandoInfoMesa.set(true);
+    try {
+      const datos = await this.qrAppService.escanear();
+      if (!datos) return; // el usuario canceló el escaneo
+
+      if (datos.tipo !== 'mesa') {
+        this.dispararErrorEscaneo('Ese código no es el de una mesa.');
+        return;
+      }
+
+      const mesa = await this.mesaService.buscarPorNumero(datos.numero);
+      if (!mesa) {
+        this.dispararErrorEscaneo(`No encontramos la mesa ${datos.numero}.`);
+        return;
+      }
+
+      this.mesaInfoEscaneada.set(mesa);
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : 'No se pudo leer el código.';
+      this.dispararErrorEscaneo(mensaje);
+    } finally {
+      this.escaneandoInfoMesa.set(false);
+    }
+  }
+
+  cerrarInfoMesa() {
+    this.mesaInfoEscaneada.set(null);
   }
 
   async ejecutarCierreSesion() {

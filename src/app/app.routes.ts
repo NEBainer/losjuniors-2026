@@ -77,4 +77,26 @@ export const routes: Routes = [
     path: 'ingreso-anonimo',
     loadComponent: () => import('./pages/ingreso-anonimo/ingreso-anonimo.page').then( m => m.IngresoAnonimoPage)
   },
+  {
+    // Punto 11: el cliente llega acá escaneando el QR de la mesa (o desde
+    // el botón "Escanear Mesa" en home). Mismo componente que 'carta', con
+    // el número de mesa en la ruta para poder mostrar el botón "consultar
+    // al mozo".
+    path: 'mesa/:numero/carta',
+    loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
+  },
+  {
+    // 'mozo' se suma al guard: esta misma pantalla la usa tanto el
+    // cliente (manda la consulta) como el mozo que la abre desde la
+    // bandeja de 'consultas-mozo' para responder.
+    path: 'mesa/:numero/consulta-mozo',
+    loadComponent: () => import('./pages/consulta-mozo/consulta-mozo.page').then(m => m.ConsultaMozoPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo', 'mozo'])]
+  },
+  {
+    // Bandeja del mozo (punto 11): listado de mesas con consulta abierta.
+    path: 'consultas-mozo',
+    loadComponent: () => import('./pages/consultas-mozo/consultas-mozo.page').then(m => m.ConsultasMozoPage),
+    canActivate: [authGuard, guardPerfil(['mozo'])]
+  },
 ]

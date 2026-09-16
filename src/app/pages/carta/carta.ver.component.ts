@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonHeader,
   IonToolbar,
@@ -9,11 +10,14 @@ import {
   IonNote,
   IonButton,
   IonIcon,
+  IonFab,
+  IonFabButton,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { fastFoodOutline, wineOutline, timeOutline, pricetagOutline, refreshOutline, restaurantOutline } from 'ionicons/icons';
+import { fastFoodOutline, wineOutline, timeOutline, pricetagOutline, refreshOutline, restaurantOutline, chatbubbleEllipsesOutline } from 'ionicons/icons';
 import { ProductoService, ProductoCarta } from '../producto/producto.service';
 import { CarruselFotosComponent } from './carrusel-fotos.component';
+import { MesaService } from '../../core/services/mesa.service';
 
 /**
  * carta.ver.component.ts
@@ -50,6 +54,8 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
     IonNote,
     IonButton,
     IonIcon,
+    IonFab,
+    IonFabButton,
     CarruselFotosComponent,
   ],
   host: { class: 'ion-page' },
@@ -112,6 +118,17 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
       </div>
     </article>
   </div>
+
+  <!-- Punto 11: solo aparece cuando se entra desde el QR de una mesa
+       (ruta 'mesa/:numero/carta') -- la ruta 'carta' a secas (acceso
+       directo desde home, sin mesa) no tiene a quién mandarle la consulta. -->
+  @if (mesaId()) {
+    <ion-fab class="fab-consultar-mozo" vertical="bottom" horizontal="end" slot="fixed">
+      <ion-fab-button (click)="irAConsultarMozo()">
+        <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
+  }
 
 </ion-content>
   `,
@@ -308,6 +325,20 @@ ion-header ion-toolbar {
   gap: 4px;
 }
 
+ion-fab-button {
+  --background: var(--marron);
+  --color: var(--crema);
+  --box-shadow: 0 4px 10px rgba(91, 42, 23, 0.35);
+}
+
+// Probado en dispositivo real (gestos de Android): pegado al borde,
+// ion-fab quedaba justo debajo de la barra de gestos del sistema y
+// costaba tocarlo. 20px de aire además del safe-area, no solo el inset.
+.fab-consultar-mozo {
+  margin-bottom: calc(20px + env(safe-area-inset-bottom));
+  margin-right: 4px;
+}
+
 .velo-cargando {
   position: fixed;
   inset: 0;
@@ -330,10 +361,19 @@ ion-header ion-toolbar {
 })
 export class CartaVerComponent implements OnInit {
   private readonly productoService = inject(ProductoService);
+  private readonly mesaService = inject(MesaService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   private readonly carta = signal<ProductoCarta[]>([]);
+
+  // Punto 11: solo se completa si se entró por 'mesa/:numero/carta'. En
+  // 'carta' a secas (acceso directo desde home) queda null y no se muestra
+  // el botón de consulta al mozo.
+  protected readonly mesaId = signal<string | null>(null);
+  private mesaNumero: number | null = null;
 
   // Un solo feed (platos primero, bebidas después) en vez de dos listados
   // separados: el formato "página" pide un scroll vertical continuo que
@@ -353,11 +393,34 @@ export class CartaVerComponent implements OnInit {
       'pricetag-outline': pricetagOutline,
       'refresh-outline': refreshOutline,
       'restaurant-outline': restaurantOutline,
+      'chatbubble-ellipses-outline': chatbubbleEllipsesOutline,
     });
   }
 
   ngOnInit(): void {
     this.cargarCarta();
+    this.resolverMesa();
+  }
+
+  private async resolverMesa(): Promise<void> {
+    const numeroParam = this.route.snapshot.paramMap.get('numero');
+    if (!numeroParam) return;
+
+    try {
+      const mesa = await this.mesaService.buscarPorNumero(Number(numeroParam));
+      if (mesa) {
+        this.mesaId.set(mesa.id);
+        this.mesaNumero = mesa.numero;
+      }
+    } catch {
+      // Sin mesa resuelta, el FAB de "consultar al mozo" simplemente no
+      // aparece -- no es un error bloqueante para ver el menú.
+    }
+  }
+
+  protected irAConsultarMozo(): void {
+    if (this.mesaNumero === null) return;
+    this.router.navigate(['/mesa', this.mesaNumero, 'consulta-mozo']);
   }
 
   protected async cargarCarta(): Promise<void> {

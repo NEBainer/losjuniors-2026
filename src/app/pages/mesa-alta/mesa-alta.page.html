@@ -32,7 +32,7 @@
       <div class="resultado-alta">
         <ion-icon name="checkmark-circle" class="icono-exito"></ion-icon>
         <h2>Mesa {{ mesaCreada.numero }} creada</h2>
-        <p>Código: {{ mesaCreada.qr_code }}</p>
+        <p>Escaneá este código para probarlo desde la app del cliente</p>
 
         @if (qrDataUrl) {
           <img [src]="qrDataUrl" alt="Código QR de la mesa" class="qr-generado" />

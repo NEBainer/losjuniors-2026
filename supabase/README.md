@@ -92,6 +92,14 @@ de vida de "soy cliente de La Mesa" con el de "estoy físicamente en el
 local ahora". `cliente_id` es `unique`: un cliente no puede anotarse
 dos veces a la lista de espera.
 
+**`mensajes_mozo` (punto 11): remitente desnormalizado, no un join**
+`remitente_perfil` y `remitente_nombre` se guardan en cada fila en vez
+de resolverse con un join a `usuarios` al leer el chat. Motivo: la RLS
+de `usuarios` no deja que un cliente vea el perfil de un mozo (ni al
+revés), así que un join ahí se rompe silenciosamente (0 filas, no
+error). Guardarlo una vez al insertar evita depender de esa policy en
+cada lectura del chat.
+
 ## Función auxiliar: `perfil_actual()`
 
 Se usa en todas las políticas RLS que dependen del perfil del usuario
@@ -412,11 +420,22 @@ confianza que sobre Storage.
 - Punto 9 (cliente anónimo): DB lista y confirmada (policies + Realtime).
   Falta la pantalla del metre viendo la lista en vivo — corresponde al
   punto 10, coordinar con quien lo desarrolle.
-- Punto 10: asignación de mesa desde la lista de espera — no empezado.
+- Punto 10: `mesas.cliente_actual_id` + índice único parcial
+  `mesas_cliente_actual_unico` + policy `mesas_metre_asigna` (UPDATE,
+  metre, solo si `disponibilidad = 'vacia'`) + policy
+  `usuarios_metre_ve_en_lista_espera` ya corridas en Supabase
+  (15-16/09/2026, documentadas en `schema.sql` v6). Falta la pantalla
+  del metre que las use (ver lista de espera en vivo y asignar mesa).
 - Punto 9 (cliente anónimo): **funcionando de punta a punta** —
   ingreso vía QR + registro anónimo + lista de espera confirmados
   en dispositivo real (14/09/2026). Falta la pantalla del metre
   viendo la lista en vivo — corresponde al punto 10.
+- Punto 11 (consulta al mozo): tabla `mensajes_mozo` + policies
+  agregadas (`schema.sql` v7) — falta correrlas en Supabase y activar
+  Realtime para esa tabla. Lado cliente (ver carta desde el QR de
+  mesa + mandar consulta + ver el historial en vivo) implementado.
+  Bandeja del mozo (listar consultas, responder, notificación) queda
+  para la próxima tanda.
 
   ## Sistema de mail automático (puntos 7/8)
 
