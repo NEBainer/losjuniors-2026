@@ -139,7 +139,53 @@
       font-size: 1rem;
       opacity: 0.8;
     }
+
+    // Punto 10: acción principal de la sección de lista de espera del
+    // cliente_registrado — mismo tamaño/padding que el resto de las
+    // .modulo-card, distinta de color para que se note que no es una
+    // card de navegación más sino la acción destacada de este perfil.
+    &.modulo-destacado {
+      background-color: var(--ion-color-primary);
+      border-color: var(--ion-color-primary);
+      color: var(--ion-color-primary-contrast);
+
+      ion-icon {
+        color: var(--ion-color-primary-contrast);
+      }
+    }
+
+    // Punto 10: "ya tenés mesa asignada" — informativa, no navega a nada
+    // (sin QR todavía, ver AVANCES.md gap #17), mismo criterio de color
+    // semántico que .estado-espera.aceptado en lista-espera.page.scss
+    // (verde = ya resuelto).
+    &.modulo-informativo {
+      cursor: default;
+      border-color: var(--ion-color-success);
+
+      ion-icon {
+        color: var(--ion-color-success);
+      }
+
+      &:active {
+        opacity: 1; // no es clickeable, no debe reaccionar al toque
+      }
+    }
   }
+}
+
+// Punto 10: banner de error de "unirse a la lista de espera" — vive fuera
+// de .seccion-pendientes (esa versión de .mensaje-error es solo para ese
+// bloque), así que hace falta esta versión suelta, mismo estilo visual.
+.mensaje {
+  font-size: 0.9rem;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.mensaje-error {
+  background: rgba(179, 38, 30, 0.15);
+  color: var(--ion-color-danger);
 }
 
 .seccion-pendientes {

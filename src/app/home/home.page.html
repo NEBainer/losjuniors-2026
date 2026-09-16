@@ -1,11 +1,11 @@
 <ion-content class="fondo-app">
-  
-  @if (cargando) {
+
+  @if (cargando || cargandoListaEspera()) {
     <div class="overlay-cargando">
       <div class="contenedor-spinner">
         <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
         <div class="spinner-css"></div>
-        <p>Cerrando sesión de forma segura...</p>
+        <p>{{ cargando ? 'Cerrando sesión de forma segura...' : 'Anotándote en la lista de espera...' }}</p>
       </div>
     </div>
   }
@@ -58,7 +58,38 @@
           <p>Alta de nueva bebida</p>
         </div>
       }
+      @if (esMetre()) {
+        <div class="modulo-card" (click)="irAListaEsperaMetre()">
+          <ion-icon name="time-outline"></ion-icon>
+          <h3>Lista de Espera</h3>
+          <p>Asignar mesa a clientes</p>
+        </div>
+      }
+      <!-- Punto 10: cliente_registrado se anota a la lista de espera, o ve
+           que ya tiene una mesa asignada si el metre ya se la dio. Va
+           adentro de .grilla-modulos (no en una sección aparte) para
+           heredar el estilo de .modulo-card, que solo está definido
+           anidado acá abajo. -->
+      @if (puedeUnirseListaEspera()) {
+        @if (mesaAsignada(); as mesa) {
+          <div class="modulo-card modulo-informativo">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+            <h3>Mesa {{ mesa.numero }} asignada</h3>
+            <p>Dirigite al metre</p>
+          </div>
+        } @else {
+          <div class="modulo-card modulo-destacado" (click)="unirseListaEspera()">
+            <ion-icon name="time-outline"></ion-icon>
+            <h3>Anotarme en la Lista de Espera</h3>
+            <p>El metre te va a asignar una mesa</p>
+          </div>
+        }
+      }
     </div>
+
+    @if (mensajeErrorListaEspera()) {
+      <div class="mensaje mensaje-error">{{ mensajeErrorListaEspera() }}</div>
+    }
 
     <!-- Panel del dueño/supervisor (correcciones-profesor 13-09): en vez de
          una tarjeta que navega a otra pantalla, la lista de pendientes
