@@ -99,4 +99,12 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/consultas-mozo/consultas-mozo.page').then(m => m.ConsultasMozoPage),
     canActivate: [authGuard, guardPerfil(['mozo'])]
   },
+  {
+    // Punto 10: solo metre, es quien tiene la policy `mesas_metre_asigna`
+    // (dueño/supervisor ven la cola por otra policy, pero no es su flujo
+    // de asignación acá).
+    path: 'metre/lista-espera',
+    loadComponent: () => import('./pages/metre-lista-espera/metre-lista-espera.page').then(m => m.MetreListaEsperaPage),
+    canActivate: [authGuard, guardPerfil(['metre'])]
+  },
 ]

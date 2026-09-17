@@ -1,0 +1,208 @@
+.fondo-app {
+  --background: var(--ion-background-color);
+}
+
+.contenedor-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cabecera-pagina {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .titulo {
+    flex-grow: 1;
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--ion-color-primary);
+      margin: 0 0 4px 0;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.85;
+    }
+  }
+}
+
+.mensaje {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+
+  ion-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+}
+
+.mensaje-error {
+  background-color: var(--ion-color-danger);
+  color: #FCF7EE;
+}
+
+.mensaje-ok {
+  background-color: var(--ion-color-success);
+  color: var(--ion-color-success-contrast);
+}
+
+.seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cabecera-seccion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  ion-icon {
+    font-size: 1.3rem;
+    color: var(--ion-color-primary);
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--ion-text-color);
+  }
+}
+
+.estado-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  opacity: 0.75;
+
+  ion-icon {
+    font-size: 2.2rem;
+    color: var(--ion-color-primary);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+}
+
+/* Cola de clientes: fila seleccionable, no hay diálogo de confirmación */
+.lista-cola {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fila-cliente {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--ion-color-step-100);
+  border: 2px solid var(--ion-color-step-150);
+  border-radius: 12px;
+  padding: 10px 14px;
+
+  &.seleccionada {
+    border-color: var(--ion-color-primary);
+    background-color: var(--ion-color-step-150);
+  }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: var(--ion-color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .inicial {
+      color: var(--ion-color-primary-contrast);
+      font-weight: bold;
+    }
+  }
+
+  .nombre {
+    flex-grow: 1;
+    font-weight: 600;
+    color: var(--ion-text-color);
+  }
+
+  .icono-seleccionado {
+    color: var(--ion-color-success);
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+}
+
+/* Mesas disponibles: cada una es un botón, tocarla asigna directo */
+.lista-mesas {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.tarjeta-mesa-seleccionable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--ion-color-step-100);
+  border: 2px solid var(--ion-color-step-150);
+  border-radius: 12px;
+  padding: 16px 8px;
+  color: var(--ion-text-color);
+
+  ion-icon {
+    font-size: 1.8rem;
+    color: var(--ion-color-primary);
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: bold;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.8rem;
+    text-align: center;
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+
+  &.asignando {
+    opacity: 1;
+
+    ion-spinner {
+      width: 28px;
+      height: 28px;
+      color: var(--ion-color-primary);
+    }
+  }
+}

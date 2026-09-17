@@ -114,6 +114,61 @@ export class MesaService {
     }
   }
 
+  // Punto 10: la mesa que tiene asignada (si tiene) el cliente logueado.
+  // `mesas_lectura_autenticados` (using true) ya alcanza para esto — no
+  // hace falta ninguna policy nueva, cualquier autenticado puede leer
+  // cualquier mesa, acá solo filtramos por su propio id.
+  async obtenerMesaAsignada(clienteId: string): Promise<Mesa | null> {
+    const { data, error } = await this.supabase
+      .from('mesas')
+      .select('id, numero, cantidad_comensales, tipo, disponibilidad, foto_url, qr_code, cliente_actual_id')
+      .eq('cliente_actual_id', clienteId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error('No se pudo verificar si ya tenés una mesa asignada.');
+    }
+
+    return data;
+  }
+
+  // Punto 10: el metre asigna una mesa vacía a un cliente. La policy
+  // `mesas_metre_asigna` exige perfil metre Y disponibilidad = 'vacia' en
+  // el `using` — si otro metre ya la tomó justo antes (o el usuario no es
+  // metre), el update no afecta ninguna fila y `.single()` lo reporta como
+  // error, no como éxito silencioso. El índice único parcial
+  // `mesas_cliente_actual_unico` cubre el otro caso (mismo cliente en dos
+  // mesas): llega como error 23505.
+  async asignarCliente(mesaId: string, clienteId: string) {
+    const { error } = await this.supabase
+      .from('mesas')
+      .update({ disponibilidad: 'ocupada', cliente_actual_id: clienteId })
+      .eq('id', mesaId)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('Ese cliente ya tiene una mesa asignada.');
+      }
+      throw new Error('La mesa ya no está disponible. Elegí otra.');
+    }
+
+    // Una vez asignada la mesa, el cliente deja de estar "esperando" ->
+    // sale de lista_espera acá mismo, no como paso aparte que la pantalla
+    // del metre podría olvidarse de llamar. Policy `lista_espera_metre_elimina`
+    // (metre/dueño/supervisor) ya cubre este delete, sin policy nueva.
+    // Si este paso fallara no deshacemos la asignación (ya está confirmada
+    // y es lo importante) — solo queda una fila vieja en la cola, que el
+    // gap #27 de AVANCES.md ya identifica como limpieza pendiente antes
+    // de demo, no como un problema de seguridad.
+    try {
+      await this.supabase.from('lista_espera').delete().eq('cliente_id', clienteId);
+    } catch {
+      // No bloquea el éxito de la asignación.
+    }
+  }
+
   async tomarFoto(): Promise<string> {
     const foto = await Camera.takePhoto({ quality: 80 });
     return foto.webPath!;

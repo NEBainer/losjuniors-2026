@@ -5,6 +5,9 @@
 -- + policy de Storage para que dueño/supervisor suban la foto de un
 -- empleado nuevo. Ver supabase/README.md para el detalle completo de
 -- decisiones, pruebas realizadas y pendientes.
+-- v6 (16/09/2026): vínculo cliente↔mesa asignada + policy de UPDATE
+-- para el metre (punto 10). Ver bloque "v6" al final del archivo y
+-- supabase/README.md.
 -- =========================================================
 
 -- =========================================================
@@ -359,15 +362,22 @@ cross join generate_series(1, 3) as s(orden);
 
 -- =========================================================
 -- 9. MESAS DE PRUEBA (5 mesas)
--- qr_code: valor placeholder, a definir con el equipo el formato final.
+-- qr_code: formato decidido por el equipo (16/09/2026, ver gap #17 en
+-- AVANCES.md) - JSON discriminado por `tipo`, igual patrón que ya usa
+-- QrAppService para el QR de ingreso: {"tipo":"mesa","numero":N}, con
+-- `numero` (no `id`/uuid) para no tocar el tipado ya existente.
+-- OJO: esto es el valor que la DB considera "correcto" para probar el
+-- punto 10/11 - `mesa.service.ts` (punto 4) todavía no lo genera así
+-- en runtime, sigue emitiendo `MESA-{numero}` en texto plano. Falta
+-- coordinar esa actualización con quien tenga el punto 4.
 -- =========================================================
 
 insert into mesas (numero, cantidad_comensales, tipo, qr_code, creado_por) values
-  (1, 2, 'estandar',           'MESA-1', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (2, 4, 'estandar',           'MESA-2', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (3, 4, 'vip',                'MESA-3', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (4, 6, 'estandar',           'MESA-4', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (5, 2, 'movilidad_reducida', 'MESA-5', '3c6e305d-5593-4bde-a69a-7262e12e2611');
+  (1, 2, 'estandar',           '{"tipo":"mesa","numero":1}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (2, 4, 'estandar',           '{"tipo":"mesa","numero":2}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (3, 4, 'vip',                '{"tipo":"mesa","numero":3}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (4, 6, 'estandar',           '{"tipo":"mesa","numero":4}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (5, 2, 'movilidad_reducida', '{"tipo":"mesa","numero":5}', '3c6e305d-5593-4bde-a69a-7262e12e2611');
 
   -- =========================================================
 -- 10. STORAGE: bucket "fotos"
@@ -620,35 +630,56 @@ with check (
 );
 
 -- =========================================================
--- v6 (15-16/09/2026): YA APLICADO en la Supabase real por otro
--- integrante — no volver a ejecutar. Se documenta acá para que el
--- resto del equipo lo tenga (punto 10: metre asigna mesa).
+-- v6 (16/09/2026): vínculo cliente↔mesa asignada, punto 10 (metre
+-- asigna mesa a cliente). Corrida y confirmada en el SQL Editor.
+-- Se agrega a `mesas` en vez de crear una tabla nueva: es una
+-- extensión natural del estado transitorio que ya representa
+-- `disponibilidad` (vacia/ocupada), no un dato permanente. Ver
+-- supabase/README.md para el detalle de la decisión.
 -- =========================================================
 
 alter table mesas add column cliente_actual_id uuid references usuarios(id) on delete set null;
 
--- Único cliente vinculado por mesa a la vez.
+-- Garantiza a nivel DB que un mismo cliente no puede estar vinculado a
+-- dos mesas a la vez (punto 10: "verificar que el cliente no pueda
+-- vincularse con otra mesa"). Parcial porque NULL (mesa vacía) es el
+-- estado normal y no debe contar para la unicidad.
 create unique index mesas_cliente_actual_unico
-on mesas (cliente_actual_id)
-where cliente_actual_id is not null;
+  on mesas (cliente_actual_id) where cliente_actual_id is not null;
 
--- El metre asigna una mesa (UPDATE) solo si está vacía.
+-- UPDATE: el metre asigna una mesa a un cliente. El `using` exige que
+-- la mesa esté 'vacia' en el momento del update -> si dos asignaciones
+-- llegan casi al mismo tiempo sobre la misma mesa, la segunda encuentra
+-- la fila ya en 'ocupada' y es rechazada por la policy. Cubre a nivel
+-- DB el requisito del enunciado de "verificar que NO se le pueda
+-- asignar dicha mesa a otro cliente". Convive con
+-- "mesas_dueño_supervisor_actualiza" (dueño/supervisor siguen pudiendo
+-- modificar disponibilidad sin esta restricción, ej. para liberar una
+-- mesa manualmente).
 create policy "mesas_metre_asigna"
 on mesas
 for update
 to authenticated
-using ( perfil_actual() = 'metre' and disponibilidad = 'vacia' );
+using ( perfil_actual() = 'metre' and disponibilidad = 'vacia' )
+with check ( perfil_actual() = 'metre' );
 
--- El metre necesita ver los datos (nombre, foto) de los clientes que
--- están en la lista de espera para poder asignarles mesa — la RLS
--- normal de `usuarios` no se lo permite.
+-- El metre puede leer `lista_espera` (policy `lista_espera_metre_ve_todo`,
+-- ya existente desde el punto 9) pero no está incluido en
+-- `dueño_supervisor_ven_todos_usuarios` (esa es solo dueño/supervisor) ->
+-- sin esto, la vista del metre solo podía mostrar el `cliente_id` (UUID)
+-- de cada fila de la cola, sin poder resolverlo a nombre/foto reales.
+-- Policy acotada, no una ampliación de la existente: el metre solo ve las
+-- filas de `usuarios` que corresponden a alguien que está ahora mismo en
+-- `lista_espera`, no a cualquier empleado/cliente de la base.
 create policy "usuarios_metre_ve_en_lista_espera"
 on usuarios
 for select
 to authenticated
 using (
   perfil_actual() = 'metre'
-  and id in (select cliente_id from lista_espera)
+  and exists (
+    select 1 from lista_espera le where le.cliente_id = usuarios.id
+  )
 );
 
 -- =========================================================
