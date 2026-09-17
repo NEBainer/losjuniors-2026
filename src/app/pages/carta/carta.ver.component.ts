@@ -1,9 +1,11 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonHeader,
   IonToolbar,
   IonTitle,
+  IonButtons,
   IonContent,
   IonSpinner,
   IonNote,
@@ -11,8 +13,19 @@ import {
   IonIcon,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { fastFoodOutline, wineOutline, timeOutline, pricetagOutline, refreshOutline, restaurantOutline } from 'ionicons/icons';
+import {
+  fastFoodOutline,
+  wineOutline,
+  timeOutline,
+  pricetagOutline,
+  refreshOutline,
+  restaurantOutline,
+  receiptOutline,
+  personOutline,
+  warning,
+} from 'ionicons/icons';
 import { ProductoService, ProductoCarta } from '../producto/producto.service';
+import { MesaService } from '../../core/services/mesa.service';
 import { CarruselFotosComponent } from './carrusel-fotos.component';
 @Component({
   selector: 'app-carta-ver',
@@ -22,6 +35,7 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
     IonHeader,
     IonToolbar,
     IonTitle,
+    IonButtons,
     IonContent,
     IonSpinner,
     IonNote,
@@ -34,6 +48,16 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
 <ion-header>
   <ion-toolbar>
     <ion-title>La Carta</ion-title>
+    <ion-buttons slot="end">
+      <ion-button *ngIf="!pedidoEnCurso()" fill="clear" [disabled]="tomandoLock()" (click)="crearPedido()">
+        <ion-icon name="receipt-outline" slot="start"></ion-icon>
+        Pedido
+      </ion-button>
+      <div class="badge-pedido-en-curso" *ngIf="pedidoEnCurso()">
+        <ion-icon name="person-outline"></ion-icon>
+        <span>{{ pedidoEnCurso() }}</span>
+      </div>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
@@ -42,6 +66,11 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
      la pantalla, formato página; scroll vertical pasa al
      siguiente/anterior producto"). -->
 <ion-content class="fondo-carta" [scrollY]="false">
+
+  <div class="banner-error" *ngIf="mensajeError()">
+    <ion-icon name="warning"></ion-icon>
+    <span>{{ mensajeError() }}</span>
+  </div>
 
   <div class="velo-cargando" *ngIf="cargando()">
     <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-spinner" />
@@ -280,6 +309,40 @@ ion-header ion-toolbar {
   gap: 4px;
 }
 
+.badge-pedido-en-curso {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(244, 234, 218, 0.18);
+  color: var(--crema);
+  font-size: 0.85rem;
+  font-weight: 600;
+  max-width: 160px;
+}
+.badge-pedido-en-curso span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banner-error {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--rojo-error);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
 .velo-cargando {
   position: fixed;
   inset: 0;
@@ -300,12 +363,27 @@ ion-header ion-toolbar {
 }
   `],
 })
-export class CartaVerComponent implements OnInit {
+export class CartaVerComponent implements OnInit, OnDestroy {
   private readonly productoService = inject(ProductoService);
+  private readonly mesaService = inject(MesaService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  // ⚠️ Ruta temporal 'carta/:mesaId' (ver app.routes.ts) hasta que el
+  // punto 10 (QR de mesa) esté resuelto -- mismo criterio que ya usa
+  // PedidoPage.
+  private readonly mesaId = this.route.snapshot.paramMap.get('mesaId')!;
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   private readonly carta = signal<ProductoCarta[]>([]);
+
+  // Punto 12 (nuevo enfoque): lock de armado de pedido por mesa. null =
+  // libre; con nombre = alguien ya está adentro armando el suyo.
+  protected readonly pedidoEnCurso = signal<string | null>(null);
+  protected readonly tomandoLock = signal(false);
+  protected readonly mensajeError = signal('');
+  private canalLock: ReturnType<MesaService['escucharPedidoEnCurso']> | null = null;
 
   // Un solo feed (platos primero, bebidas después) en vez de dos listados
   // separados: el formato "página" pide un scroll vertical continuo que
@@ -325,11 +403,58 @@ export class CartaVerComponent implements OnInit {
       'pricetag-outline': pricetagOutline,
       'refresh-outline': refreshOutline,
       'restaurant-outline': restaurantOutline,
+      'receipt-outline': receiptOutline,
+      'person-outline': personOutline,
+      warning,
     });
   }
 
   ngOnInit(): void {
     this.cargarCarta();
+    this.cargarEstadoPedidoEnCurso();
+    this.canalLock = this.mesaService.escucharPedidoEnCurso(this.mesaId, (nombre) => {
+      this.pedidoEnCurso.set(nombre);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.canalLock?.unsubscribe();
+  }
+
+  // Estado inicial del lock al entrar a la pantalla -- escucharPedidoEnCurso
+  // solo avisa de cambios FUTUROS (Realtime), no si alguien ya estaba
+  // adentro antes de que este componente se suscribiera.
+  private async cargarEstadoPedidoEnCurso(): Promise<void> {
+    try {
+      const mesa = await this.mesaService.obtenerMesa(this.mesaId);
+      this.pedidoEnCurso.set(mesa.pedido_en_armado_por);
+    } catch (e) {
+      console.error('No se pudo obtener el estado del pedido en curso', e);
+    }
+  }
+
+  protected async crearPedido(): Promise<void> {
+    if (this.tomandoLock() || this.pedidoEnCurso()) return;
+    this.tomandoLock.set(true);
+    try {
+      const obtuvoLock = await this.mesaService.tomarPedidoEnCurso(this.mesaId);
+      if (obtuvoLock) {
+        this.router.navigate(['/mesa', this.mesaId, 'pedido']);
+      }
+      // Si no lo obtuvo, alguien lo tomó una fracción de segundo antes --
+      // el mensaje "Fulano está armando el pedido" ya aparece solo por
+      // Realtime, no hace falta avisar nada más acá.
+    } catch (e) {
+      console.error('No se pudo iniciar el pedido', e);
+      this.dispararErrorTransitorio(e instanceof Error ? e.message : 'No se pudo iniciar el pedido.');
+    } finally {
+      this.tomandoLock.set(false);
+    }
+  }
+
+  private dispararErrorTransitorio(mensaje: string): void {
+    this.mensajeError.set(mensaje);
+    setTimeout(() => this.mensajeError.set(''), 4000);
   }
 
   protected async cargarCarta(): Promise<void> {

@@ -290,7 +290,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   --dorado: #c68a34;
   --texto-gris: #9c9186;
   --rojo-error: #b3261e;
-  color-scheme: only light; /
+  color-scheme: only light;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;

@@ -63,10 +63,27 @@ export const routes: Routes = [
   {
     // ⚠️ TEMPORAL para probar la pantalla — el punto 11 en el TP se llega
     // escaneando el QR de la mesa (punto 10), no navegando a una ruta fija.
-    // Cuando esté armado ese flujo, sacar esta ruta o adaptarla (capaz
-    // termine siendo 'mesa/:mesaId/carta' o similar) y decidir si necesita
-    // guard — hoy no tiene ninguno.
-    path: 'carta',
+    // Ahora lleva :mesaId (punto 12, nuevo enfoque: el botón "Crear
+    // pedido" y el lock de armado necesitan saber en qué mesa está el
+    // comensal). Cuando esté armado el flujo de QR, ver si esta ruta se
+    // reemplaza directo por él — sin guard todavía, mismo motivo que
+    // 'mesa/:mesaId/pedido'.
+    path: 'carta/:mesaId',
     loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
+  },
+  {
+    // Punto 12: pedido completo de la mesa. Ruta con :mesaId siguiendo el
+    // mismo criterio que dejamos anotado en 'carta' — cuando el punto 10
+    // (QR de mesa) esté resuelto, el cliente va a llegar acá navegando
+    // directo con el id de su mesa, en vez de por un link fijo. Sin guard
+    // por ahora, mismo motivo que 'carta': todavía no hay sesión de
+    // cliente_anonimo resuelta (ver aviso en supabase/schema.sql).
+    path: 'mesa/:mesaId/pedido',
+    loadComponent: () => import('./pages/pedido/pedido.page').then(m => m.PedidoPage)
+  },
+  {
+    path: 'mozo/pedidos',
+    loadComponent: () => import('./pages/pedidos-mozo/pedidos-mozo.page').then(m => m.PedidosMozoPage),
+    canActivate: [authGuard, guardPerfil(['mozo'])]
   },
 ];
