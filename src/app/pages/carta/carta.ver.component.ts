@@ -55,7 +55,7 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
   <ion-toolbar>
     <ion-title>La Carta</ion-title>
     <ion-buttons slot="end">
-      <ion-button *ngIf="!pedidoEnCurso()" fill="clear" [disabled]="tomandoLock()" (click)="crearPedido()">
+      <ion-button *ngIf="mesaId() && !pedidoEnCurso()" fill="clear" [disabled]="tomandoLock()" (click)="crearPedido()">
         <ion-icon name="receipt-outline" slot="start"></ion-icon>
         Pedido
       </ion-button>
@@ -410,7 +410,7 @@ export class CartaVerComponent implements OnInit, OnDestroy {
   // se conoce en el segundo caso -- lo necesita irAConsultarMozo() para
   // armar la ruta 'mesa/:numero/consulta-mozo'.
   protected readonly mesaId = signal<string | null>(null);
-  private mesaNumero: number | null = null;
+  protected mesaNumero: number | null = null;
 
   // Punto 12 (nuevo enfoque): lock de armado de pedido por mesa. null =
   // libre; con nombre = alguien ya está adentro armando el suyo.

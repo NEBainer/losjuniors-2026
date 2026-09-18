@@ -61,6 +61,17 @@ export const routes: Routes = [
     canActivate: [authGuard, guardPerfil(['cantinero'])]
   },
   {
+    // Punto 11: "Ver la Carta" desde el home (home.page.ts / irALaCarta()),
+    // sin mesa asociada -- cualquier usuario logueado puede consultar el
+    // menú completo. Faltaba esta ruta: el botón navegaba a '/carta' pero
+    // solo existía 'carta/:mesaId', así que el router no matcheaba nada y
+    // no pasaba nada al tocarlo. CartaVerComponent ya soporta entrar sin
+    // 'numero' ni 'mesaId' (ver resolverMesa()): carga la carta igual,
+    // solo quedan sin efecto el FAB de consultar al mozo y "Crear pedido".
+    path: 'carta',
+    loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
+  },
+  {
     // ⚠️ TEMPORAL para probar la pantalla — el punto 11 en el TP se llega
     // escaneando el QR de la mesa (punto 10), no navegando a una ruta fija.
     // Ahora lleva :mesaId (punto 12, nuevo enfoque: el botón "Crear

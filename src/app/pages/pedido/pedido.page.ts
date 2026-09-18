@@ -29,6 +29,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { ProductoService, ProductoCarta } from '../producto/producto.service';
 import { MesaService, Mesa } from '../../core/services/mesa.service';
 import { PedidoService } from '../../core/services/pedido.service';
+import { NotificacionesService } from '../../core/services/notificaciones.service';
 import { ItemCarrito, Pedido } from '../../core/models/pedido.model';
 import { CarruselFotosComponent } from '../carta/carrusel-fotos.component';
 
@@ -131,12 +132,12 @@ type FasePedido = 'armando' | 'esperando' | 'confirmado';
       </article>
     </div>
 
-    <div class="barra-carrito" *ngIf="carritoItems().length">
+    <div class="barra-carrito">
       <div class="resumen-carrito">
         <span class="total-carrito">{{ formatearPrecio(importeAcumulado()) }}</span>
         <span class="tiempo-carrito"><ion-icon name="time-outline"></ion-icon> ~{{ tiempoEstimado() }} min</span>
       </div>
-      <ion-button expand="block" [disabled]="enviando()" (click)="confirmarPedido()">
+      <ion-button expand="block" [disabled]="enviando() || !carritoItems().length" (click)="confirmarPedido()">
         <ion-icon name="checkmark-circle-outline" slot="start"></ion-icon>
         {{ enviando() ? 'Enviando…' : 'Confirmar pedido' }}
       </ion-button>
@@ -481,6 +482,7 @@ export class PedidoPage implements OnInit, OnDestroy {
   private readonly productoService = inject(ProductoService);
   private readonly mesaService = inject(MesaService);
   private readonly pedidoService = inject(PedidoService);
+  private readonly notificacionesService = inject(NotificacionesService);
   private readonly mesaId = this.route.snapshot.paramMap.get('mesaId')!;
 
   protected readonly cargando = signal(true);
@@ -538,10 +540,6 @@ export class PedidoPage implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.canalRealtime?.unsubscribe();
-    // Si se va de la pantalla sin haber llegado a mandar el pedido (fase
-    // 'armando'), libera el lock para que otro comensal pueda entrar a
-    // armar el suyo. Si ya confirmó, el lock se liberó en
-    // confirmarPedido() -- no hace falta repetirlo acá.
     if (this.fase() === 'armando') {
       this.mesaService.liberarPedidoEnCurso(this.mesaId);
     }
@@ -551,12 +549,23 @@ export class PedidoPage implements OnInit, OnDestroy {
     this.cargando.set(true);
     this.error.set(null);
     try {
-      const [mesa, carta] = await Promise.all([
+      const [mesa, carta, pedidoActivo] = await Promise.all([
         this.mesaService.obtenerMesa(this.mesaId),
         this.productoService.obtenerCarta(),
+        this.pedidoService.obtenerPedidoActivoDeMesa(this.mesaId),
       ]);
       this.mesa.set(mesa);
       this.carta.set(carta);
+
+      if (pedidoActivo) {
+        this.pedidoActual.set(pedidoActivo);
+        if (pedidoActivo.estado === 'confirmado') {
+          this.fase.set('confirmado');
+        } else {
+          this.fase.set('esperando');
+          this.suscribirConfirmacion(pedidoActivo.id);
+        }
+      }
     } catch (e) {
       console.error('No se pudo cargar la mesa/carta', e);
       this.error.set('No pudimos cargar la carta de esta mesa. Probá de nuevo en un momento.');
@@ -607,6 +616,16 @@ export class PedidoPage implements OnInit, OnDestroy {
     this.carritoMapa.set(mapa);
   }
 
+  private suscribirConfirmacion(pedidoId: string): void {
+    this.canalRealtime = this.pedidoService.escucharConfirmacion(pedidoId, (pedido) => {
+      this.pedidoActual.set(pedido);
+      if (pedido.estado === 'confirmado') {
+        this.fase.set('confirmado');
+        this.notificacionesService.avisarPedidoConfirmado(this.mesa()?.numero);
+      }
+    });
+  }
+
   protected async confirmarPedido(): Promise<void> {
     if (!this.carritoItems().length || this.enviando()) return;
     this.enviando.set(true);
@@ -615,8 +634,6 @@ export class PedidoPage implements OnInit, OnDestroy {
       const importeTotal = this.importeAcumulado();
       const tiempoEstimadoMinutos = this.tiempoEstimado();
       const pedidoId = await this.pedidoService.crearPedido(this.mesaId, items);
-      // Pedido ya registrado -- se puede liberar el lock, ya cumplió su
-      // función (evitar que se arme más de un pedido en simultáneo).
       await this.mesaService.liberarPedidoEnCurso(this.mesaId);
 
       this.pedidoActual.set({
@@ -628,13 +645,7 @@ export class PedidoPage implements OnInit, OnDestroy {
         creadoEn: new Date().toISOString(),
       });
       this.fase.set('esperando');
-
-      this.canalRealtime = this.pedidoService.escucharConfirmacion(pedidoId, (pedido) => {
-        this.pedidoActual.set(pedido);
-        if (pedido.estado === 'confirmado') {
-          this.fase.set('confirmado');
-        }
-      });
+      this.suscribirConfirmacion(pedidoId);
     } catch (e) {
       console.error('No se pudo enviar el pedido', e);
       await this.dispararErrorTransitorio(e instanceof Error ? e.message : 'No se pudo enviar el pedido.');

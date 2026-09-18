@@ -3,18 +3,6 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
 
-// Punto 10: push notification al metre (entra alguien a la lista de
-// espera) y al cliente (le asignaron mesa). Local notification +
-// listener de Realtime, no push real (FCM) — decisión de equipo por
-// plazo, ver AVANCES.md.
-//
-// ⚠️ Solo funciona con la app en primer/segundo plano (limitación
-// conocida y aceptada de esta opción, no es push real). Lo que SÍ queda
-// sin confirmar todavía: si Android suspende/throttlea el WebView y el
-// canal de Realtime deja de entregar eventos cuando la app pasa a
-// segundo plano en un dispositivo real (bloqueo de pantalla, cambio de
-// app). Eso solo se puede probar en dispositivo, no se puede garantizar
-// leyendo el código — no darlo por confirmado antes de la demo.
 @Injectable({ providedIn: 'root' })
 export class NotificacionesService {
   private canalMetre: RealtimeChannel | null = null;
@@ -36,7 +24,6 @@ export class NotificacionesService {
       this.permisosConcedidos = estado.display === 'granted';
       return this.permisosConcedidos;
     } catch {
-      // Dispositivo/navegador sin soporte del plugin: no bloquea la app.
       return false;
     }
   }
@@ -51,17 +38,11 @@ export class NotificacionesService {
         ],
       });
     } catch {
-      // Que falle la notificación no debe romper el flujo de la app.
     }
   }
 
-  // Vive en este service (singleton, no en un componente) para sobrevivir
-  // la navegación entre pantallas: home.page.ts solo dispara el arranque
-  // una vez, la suscripción en sí queda en esta instancia, que Angular no
-  // destruye al salir de la pantalla (a diferencia de HomePage, que sí se
-  // destruye al navegar — la app no usa tabs, ver app.component.ts).
   iniciarEscuchaMetre() {
-    if (this.canalMetre) return; // ya está escuchando
+    if (this.canalMetre) return; 
     this.canalMetre = this.sb
       .channel('metre-lista-espera')
       .on(
@@ -79,9 +60,13 @@ export class NotificacionesService {
     }
   }
 
-  // Este listener sí queda scoped a la pantalla de espera del cliente
-  // (se arranca y se para junto con ella) — a diferencia del de arriba,
-  // el cliente no tiene otra pantalla a la que ir mientras espera.
+  async avisarPedidoConfirmado(mesaNumero?: number): Promise<void> {
+    await this.notificar(
+      '¡Pedido confirmado!',
+      mesaNumero ? `El mozo confirmó el pedido de la mesa ${mesaNumero}.` : 'El mozo confirmó tu pedido.',
+    );
+  }
+
   escucharMesaAsignada(clienteId: string, onAsignada: (mesa: { numero: number }) => void): () => void {
     const canal = this.sb
       .channel(`mesa-asignada-${clienteId}`)
