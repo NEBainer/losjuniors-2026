@@ -1,0 +1,126 @@
+<ion-content class="fondo-app">
+
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Cargando...</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal contenedor-app">
+
+    <div class="cabecera-pagina">
+      <button class="boton-icono-circular" (click)="volver()" type="button">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </button>
+      <div class="titulo">
+        <h1>Lista de Espera</h1>
+        <p>Seleccioná un cliente y tocá una mesa para asignarla</p>
+      </div>
+    </div>
+
+    @if (mensajeError()) {
+      <div class="mensaje mensaje-error">
+        <ion-icon name="warning"></ion-icon>
+        <span>{{ mensajeError() }}</span>
+      </div>
+    }
+    @if (mensajeOk()) {
+      <div class="mensaje mensaje-ok">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <span>{{ mensajeOk() }}</span>
+      </div>
+    }
+
+    <div class="seccion">
+      <div class="cabecera-seccion">
+        <ion-icon name="people-outline"></ion-icon>
+        <h2>Clientes esperando ({{ cola().length }})</h2>
+      </div>
+
+      @if (errorCargaCola()) {
+        <div class="estado-vacio">
+          <ion-icon name="warning"></ion-icon>
+          <p>No se pudo cargar la lista de espera.</p>
+          <button class="boton-icono-circular" (click)="cargarCola()" title="Reintentar">
+            <ion-icon name="refresh-outline"></ion-icon>
+          </button>
+        </div>
+      } @else if (cola().length === 0) {
+        <div class="estado-vacio">
+          <ion-icon name="time-outline"></ion-icon>
+          <p>Nadie está esperando mesa en este momento.</p>
+        </div>
+      } @else {
+        <div class="lista-cola">
+          @for (fila of cola(); track fila.id) {
+            <div
+              class="fila-cliente"
+              [class.seleccionada]="seleccionadoId() === fila.cliente_id"
+              (click)="seleccionarCliente(fila)"
+            >
+              <div class="avatar">
+                @if (fila.fotoUrl) {
+                  <img [src]="fila.fotoUrl" [alt]="'Foto de ' + fila.nombres" />
+                } @else {
+                  <span class="inicial">{{ fila.inicial }}</span>
+                }
+              </div>
+              <span class="nombre">{{ fila.apellidos ? fila.apellidos + ', ' : '' }}{{ fila.nombres }}</span>
+              @if (seleccionadoId() === fila.cliente_id) {
+                <ion-icon name="checkmark-circle-outline" class="icono-seleccionado"></ion-icon>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="seccion">
+      <div class="cabecera-seccion">
+        <ion-icon name="restaurant-outline"></ion-icon>
+        <h2>Mesas disponibles ({{ mesasVacias().length }})</h2>
+      </div>
+
+      @if (errorCargaMesas()) {
+        <div class="estado-vacio">
+          <ion-icon name="warning"></ion-icon>
+          <p>No se pudieron cargar las mesas disponibles.</p>
+          <button class="boton-icono-circular" (click)="cargarMesas()" title="Reintentar">
+            <ion-icon name="refresh-outline"></ion-icon>
+          </button>
+        </div>
+      } @else if (mesasVacias().length === 0) {
+        <div class="estado-vacio">
+          <ion-icon name="restaurant-outline"></ion-icon>
+          <p>No hay mesas vacías en este momento.</p>
+        </div>
+      } @else {
+        <div class="lista-mesas">
+          @for (mesa of mesasVacias(); track mesa.id) {
+            <button
+              type="button"
+              class="tarjeta-mesa-seleccionable"
+              [class.asignando]="asignandoMesaId() === mesa.id"
+              [disabled]="asignandoMesaId() !== null"
+              (click)="asignar(mesa)"
+            >
+              @if (asignandoMesaId() === mesa.id) {
+                <ion-spinner name="crescent"></ion-spinner>
+                <p>Asignando...</p>
+              } @else {
+                <ion-icon name="restaurant-outline"></ion-icon>
+                <h3>Mesa {{ mesa.numero }}</h3>
+                <p>{{ etiquetasTipo[mesa.tipo] }} · {{ mesa.cantidad_comensales }} comensales</p>
+              }
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+  </div>
+</ion-content>

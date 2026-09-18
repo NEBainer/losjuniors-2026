@@ -2,13 +2,18 @@ import { Component, computed, signal } from '@angular/core';
 import { IonContent, IonIcon } from '@ionic/angular';
 import { AuthService } from '../core/services/auth.service';
 import { UsuariosService } from '../core/services/usuarios.service';
+import { ClienteService } from '../core/services/cliente.service';
+import { Mesa, MesaService } from '../core/services/mesa.service';
+import { NotificacionesService } from '../core/services/notificaciones.service';
+import { QrAppService } from '../core/services/qr-app.service';
 import { ClientePendiente, PerfilUsuario } from '../core/models/usuario.model';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
 import {
-  bookOutline, checkmarkOutline, fastFoodOutline, listOutline, logOutOutline,
-  peopleOutline, personAddOutline, restaurantOutline, wineOutline,
+  bookOutline, chatbubblesOutline, checkmarkCircleOutline, checkmarkOutline, closeOutline,
+  fastFoodOutline, informationCircleOutline, listOutline, logOutOutline, peopleOutline,
+  personAddOutline, qrCodeOutline, restaurantOutline, timeOutline, wineOutline,
 } from 'ionicons/icons';
 
 // Fila lista para pintar en la lista embebida de pendientes: mismo patrón
@@ -45,6 +50,31 @@ export class HomePage {
   readonly puedeVerAltaEmpleado = computed(() =>
     this.esUnoDe(this.perfil(), ['dueño', 'supervisor']),
   );
+  // Punto 11: solo un cliente (registrado o anónimo) escanea la mesa —
+  // no tiene sentido para empleados.
+  readonly puedeEscanearMesa = computed(() =>
+    this.esUnoDe(this.perfil(), ['cliente_registrado', 'cliente_anonimo']),
+  );
+  // Punto 11: bandeja de consultas al mozo — solo el perfil mozo.
+  readonly puedeVerConsultas = computed(() =>
+    this.esUnoDe(this.perfil(), ['mozo']),
+  );
+  // Requisito excluyente "QR de mesa" (no es un punto numerado propio):
+  // el personal de sala escanea el mismo QR que el cliente, pero en vez
+  // de entrar al menú solo ve los datos de la mesa (número, capacidad,
+  // tipo, disponibilidad) -- no se vincula ni accede al chat/carta.
+  readonly puedeVerInfoMesa = computed(() =>
+    this.esUnoDe(this.perfil(), ['metre', 'mozo', 'dueño', 'supervisor']),
+  );
+
+  // Punto 10: cliente_registrado se anota a la lista de espera; metre ve
+  // la cola en vivo y asigna mesas.
+  readonly puedeUnirseListaEspera = computed(() =>
+    this.esUnoDe(this.perfil(), ['cliente_registrado']),
+  );
+  readonly esMetre = computed(() =>
+    this.esUnoDe(this.perfil(), ['metre']),
+  );
 
   // Panel especial del dueño/supervisor (correcciones-profesor 13-09):
   // mitad de arriba con los accesos rápidos, mitad de abajo con la lista
@@ -60,14 +90,43 @@ export class HomePage {
   readonly mensajeErrorPendientes = signal('');
   readonly mensajeOkPendientes = signal('');
 
+  readonly escaneandoMesa = signal(false);
+  readonly mensajeErrorEscaneo = signal('');
+
+  // Panel de solo lectura para el personal de sala (ver puedeVerInfoMesa).
+  readonly escaneandoInfoMesa = signal(false);
+  readonly mesaInfoEscaneada = signal<Mesa | null>(null);
+  readonly etiquetasTipo: Record<Mesa['tipo'], string> = {
+    estandar: 'Estándar',
+    vip: 'VIP',
+    movilidad_reducida: 'Movilidad reducida',
+  };
+
+  readonly cargandoListaEspera = signal(false);
+  // Signal propia, no mensajeErrorPendientes: ese mensaje solo se pinta
+  // dentro del bloque @if (esPanelDueno()) del HTML, invisible para un
+  // cliente_registrado.
+  readonly mensajeErrorListaEspera = signal('');
+  // Si el cliente ya tiene mesa asignada, no tiene sentido ofrecerle
+  // "Anotarme en la lista de espera" de nuevo (y nada impide hoy que
+  // termine en lista_espera Y con mesa al mismo tiempo: el unique de
+  // lista_espera no chequea contra mesas.cliente_actual_id).
+  readonly mesaAsignada = signal<Mesa | null>(null);
+
   constructor(
     private authService: AuthService,
     private usuariosService: UsuariosService,
+    private clienteService: ClienteService,
+    private mesaService: MesaService,
+    private notificacionesService: NotificacionesService,
+    private qrAppService: QrAppService,
     private router: Router,
   ) {
     addIcons({
       logOutOutline, restaurantOutline, listOutline, peopleOutline, personAddOutline,
-      fastFoodOutline, wineOutline, bookOutline, checkmarkOutline,
+      fastFoodOutline, wineOutline, bookOutline, checkmarkOutline, qrCodeOutline,
+      chatbubblesOutline, informationCircleOutline, closeOutline, timeOutline,
+      checkmarkCircleOutline,
     });
   }
 
@@ -79,6 +138,60 @@ export class HomePage {
     if (this.esPanelDueno()) {
       await this.cargarPendientes();
     }
+    if (this.puedeUnirseListaEspera()) {
+      await this.verificarMesaAsignada();
+    }
+    // Arranque idempotente: si ya había un canal abierto (ej. se volvió a
+    // /home desde /metre/lista-espera), no vuelve a suscribirse. Vive en
+    // el service (singleton), no acá — así sigue escuchando aunque este
+    // componente se destruya al navegar a otra pantalla.
+    if (this.esMetre()) {
+      this.notificacionesService.iniciarEscuchaMetre();
+    }
+  }
+
+  private async verificarMesaAsignada() {
+    try {
+      const sesion = await this.authService.obtenerSesionActual();
+      if (!sesion) return;
+      this.mesaAsignada.set(await this.mesaService.obtenerMesaAsignada(sesion.user.id));
+    } catch {
+      // Si falla la verificación, dejamos mesaAsignada como estaba (null
+      // por defecto) — mostrar el botón de anotarse de más no es tan grave
+      // como esconderlo por un error transitorio de red.
+    }
+  }
+
+  // Punto 10: cliente_registrado ya logueado se anota a la lista de
+  // espera y reutiliza la pantalla /lista-espera que ya existe (punto 9,
+  // lee clienteId de history.state), sin sesión anónima ni pantalla nueva.
+  // cargandoListaEspera activa el mismo overlay con spinner+logo que usa
+  // el logout (diseno-visual.md: spinner con logo en todas las esperas).
+  async unirseListaEspera() {
+    this.cargandoListaEspera.set(true);
+    try {
+      const sesion = await this.authService.obtenerSesionActual();
+      if (!sesion) {
+        this.router.navigate(['/login']);
+        return;
+      }
+      await this.clienteService.unirseAListaEspera(sesion.user.id);
+      this.router.navigate(['/lista-espera'], { state: { clienteId: sesion.user.id } });
+    } catch {
+      this.mensajeErrorListaEspera.set('No se pudo anotar en la lista de espera. Intentá de nuevo.');
+      try {
+        await Haptics.impact({ style: ImpactStyle.Heavy });
+      } catch {
+        // Ignorar si el dispositivo/navegador no soporta vibración.
+      }
+      setTimeout(() => this.mensajeErrorListaEspera.set(''), 4000);
+    } finally {
+      this.cargandoListaEspera.set(false);
+    }
+  }
+
+  irAListaEsperaMetre() {
+    this.router.navigate(['/metre/lista-espera']);
   }
 
   async cargarPendientes() {
@@ -154,6 +267,10 @@ export class HomePage {
     this.router.navigate(['/mesas']);
   }
 
+  irAConsultasMozo() {
+    this.router.navigate(['/consultas-mozo']);
+  }
+
   irAAltaPlato() {
     this.router.navigate(['/cocinero/plato-alta']);
   }
@@ -170,10 +287,87 @@ export class HomePage {
     this.router.navigate(['/carta']);
   }
 
+  // Punto 11: escanea el QR de la mesa ({"tipo":"mesa","numero":N}, ver
+  // QrAppService) y navega al menú de esa mesa puntual. Mismo patrón de
+  // manejo de errores que escanearIngreso() en login.page.ts.
+  async escanearMesa() {
+    this.escaneandoMesa.set(true);
+    try {
+      const datos = await this.qrAppService.escanear();
+      if (!datos) return; // el usuario canceló el escaneo
+
+      if (datos.tipo !== 'mesa') {
+        this.dispararErrorEscaneo('Ese código no es el de una mesa.');
+        return;
+      }
+
+      const mesa = await this.mesaService.buscarPorNumero(datos.numero);
+      if (!mesa) {
+        this.dispararErrorEscaneo(`No encontramos la mesa ${datos.numero}.`);
+        return;
+      }
+
+      this.router.navigate(['/mesa', mesa.numero, 'carta']);
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : 'No se pudo leer el código.';
+      this.dispararErrorEscaneo(mensaje);
+    } finally {
+      this.escaneandoMesa.set(false);
+    }
+  }
+
+  private async dispararErrorEscaneo(mensaje: string) {
+    this.mensajeErrorEscaneo.set(mensaje);
+    try {
+      await Haptics.impact({ style: ImpactStyle.Heavy });
+    } catch {
+      // Ignorar si el dispositivo/navegador no soporta vibración.
+    }
+    setTimeout(() => this.mensajeErrorEscaneo.set(''), 4000);
+  }
+
+  // Requisito excluyente "QR de mesa": mismo QR que escanearMesa(), pero
+  // acá el personal de sala solo consulta el estado de la mesa -- no se
+  // vincula a ella ni navega a ningún lado, se queda en el home.
+  async escanearMesaInfo() {
+    this.escaneandoInfoMesa.set(true);
+    try {
+      const datos = await this.qrAppService.escanear();
+      if (!datos) return; // el usuario canceló el escaneo
+
+      if (datos.tipo !== 'mesa') {
+        this.dispararErrorEscaneo('Ese código no es el de una mesa.');
+        return;
+      }
+
+      const mesa = await this.mesaService.buscarPorNumero(datos.numero);
+      if (!mesa) {
+        this.dispararErrorEscaneo(`No encontramos la mesa ${datos.numero}.`);
+        return;
+      }
+
+      this.mesaInfoEscaneada.set(mesa);
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : 'No se pudo leer el código.';
+      this.dispararErrorEscaneo(mensaje);
+    } finally {
+      this.escaneandoInfoMesa.set(false);
+    }
+  }
+
+  cerrarInfoMesa() {
+    this.mesaInfoEscaneada.set(null);
+  }
+
   async ejecutarCierreSesion() {
     this.cargando = true;
     try {
       await this.authService.cerrarSesion();
+
+      // Recién después de confirmar que el logout resolvió con éxito: si
+      // cerrarSesion() fallara, la sesión (y el listener del metre) siguen
+      // activos, no queremos cortar la escucha de algo que sigue logueado.
+      this.notificacionesService.detenerEscuchaMetre();
 
       // Verificar que las credenciales se borren
       // Limpiamos la caché local de Capacitor/Navegador por seguridad extra

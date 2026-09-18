@@ -1,4 +1,4 @@
-﻿import { Routes } from '@angular/router';
+import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { guardPerfil } from './core/guards/perfil.guard';
 
@@ -72,12 +72,50 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
   },
   {
+    path: 'lista-espera',
+    loadComponent: () => import('./pages/lista-espera/lista-espera.page').then( m => m.ListaEsperaPage)
+  },
+  {
+    path: 'ingreso-anonimo',
+    loadComponent: () => import('./pages/ingreso-anonimo/ingreso-anonimo.page').then( m => m.IngresoAnonimoPage)
+  },
+  {
+    // Punto 11: el cliente llega acá escaneando el QR de la mesa (o desde
+    // el botón "Escanear Mesa" en home). Mismo componente que 'carta', con
+    // el número de mesa en la ruta para poder mostrar el botón "consultar
+    // al mozo" y el de "Crear pedido" (punto 12).
+    path: 'mesa/:numero/carta',
+    loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
+  },
+  {
+    // 'mozo' se suma al guard: esta misma pantalla la usa tanto el
+    // cliente (manda la consulta) como el mozo que la abre desde la
+    // bandeja de 'consultas-mozo' para responder.
+    path: 'mesa/:numero/consulta-mozo',
+    loadComponent: () => import('./pages/consulta-mozo/consulta-mozo.page').then(m => m.ConsultaMozoPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo', 'mozo'])]
+  },
+  {
+    // Bandeja del mozo (punto 11): listado de mesas con consulta abierta.
+    path: 'consultas-mozo',
+    loadComponent: () => import('./pages/consultas-mozo/consultas-mozo.page').then(m => m.ConsultasMozoPage),
+    canActivate: [authGuard, guardPerfil(['mozo'])]
+  },
+  {
+    // Punto 10: solo metre, es quien tiene la policy `mesas_metre_asigna`
+    // (dueño/supervisor ven la cola por otra policy, pero no es su flujo
+    // de asignación acá).
+    path: 'metre/lista-espera',
+    loadComponent: () => import('./pages/metre-lista-espera/metre-lista-espera.page').then(m => m.MetreListaEsperaPage),
+    canActivate: [authGuard, guardPerfil(['metre'])]
+  },
+  {
     // Punto 12: pedido completo de la mesa. Ruta con :mesaId siguiendo el
-    // mismo criterio que dejamos anotado en 'carta' — cuando el punto 10
-    // (QR de mesa) esté resuelto, el cliente va a llegar acá navegando
-    // directo con el id de su mesa, en vez de por un link fijo. Sin guard
-    // por ahora, mismo motivo que 'carta': todavía no hay sesión de
-    // cliente_anonimo resuelta (ver aviso en supabase/schema.sql).
+    // mismo criterio que 'carta/:mesaId' — cuando el punto 10 (QR de
+    // mesa) esté resuelto del todo, ver si conviene pasarla a :numero
+    // igual que 'mesa/:numero/carta'. Sin guard por ahora, mismo motivo
+    // que 'carta': todavía no hay sesión de cliente_anonimo resuelta (ver
+    // aviso en supabase/schema.sql).
     path: 'mesa/:mesaId/pedido',
     loadComponent: () => import('./pages/pedido/pedido.page').then(m => m.PedidoPage)
   },
@@ -86,4 +124,4 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/pedidos-mozo/pedidos-mozo.page').then(m => m.PedidosMozoPage),
     canActivate: [authGuard, guardPerfil(['mozo'])]
   },
-];
+]

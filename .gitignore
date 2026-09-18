@@ -34,12 +34,11 @@ supabase/.temp/
 CLAUDE.local.md
 enunciado-tfi.md
 AVANCES.md
+diseno-visual.md
 .claude/
 
 # Documentacion personal (solo en rama Bainer, no se pushea desde dev)
 docs/
-
 # Ignorar archivos de documentación interna
 correcciones-profesor.md
 CLAUDE.md
-diseno-visual.md

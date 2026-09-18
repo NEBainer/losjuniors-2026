@@ -13,6 +13,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { AccesosRapidosComponent } from '../../shared/accesos-rapidos/accesos-rapidos.component';
+import { QrAppService } from '../../core/services/qr-app.service';
+import { NotificacionesService } from '../../core/services/notificaciones.service';
 
 @Component({
   selector: 'app-login',
@@ -34,7 +36,9 @@ export class LoginPage implements OnInit {
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private qrAppService: QrAppService,
+    private notificacionesService: NotificacionesService
   ) {
     addIcons({ warning, eyeOutline, eyeOffOutline });
 
@@ -64,6 +68,15 @@ export class LoginPage implements OnInit {
 
     try {
       await this.authService.iniciarSesion(correo, clave);
+      // Gap #28 (AVANCES.md): /login sigue en el stack de navegación tras
+      // un login exitoso (no hay replaceUrl), así que un usuario logueado
+      // puede volver acá con "atrás" y loguearse como otro perfil sin
+      // pasar por cerrarSesion(). Se corta acá el listener del metre para
+      // no dejarlo huérfano bajo la sesión nueva — mismo criterio que
+      // ejecutarCierreSesion(): recién después de que el login resolvió
+      // con éxito, nunca antes (si fallara, la sesión vieja seguiría
+      // activa y no debería perder su listener).
+      this.notificacionesService.detenerEscuchaMetre();
       // Simulacion de espera para que se aprecie el spinner con logo
       setTimeout(() => {
         this.cargando = false;
@@ -102,5 +115,21 @@ export class LoginPage implements OnInit {
 
   irARegistro() {
     this.router.navigate(['/registro-cliente']);
+  }
+
+  async escanearIngreso() {
+    try {
+      const datos = await this.qrAppService.escanear();
+      if (!datos) return; // el usuario canceló el escaneo
+
+      if (datos.tipo === 'ingreso_local') {
+        this.router.navigate(['/ingreso-anonimo']);
+      } else {
+        this.dispararError('Ese código no es el de ingreso al local.');
+      }
+    } catch (error) {
+      const mensaje = error instanceof Error ? error.message : 'No se pudo leer el código.';
+      this.dispararError(mensaje);
+    }
   }
 }

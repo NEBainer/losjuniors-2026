@@ -5,6 +5,9 @@
 -- + policy de Storage para que dueño/supervisor suban la foto de un
 -- empleado nuevo. Ver supabase/README.md para el detalle completo de
 -- decisiones, pruebas realizadas y pendientes.
+-- v6 (16/09/2026): vínculo cliente↔mesa asignada + policy de UPDATE
+-- para el metre (punto 10). Ver bloque "v6" al final del archivo y
+-- supabase/README.md.
 -- =========================================================
 
 -- =========================================================
@@ -359,15 +362,22 @@ cross join generate_series(1, 3) as s(orden);
 
 -- =========================================================
 -- 9. MESAS DE PRUEBA (5 mesas)
--- qr_code: valor placeholder, a definir con el equipo el formato final.
+-- qr_code: formato decidido por el equipo (16/09/2026, ver gap #17 en
+-- AVANCES.md) - JSON discriminado por `tipo`, igual patrón que ya usa
+-- QrAppService para el QR de ingreso: {"tipo":"mesa","numero":N}, con
+-- `numero` (no `id`/uuid) para no tocar el tipado ya existente.
+-- OJO: esto es el valor que la DB considera "correcto" para probar el
+-- punto 10/11 - `mesa.service.ts` (punto 4) todavía no lo genera así
+-- en runtime, sigue emitiendo `MESA-{numero}` en texto plano. Falta
+-- coordinar esa actualización con quien tenga el punto 4.
 -- =========================================================
 
 insert into mesas (numero, cantidad_comensales, tipo, qr_code, creado_por) values
-  (1, 2, 'estandar',           'MESA-1', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (2, 4, 'estandar',           'MESA-2', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (3, 4, 'vip',                'MESA-3', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (4, 6, 'estandar',           'MESA-4', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (5, 2, 'movilidad_reducida', 'MESA-5', '3c6e305d-5593-4bde-a69a-7262e12e2611');
+  (1, 2, 'estandar',           '{"tipo":"mesa","numero":1}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (2, 4, 'estandar',           '{"tipo":"mesa","numero":2}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (3, 4, 'vip',                '{"tipo":"mesa","numero":3}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (4, 6, 'estandar',           '{"tipo":"mesa","numero":4}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (5, 2, 'movilidad_reducida', '{"tipo":"mesa","numero":5}', '3c6e305d-5593-4bde-a69a-7262e12e2611');
 
   -- =========================================================
 -- 10. STORAGE: bucket "fotos"
@@ -658,3 +668,271 @@ with check (
     and p.creado_por = auth.uid()
   )
 );
+
+-- ============================================================
+-- Punto 12 (nuevo enfoque, 2026): lock de "quién está armando el
+-- pedido" de una mesa. Corrido en el SQL Editor -- no había quedado
+-- documentado acá, se agrega ahora para que el archivo refleje lo que
+-- de verdad está en la base.
+--
+-- Va por funciones SECURITY DEFINER en vez de un UPDATE directo +
+-- policy: Supabase ya le da a "authenticated" un GRANT UPDATE amplio
+-- sobre toda la tabla "mesas" por default, así que una policy nueva
+-- acotada a estas dos columnas no hubiera evitado que cualquier cliente
+-- reescriba numero/tipo/foto_url/qr_code de una mesa ocupada. La función
+-- hace el UPDATE atómico (WHERE ... AND pedido_en_armado_por IS NULL)
+-- para que dos comensales que aprietan "Crear pedido" al mismo tiempo no
+-- se pisen el lock.
+-- ============================================================
+
+alter table mesas add column if not exists pedido_en_armado_por text;
+alter table mesas add column if not exists pedido_en_armado_en timestamptz;
+
+create or replace function tomar_pedido_en_curso(p_mesa_id uuid, p_nombre text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_filas integer;
+begin
+  if perfil_actual() not in ('cliente_registrado', 'cliente_anonimo') then
+    raise exception 'No autorizado.';
+  end if;
+
+  update mesas
+  set pedido_en_armado_por = p_nombre,
+      pedido_en_armado_en = now()
+  where id = p_mesa_id
+    and disponibilidad = 'ocupada'
+    and pedido_en_armado_por is null;
+
+  get diagnostics v_filas = row_count;
+  return v_filas > 0;
+end;
+$$;
+
+create or replace function liberar_pedido_en_curso(p_mesa_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update mesas
+  set pedido_en_armado_por = null,
+      pedido_en_armado_en = null
+  where id = p_mesa_id;
+end;
+$$;
+
+grant execute on function tomar_pedido_en_curso(uuid, text) to authenticated;
+grant execute on function liberar_pedido_en_curso(uuid) to authenticated;
+
+-- Tiempo real (punto 12): para que el resto de los comensales vean en
+-- vivo "[Nombre] está realizando el pedido" sin refrescar. Bloque
+-- idempotente porque ya se corrió una vez -- "add table" solo, sin el
+-- chequeo, tira error si la tabla ya es miembro de la publicación.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'mesas'
+  ) then
+    alter publication supabase_realtime add table mesas;
+  end if;
+end $$;
+
+-- =========================================================
+-- v4 (13/09/2026): Punto 9 — cliente anónimo + lista de espera.
+-- Ver supabase/README.md para el detalle de decisiones.
+-- =========================================================
+
+-- El cliente anónimo (punto 9) solo carga nombre y foto, sin
+-- apellido. La columna era NOT NULL desde el diseño original
+-- (pensada para empleados/clientes registrados); se afloja acá.
+alter table usuarios alter column apellidos drop not null;
+
+-- =========================================================
+-- Punto 9: lista de espera del cliente anónimo (y registrado,
+-- cuando llega sin reserva). Separada de `usuarios` porque es un
+-- estado transitorio ("estoy esperando mesa ahora"), no un dato
+-- permanente del perfil.
+-- =========================================================
+
+create table lista_espera (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null unique references usuarios(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table lista_espera enable row level security;
+
+-- El cliente (anónimo o registrado) se anota a sí mismo.
+create policy "lista_espera_cliente_se_anota"
+on lista_espera
+for insert
+to authenticated
+with check ( auth.uid() = cliente_id );
+
+-- El cliente ve su propia fila (para saber que sigue en la lista).
+create policy "lista_espera_cliente_ve_su_fila"
+on lista_espera
+for select
+to authenticated
+using ( auth.uid() = cliente_id );
+
+-- El cliente puede sacarse a sí mismo de la lista.
+create policy "lista_espera_cliente_se_retira"
+on lista_espera
+for delete
+to authenticated
+using ( auth.uid() = cliente_id );
+
+-- El metre/dueño/supervisor ven y gestionan toda la lista (punto 10).
+create policy "lista_espera_metre_ve_todo"
+on lista_espera
+for select
+to authenticated
+using ( perfil_actual() in ('metre', 'dueño', 'supervisor') );
+
+create policy "lista_espera_metre_elimina"
+on lista_espera
+for delete
+to authenticated
+using ( perfil_actual() in ('metre', 'dueño', 'supervisor') );
+
+-- =========================================================
+-- v5 (14/09/2026): política de INSERT faltante para cliente
+-- anónimo. Se detectó al probar el punto 9: `clientes_se_
+-- autorregistran` exige perfil = 'cliente_registrado', así que
+-- un insert con perfil = 'cliente_anonimo' no calzaba en ninguna
+-- policy existente -> 403 (42501).
+-- =========================================================
+
+create policy "clientes_anonimos_se_autorregistran"
+on usuarios
+for insert
+to authenticated
+with check (
+  auth.uid() = id
+  and perfil = 'cliente_anonimo'
+);
+
+-- =========================================================
+-- v6 (16/09/2026): vínculo cliente↔mesa asignada, punto 10 (metre
+-- asigna mesa a cliente). Corrida y confirmada en el SQL Editor.
+-- Se agrega a `mesas` en vez de crear una tabla nueva: es una
+-- extensión natural del estado transitorio que ya representa
+-- `disponibilidad` (vacia/ocupada), no un dato permanente. Ver
+-- supabase/README.md para el detalle de la decisión.
+-- =========================================================
+
+alter table mesas add column cliente_actual_id uuid references usuarios(id) on delete set null;
+
+-- Garantiza a nivel DB que un mismo cliente no puede estar vinculado a
+-- dos mesas a la vez (punto 10: "verificar que el cliente no pueda
+-- vincularse con otra mesa"). Parcial porque NULL (mesa vacía) es el
+-- estado normal y no debe contar para la unicidad.
+create unique index mesas_cliente_actual_unico
+  on mesas (cliente_actual_id) where cliente_actual_id is not null;
+
+-- UPDATE: el metre asigna una mesa a un cliente. El `using` exige que
+-- la mesa esté 'vacia' en el momento del update -> si dos asignaciones
+-- llegan casi al mismo tiempo sobre la misma mesa, la segunda encuentra
+-- la fila ya en 'ocupada' y es rechazada por la policy. Cubre a nivel
+-- DB el requisito del enunciado de "verificar que NO se le pueda
+-- asignar dicha mesa a otro cliente". Convive con
+-- "mesas_dueño_supervisor_actualiza" (dueño/supervisor siguen pudiendo
+-- modificar disponibilidad sin esta restricción, ej. para liberar una
+-- mesa manualmente).
+create policy "mesas_metre_asigna"
+on mesas
+for update
+to authenticated
+using ( perfil_actual() = 'metre' and disponibilidad = 'vacia' )
+with check ( perfil_actual() = 'metre' );
+
+-- El metre puede leer `lista_espera` (policy `lista_espera_metre_ve_todo`,
+-- ya existente desde el punto 9) pero no está incluido en
+-- `dueño_supervisor_ven_todos_usuarios` (esa es solo dueño/supervisor) ->
+-- sin esto, la vista del metre solo podía mostrar el `cliente_id` (UUID)
+-- de cada fila de la cola, sin poder resolverlo a nombre/foto reales.
+-- Policy acotada, no una ampliación de la existente: el metre solo ve las
+-- filas de `usuarios` que corresponden a alguien que está ahora mismo en
+-- `lista_espera`, no a cualquier empleado/cliente de la base.
+create policy "usuarios_metre_ve_en_lista_espera"
+on usuarios
+for select
+to authenticated
+using (
+  perfil_actual() = 'metre'
+  and exists (
+    select 1 from lista_espera le where le.cliente_id = usuarios.id
+  )
+);
+
+-- =========================================================
+-- v7 (2026): Punto 11 — "consulta al mozo". Chat simple entre el
+-- cliente vinculado a una mesa (mesas.cliente_actual_id) y
+-- cualquier mozo. Igual que lista_espera: tabla aparte, no una
+-- columna en otra tabla, porque es su propio hilo de conversación.
+--
+-- remitente_perfil / remitente_nombre van desnormalizados en la fila
+-- en vez de resolverse con un join a `usuarios` al leer: la RLS de
+-- `usuarios` no deja que un cliente vea el perfil de un mozo (ni al
+-- revés), así que un join se rompería. Se guardan una sola vez, al
+-- insertar el mensaje.
+-- =========================================================
+
+create table mensajes_mozo (
+  id uuid primary key default gen_random_uuid(),
+  mesa_id uuid not null references mesas(id) on delete cascade,
+  remitente_id uuid not null references usuarios(id) on delete cascade,
+  remitente_perfil perfil_usuario not null,
+  remitente_nombre text not null,
+  texto text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table mensajes_mozo enable row level security;
+
+-- El cliente vinculado a la mesa manda mensajes en su propio hilo.
+create policy "mensajes_mozo_cliente_envia"
+on mensajes_mozo
+for insert
+to authenticated
+with check (
+  auth.uid() = remitente_id
+  and perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and mesa_id in (select id from mesas where cliente_actual_id = auth.uid())
+);
+
+-- Cualquier mozo puede responder en cualquier mesa.
+create policy "mensajes_mozo_mozo_envia"
+on mensajes_mozo
+for insert
+to authenticated
+with check ( auth.uid() = remitente_id and perfil_actual() = 'mozo' );
+
+-- El cliente ve solo el hilo de su propia mesa.
+create policy "mensajes_mozo_cliente_ve_su_mesa"
+on mensajes_mozo
+for select
+to authenticated
+using (
+  perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and mesa_id in (select id from mesas where cliente_actual_id = auth.uid())
+);
+
+-- Todos los mozos ven todos los hilos (para poder atender cualquiera).
+create policy "mensajes_mozo_mozo_ve_todo"
+on mensajes_mozo
+for select
+to authenticated
+using ( perfil_actual() = 'mozo' );
+
+-- Pendiente (fuera del alcance de esta tanda): activar Realtime para
+-- esta tabla desde el dashboard (Database → Replication), igual que
+-- se hizo con lista_espera.

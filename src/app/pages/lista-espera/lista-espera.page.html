@@ -1,0 +1,18 @@
+<ion-content class="fondo-registro">
+  <div class="banner-estado contenedor-app">
+    @if (mesaAsignada(); as mesa) {
+      <div class="estado-espera aceptado">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <h2>¡Te asignamos una mesa!</h2>
+        <p>Mesa Nº {{ mesa.numero }}. Dirigite al metre.</p>
+      </div>
+    } @else {
+      <div class="estado-espera pendiente">
+        <ion-icon name="time-outline"></ion-icon>
+        <h2>Estás en la lista de espera</h2>
+        <p>El metre te va a asignar una mesa en breve.</p>
+        <ion-button fill="outline" (click)="salir()">Salir de la lista</ion-button>
+      </div>
+    }
+  </div>
+</ion-content>

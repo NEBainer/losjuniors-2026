@@ -11,6 +11,8 @@ import {
   IonNote,
   IonButton,
   IonIcon,
+  IonFab,
+  IonFabButton,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import {
@@ -23,10 +25,12 @@ import {
   receiptOutline,
   personOutline,
   warning,
+  chatbubbleEllipsesOutline,
 } from 'ionicons/icons';
 import { ProductoService, ProductoCarta } from '../producto/producto.service';
 import { MesaService } from '../../core/services/mesa.service';
 import { CarruselFotosComponent } from './carrusel-fotos.component';
+
 @Component({
   selector: 'app-carta-ver',
   standalone: true,
@@ -41,6 +45,8 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
     IonNote,
     IonButton,
     IonIcon,
+    IonFab,
+    IonFabButton,
     CarruselFotosComponent,
   ],
   host: { class: 'ion-page' },
@@ -118,6 +124,18 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
       </div>
     </article>
   </div>
+
+  <!-- Punto 11: solo aparece cuando se conoce el número de mesa, o sea
+       cuando se entró por 'mesa/:numero/carta' (QR) -- la ruta vieja
+       'carta/:mesaId' (acceso directo con uuid) no tiene número para
+       armar el link de "consultar al mozo". -->
+  @if (mesaNumero !== null) {
+    <ion-fab class="fab-consultar-mozo" vertical="bottom" horizontal="end" slot="fixed">
+      <ion-fab-button (click)="irAConsultarMozo()">
+        <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
+  }
 
 </ion-content>
   `,
@@ -343,6 +361,20 @@ ion-header ion-toolbar {
   font-size: 0.85rem;
 }
 
+ion-fab-button {
+  --background: var(--marron);
+  --color: var(--crema);
+  --box-shadow: 0 4px 10px rgba(91, 42, 23, 0.35);
+}
+
+// Probado en dispositivo real (gestos de Android): pegado al borde,
+// ion-fab quedaba justo debajo de la barra de gestos del sistema y
+// costaba tocarlo. 20px de aire además del safe-area, no solo el inset.
+.fab-consultar-mozo {
+  margin-bottom: calc(20px + env(safe-area-inset-bottom));
+  margin-right: 4px;
+}
+
 .velo-cargando {
   position: fixed;
   inset: 0;
@@ -369,14 +401,16 @@ export class CartaVerComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  // ⚠️ Ruta temporal 'carta/:mesaId' (ver app.routes.ts) hasta que el
-  // punto 10 (QR de mesa) esté resuelto -- mismo criterio que ya usa
-  // PedidoPage.
-  private readonly mesaId = this.route.snapshot.paramMap.get('mesaId')!;
-
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   private readonly carta = signal<ProductoCarta[]>([]);
+
+  // Se completa resolviendo la mesa, sea por 'carta/:mesaId' (uuid
+  // directo) o por 'mesa/:numero/carta' (punto 11, QR). mesaNumero solo
+  // se conoce en el segundo caso -- lo necesita irAConsultarMozo() para
+  // armar la ruta 'mesa/:numero/consulta-mozo'.
+  protected readonly mesaId = signal<string | null>(null);
+  private mesaNumero: number | null = null;
 
   // Punto 12 (nuevo enfoque): lock de armado de pedido por mesa. null =
   // libre; con nombre = alguien ya está adentro armando el suyo.
@@ -406,40 +440,63 @@ export class CartaVerComponent implements OnInit, OnDestroy {
       'receipt-outline': receiptOutline,
       'person-outline': personOutline,
       warning,
+      'chatbubble-ellipses-outline': chatbubbleEllipsesOutline,
     });
   }
 
   ngOnInit(): void {
     this.cargarCarta();
-    this.cargarEstadoPedidoEnCurso();
-    this.canalLock = this.mesaService.escucharPedidoEnCurso(this.mesaId, (nombre) => {
-      this.pedidoEnCurso.set(nombre);
-    });
+    this.resolverMesa();
   }
 
   ngOnDestroy(): void {
     this.canalLock?.unsubscribe();
   }
 
-  // Estado inicial del lock al entrar a la pantalla -- escucharPedidoEnCurso
-  // solo avisa de cambios FUTUROS (Realtime), no si alguien ya estaba
-  // adentro antes de que este componente se suscribiera.
-  private async cargarEstadoPedidoEnCurso(): Promise<void> {
+  // Resuelve la mesa sea cual sea la ruta por la que se entró: con
+  // 'numero' (punto 11, QR) busca por buscarPorNumero(); con 'mesaId'
+  // (ruta vieja 'carta/:mesaId', acceso directo) trae la mesa por id
+  // directo. Una vez resuelta, arranca el lock de pedido en curso (punto
+  // 12) -- estado inicial + Realtime de cambios futuros.
+  private async resolverMesa(): Promise<void> {
+    const numeroParam = this.route.snapshot.paramMap.get('numero');
+    const mesaIdParam = this.route.snapshot.paramMap.get('mesaId');
+
     try {
-      const mesa = await this.mesaService.obtenerMesa(this.mesaId);
+      const mesa = numeroParam
+        ? await this.mesaService.buscarPorNumero(Number(numeroParam))
+        : mesaIdParam
+          ? await this.mesaService.obtenerMesa(mesaIdParam)
+          : null;
+
+      if (!mesa) return;
+
+      this.mesaId.set(mesa.id);
+      this.mesaNumero = mesa.numero;
       this.pedidoEnCurso.set(mesa.pedido_en_armado_por);
-    } catch (e) {
-      console.error('No se pudo obtener el estado del pedido en curso', e);
+      this.canalLock = this.mesaService.escucharPedidoEnCurso(mesa.id, (nombre) => {
+        this.pedidoEnCurso.set(nombre);
+      });
+    } catch {
+      // Sin mesa resuelta, ni el FAB de "consultar al mozo" ni el botón
+      // de "Crear pedido" hacen nada -- no es un error bloqueante para
+      // ver el menú.
     }
   }
 
+  protected irAConsultarMozo(): void {
+    if (this.mesaNumero === null) return;
+    this.router.navigate(['/mesa', this.mesaNumero, 'consulta-mozo']);
+  }
+
   protected async crearPedido(): Promise<void> {
-    if (this.tomandoLock() || this.pedidoEnCurso()) return;
+    const mesaId = this.mesaId();
+    if (!mesaId || this.tomandoLock() || this.pedidoEnCurso()) return;
     this.tomandoLock.set(true);
     try {
-      const obtuvoLock = await this.mesaService.tomarPedidoEnCurso(this.mesaId);
+      const obtuvoLock = await this.mesaService.tomarPedidoEnCurso(mesaId);
       if (obtuvoLock) {
-        this.router.navigate(['/mesa', this.mesaId, 'pedido']);
+        this.router.navigate(['/mesa', mesaId, 'pedido']);
       }
       // Si no lo obtuvo, alguien lo tomó una fracción de segundo antes --
       // el mensaje "Fulano está armando el pedido" ya aparece solo por

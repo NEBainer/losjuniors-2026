@@ -46,6 +46,33 @@ export class UsuariosService {
     return data.perfil as PerfilUsuario;
   }
 
+  // Punto 11 (consulta al mozo): id + perfil + nombre del usuario logueado
+  // en un solo llamado, para desnormalizar en `mensajes_mozo` al enviar un
+  // mensaje. `apellidos` puede ser null (cliente_anonimo no lo carga).
+  async obtenerUsuarioActual(): Promise<{ id: string; perfil: PerfilUsuario; nombre: string } | null> {
+    const sesion = await this.authService.obtenerSesionActual();
+    if (!sesion) {
+      return null;
+    }
+
+    const { data, error } = await this.sb
+      .from('usuarios')
+      .select('perfil, nombres, apellidos')
+      .eq('id', sesion.user.id)
+      .single();
+
+    if (error || !data) {
+      console.error('Error obteniendo el usuario actual:', error);
+      return null;
+    }
+
+    return {
+      id: sesion.user.id,
+      perfil: data.perfil as PerfilUsuario,
+      nombre: [data.nombres, data.apellidos].filter(Boolean).join(' '),
+    };
+  }
+
   // Listado del punto 6: clientes registrados en estado 'pendiente'.
   // La lectura de filas ajenas la habilita la policy
   // `dueño_supervisor_ven_todos_usuarios`: con otro perfil esto vuelve [].
@@ -115,9 +142,18 @@ export class UsuariosService {
   // El bucket `fotos` es público: a partir de un path guardado en
   // `foto_url` (ej. 'usuarios/<id>.jpg') devolvemos la URL pública para
   // usar en un <img>. Si el cliente no tiene foto cargada, null.
+  //
+  // Filas viejas (de antes de estandarizar a "guardar solo el path")
+  // tienen `foto_url` con la URL pública completa ya armada -- pasarla
+  // de nuevo por getPublicUrl() la duplica y rompe la imagen (detectado
+  // 16/09: fotos de clientes pendientes rotas en la pantalla del dueño).
+  // Si ya viene como http(s), se devuelve tal cual.
   getFotoPublicUrl(path: string | null): string | null {
     if (!path) {
       return null;
+    }
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
     }
     return this.sb.storage.from('fotos').getPublicUrl(path).data.publicUrl;
   }
