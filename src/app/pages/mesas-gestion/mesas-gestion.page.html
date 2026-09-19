@@ -61,6 +61,15 @@
                   {{ mesa.disponibilidad === 'vacia' ? 'Vacía' : 'Ocupada' }}
                 </button>
               </div>
+
+              <button
+                class="boton-icono-circular"
+                (click)="verQr(mesa)"
+                type="button"
+                aria-label="Ver QR de la mesa"
+              >
+                <ion-icon name="qr-code-outline"></ion-icon>
+              </button>
             </div>
           }
         </div>
@@ -68,6 +77,20 @@
     }
   </div>
 </ion-content>
+
+<ion-modal [isOpen]="!!qrDataUrl" (didDismiss)="cerrarQr()" class="modal-qr">
+  <ng-template>
+    <div class="contenido-modal-qr">
+      <button class="boton-cerrar-modal" (click)="cerrarQr()" type="button">
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      <h2>Mesa {{ mesaQrNumero }}</h2>
+      @if (qrDataUrl) {
+        <img [src]="qrDataUrl" alt="Código QR de la mesa" class="qr-generado" />
+      }
+    </div>
+  </ng-template>
+</ion-modal>
 
 <!-- Fijo abajo (correcciones-profesor: "lo que se usa mucho va con acceso
      directo" + ningún botón fijo puede generar scroll). Antes era un ícono
