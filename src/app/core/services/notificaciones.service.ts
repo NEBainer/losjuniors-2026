@@ -6,6 +6,8 @@ import { SupabaseService } from './supabase.service';
 @Injectable({ providedIn: 'root' })
 export class NotificacionesService {
   private canalMetre: RealtimeChannel | null = null;
+  private canalPendientes: RealtimeChannel | null = null;
+  private canalConsultasMozo: RealtimeChannel | null = null;
   private permisosConcedidos = false;
 
   constructor(private supabaseService: SupabaseService) {}
@@ -64,6 +66,63 @@ export class NotificacionesService {
     await this.notificar(
       '¡Pedido confirmado!',
       mesaNumero ? `El mozo confirmó el pedido de la mesa ${mesaNumero}.` : 'El mozo confirmó tu pedido.',
+    );
+  }
+
+  // Punto 6: dueño/supervisor se entera de un cliente registrado nuevo
+  // esperando aprobación. `estado_aprobacion` es NULL para empleados/dueño/
+  // supervisor (ver schema.sql) -- solo el alta de un cliente registrado
+  // (punto 5) inserta la fila ya en 'pendiente', así que alcanza con
+  // filtrar por ese valor sin distinguir perfil.
+  iniciarEscuchaPendientes() {
+    if (this.canalPendientes) return;
+    this.canalPendientes = this.sb
+      .channel('dueno-clientes-pendientes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'usuarios', filter: 'estado_aprobacion=eq.pendiente' },
+        () => this.notificar('Nuevo cliente pendiente', 'Hay un cliente registrado esperando aprobación.'),
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaPendientes() {
+    if (this.canalPendientes) {
+      this.sb.removeChannel(this.canalPendientes);
+      this.canalPendientes = null;
+    }
+  }
+
+  // Punto 11: "notifica a todos los mozos" cuando llega una consulta nueva
+  // de un cliente. `remitente_perfil=neq.mozo` cubre cliente_registrado y
+  // cliente_anonimo sin enumerarlos -- así un mensaje de otro mozo
+  // respondiendo no vuelve a notificar al resto del equipo de sala.
+  iniciarEscuchaConsultasMozo() {
+    if (this.canalConsultasMozo) return;
+    this.canalConsultasMozo = this.sb
+      .channel('mozo-consultas-nuevas')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'mensajes_mozo', filter: 'remitente_perfil=neq.mozo' },
+        () => this.notificar('Nueva consulta', 'Un cliente escribió una consulta.'),
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaConsultasMozo() {
+    if (this.canalConsultasMozo) {
+      this.sb.removeChannel(this.canalConsultasMozo);
+      this.canalConsultasMozo = null;
+    }
+  }
+
+  // Punto 11: "un mozo responde (push al cliente)" -- se llama desde el
+  // hilo puntual de la mesa (consulta-mozo.page.ts), no desde acá, porque
+  // ahí ya se sabe con certeza que el mensaje nuevo no es propio.
+  async avisarConsultaRespondida(mesaNumero?: number): Promise<void> {
+    await this.notificar(
+      'El mozo respondió',
+      mesaNumero ? `Tenés una respuesta nueva en la consulta de la mesa ${mesaNumero}.` : 'Tenés una respuesta nueva del mozo.',
     );
   }
 

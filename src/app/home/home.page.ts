@@ -179,6 +179,12 @@ export class HomePage {
     if (this.esMetre()) {
       this.notificacionesService.iniciarEscuchaMetre();
     }
+    if (this.esPanelDueno()) {
+      this.notificacionesService.iniciarEscuchaPendientes();
+    }
+    if (this.esPanelMozo()) {
+      this.notificacionesService.iniciarEscuchaConsultasMozo();
+    }
   }
 
   private async verificarMesaAsignada() {
@@ -384,6 +390,15 @@ export class HomePage {
         return;
       }
 
+      // Punto 10: "el cliente escanea el QR de la mesa asignada" -- sin
+      // este chequeo, cualquier cliente podía escanear el QR de OTRA mesa
+      // (no la que le asignó el metre) y entrar igual a su carta/pedido.
+      const sesion = await this.authService.obtenerSesionActual();
+      if (!sesion || mesa.cliente_actual_id !== sesion.user.id) {
+        this.dispararErrorEscaneo('Esta no es tu mesa asignada.');
+        return;
+      }
+
       this.router.navigate(['/mesa', mesa.numero, 'carta']);
     } catch (error) {
       const mensaje = error instanceof Error ? error.message : 'No se pudo leer el código.';
@@ -445,6 +460,8 @@ export class HomePage {
       // cerrarSesion() fallara, la sesión (y el listener del metre) siguen
       // activos, no queremos cortar la escucha de algo que sigue logueado.
       this.notificacionesService.detenerEscuchaMetre();
+      this.notificacionesService.detenerEscuchaPendientes();
+      this.notificacionesService.detenerEscuchaConsultasMozo();
 
       // Verificar que las credenciales se borren
       // Limpiamos la caché local de Capacitor/Navegador por seguridad extra

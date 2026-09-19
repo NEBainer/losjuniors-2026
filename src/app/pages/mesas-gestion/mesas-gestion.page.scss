@@ -192,4 +192,56 @@
       background-color: var(--ion-color-danger);
     }
   }
+
+  > .boton-icono-circular {
+    flex-shrink: 0;
+  }
+}
+
+.modal-qr {
+  --width: 100%;
+  --height: 100%;
+  --background: rgba(26, 18, 12, 0.92);
+}
+
+.contenido-modal-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+  gap: 16px;
+
+  h2 {
+    color: #fff;
+    margin: 0;
+  }
+
+  .qr-generado {
+    width: 280px;
+    height: 280px;
+    background-color: #fff;
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .boton-cerrar-modal {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+
+    ion-icon {
+      font-size: 1.4rem;
+    }
+  }
 }
