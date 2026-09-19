@@ -1,0 +1,76 @@
+<ion-content class="fondo-app">
+
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Cargando...</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal contenedor-app">
+
+    <div class="cabecera-pendientes">
+      <button class="boton-icono-circular" (click)="volver()" title="Volver al panel">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </button>
+      <div class="titulo">
+        <h1>Pedidos pendientes</h1>
+        <p>Confirmá los pedidos para que pasen a cocina y barra</p>
+      </div>
+      <button class="boton-icono-circular" (click)="cargar()" [disabled]="cargando()" title="Refrescar listado">
+        <ion-icon name="refresh-outline"></ion-icon>
+      </button>
+    </div>
+
+    @if (mensajeError()) {
+      <div class="mensaje mensaje-error">
+        <ion-icon name="warning"></ion-icon>
+        <span>{{ mensajeError() }}</span>
+      </div>
+    }
+    @if (mensajeOk()) {
+      <div class="mensaje mensaje-ok">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <span>{{ mensajeOk() }}</span>
+      </div>
+    }
+
+    @if (!cargando() && pendientes().length === 0) {
+      <div class="estado-vacio">
+        <ion-icon name="restaurant-outline"></ion-icon>
+        <p>No hay pedidos esperando confirmación.</p>
+      </div>
+    }
+
+    <div class="lista-pendientes">
+      @for (pedido of pendientes(); track pedido.id) {
+        <div class="pedido-card">
+
+          <div class="mesa-badge">
+            Mesa<br />{{ pedido.mesaNumero }}
+          </div>
+
+          <div class="datos">
+            <h3>{{ formatearPrecio(pedido.importeTotal) }}</h3>
+            <p class="detalle">
+              <ion-icon name="time-outline"></ion-icon>
+              ~{{ pedido.tiempoEstimadoMinutos }} min · {{ pedido.hace }}
+            </p>
+          </div>
+
+          <div class="acciones">
+            <button class="btn btn-confirmar" (click)="confirmar(pedido)" [disabled]="procesandoId() === pedido.id">
+              <ion-icon name="checkmark-circle-outline"></ion-icon>
+              <span>Confirmar</span>
+            </button>
+          </div>
+
+        </div>
+      }
+    </div>
+
+  </div>
+</ion-content>

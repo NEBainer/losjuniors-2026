@@ -6,7 +6,9 @@ import { ClienteService } from '../core/services/cliente.service';
 import { Mesa, MesaService } from '../core/services/mesa.service';
 import { NotificacionesService } from '../core/services/notificaciones.service';
 import { QrAppService } from '../core/services/qr-app.service';
+import { PedidoService } from '../core/services/pedido.service';
 import { ClientePendiente, PerfilUsuario } from '../core/models/usuario.model';
+import { PedidoPendiente } from '../core/models/pedido.model';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
@@ -20,6 +22,18 @@ import {
 // que ClientesPendientesPage (ver clientes-pendientes.page.ts), resuelto
 // una sola vez al cargar en vez de en cada ciclo de detección de cambios.
 type ClienteVista = ClientePendiente & { fotoUrl: string | null; inicial: string };
+
+// Punto 12: fila lista para pintar en la lista embebida de pedidos
+// pendientes del mozo -- mismo patrón que ClienteVista de arriba, y mismo
+// cálculo de "hace" que ya usa PedidosMozoPage (pedidos-mozo.page.ts).
+type PedidoVista = PedidoPendiente & { hace: string };
+
+function haceCuanto(fechaIso: string): string {
+  const minutos = Math.max(0, Math.round((Date.now() - new Date(fechaIso).getTime()) / 60000));
+  if (minutos < 1) return 'recién';
+  if (minutos === 1) return 'hace 1 min';
+  return `hace ${minutos} min`;
+}
 
 @Component({
   selector: 'app-home',
@@ -90,6 +104,19 @@ export class HomePage {
   readonly mensajeErrorPendientes = signal('');
   readonly mensajeOkPendientes = signal('');
 
+  // Punto 12: mismo criterio que esPanelDueno -- panel embebido en vez de
+  // una tarjeta que navega a /mozo/pedidos (esa ruta sigue existiendo,
+  // por si hace falta el listado completo con más lugar en pantalla).
+  readonly esPanelMozo = computed(() =>
+    this.esUnoDe(this.perfil(), ['mozo']),
+  );
+
+  readonly pedidosPendientesMozo = signal<PedidoVista[]>([]);
+  readonly cargandoPedidosMozo = signal(false);
+  readonly procesandoPedidoId = signal<string | null>(null);
+  readonly mensajeErrorPedidosMozo = signal('');
+  readonly mensajeOkPedidosMozo = signal('');
+
   readonly escaneandoMesa = signal(false);
   readonly mensajeErrorEscaneo = signal('');
 
@@ -120,6 +147,7 @@ export class HomePage {
     private mesaService: MesaService,
     private notificacionesService: NotificacionesService,
     private qrAppService: QrAppService,
+    private pedidoService: PedidoService,
     private router: Router,
   ) {
     addIcons({
@@ -137,6 +165,9 @@ export class HomePage {
     this.perfil.set(await this.usuariosService.getPerfilActual());
     if (this.esPanelDueno()) {
       await this.cargarPendientes();
+    }
+    if (this.esPanelMozo()) {
+      await this.cargarPedidosPendientesMozo();
     }
     if (this.puedeUnirseListaEspera()) {
       await this.verificarMesaAsignada();
@@ -253,6 +284,52 @@ export class HomePage {
       // Ignorar si el dispositivo/navegador no soporta vibración.
     }
     setTimeout(() => this.mensajeErrorPendientes.set(''), 4000);
+  }
+
+  // Punto 12: listado embebido de pedidos pendientes para el mozo, mismo
+  // patrón que cargarPendientes() de clientes. Reusa
+  // PedidoService.listarPendientes()/confirmarPedido(), ya probados en
+  // PedidosMozoPage (pedidos-mozo.page.ts) -- esa pantalla sigue existiendo
+  // tal cual, esto es un acceso más corto para el caso frecuente.
+  async cargarPedidosPendientesMozo() {
+    this.cargandoPedidosMozo.set(true);
+    try {
+      const filas = await this.pedidoService.listarPendientes();
+      this.pedidosPendientesMozo.set(filas.map((p) => ({ ...p, hace: haceCuanto(p.creadoEn) })));
+    } catch {
+      this.dispararErrorPedidosMozo('No se pudo cargar el listado de pedidos pendientes.');
+    } finally {
+      this.cargandoPedidosMozo.set(false);
+    }
+  }
+
+  async confirmarPedidoMozo(pedido: PedidoVista) {
+    this.procesandoPedidoId.set(pedido.id);
+    try {
+      await this.pedidoService.confirmarPedido(pedido.id);
+      this.pedidosPendientesMozo.update((lista) => lista.filter((p) => p.id !== pedido.id));
+      this.mensajeOkPedidosMozo.set(`Pedido de mesa ${pedido.mesaNumero} confirmado.`);
+      setTimeout(() => this.mensajeOkPedidosMozo.set(''), 3000);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'No se pudo confirmar el pedido.';
+      this.dispararErrorPedidosMozo(msg);
+    } finally {
+      this.procesandoPedidoId.set(null);
+    }
+  }
+
+  formatearPrecioPedido(precio: number): string {
+    return precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+  }
+
+  private async dispararErrorPedidosMozo(mensaje: string) {
+    this.mensajeErrorPedidosMozo.set(mensaje);
+    try {
+      await Haptics.impact({ style: ImpactStyle.Heavy });
+    } catch {
+      // Ignorar si el dispositivo/navegador no soporta vibración.
+    }
+    setTimeout(() => this.mensajeErrorPedidosMozo.set(''), 4000);
   }
 
   private esUnoDe(perfil: PerfilUsuario | null, permitidos: PerfilUsuario[]): boolean {

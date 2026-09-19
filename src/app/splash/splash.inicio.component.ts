@@ -11,27 +11,6 @@ import { CommonModule } from '@angular/common';
 import { IonButton } from '@ionic/angular';
 import { SplashScreen } from '@capacitor/splash-screen'; 
 
-/**
- * splash.inicio.component.ts
- * ---------------------------
- * Splash de arranque de LA MESA (Los Juniors — TFI Gestión de Restaurante).
- *
- * Convención de archivos del equipo: rol.estado.extensión
- *   rol    -> splash   (a qué pantalla/pieza pertenece)
- *   estado -> inicio   (la app todavía no terminó de montar/cargar)
- *
- * Todo en un solo archivo (template y estilos inline, sin .html/.scss aparte).
- * Se usa como cualquier componente standalone:
- *   <app-splash-inicio (splashListo)="onSplashListo()" />
- *
- * Mientras `splashListo` no se emitió, conviene ocultar el resto del layout
- * (por ejemplo con *ngIf="appLista" en el AppComponent) para no pagar el
- * costo de renderizar la app real por debajo del splash.
- *
- * Decisiones que no estaban pedidas explícitamente pero evitan objeciones
- *   - Salida manual en cualquier momento (click, tecla, botón "Saltar").
- *   - prefers-reduced-motion respetado (ver .scss).
- */
 @Component({
   selector: 'app-splash-inicio',
   standalone: true,
@@ -79,10 +58,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
           Ariceri, Maximiliano<br />
           Storgato, Noelia
         </div>
-        <div class="item separador" style="--i:5">
-          <span class="linea" style="border-top-style: dotted"></span>
-        </div>
-        <div class="item pie" style="--i:6">Trabajo Final Integrador</div>
+        <div class="item pie" style="--i:5">Trabajo Final Integrador</div>
       </div>
     </div>
     </div>
@@ -302,7 +278,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
   margin: 0.9em 0;
 }
 .separador .linea {
-  width: 40px;
+  width: 135px;
   height: 2px;
   background: var(--dorado);
 }
@@ -313,6 +289,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
   transform: rotate(45deg);
 }
 .separador.punteado .linea {
+  width: 135px;
   background: none;
   border-top: 2px dotted var(--texto-gris);
 }
@@ -464,7 +441,7 @@ export class SplashInicioComponent implements OnInit, OnDestroy {
   @Output() splashListo = new EventEmitter<void>();
 
   private static readonly DURACION_MS = 2000;
-  private static readonly DURACION_TRANSICION_MS = 500; // debe coincidir con .splash.oculto en el CSS de arriba.
+  private static readonly DURACION_TRANSICION_MS = 500; 
 
   protected readonly oculto = signal(false);
 
@@ -473,9 +450,6 @@ export class SplashInicioComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     SplashScreen.hide();
-    // Siempre se muestra completo, siempre los mismos 2 segundos — sin
-    // caché ni excepciones. El botón "Saltar" (o un click/tecla) sigue
-    // permitiendo cerrarlo antes para quien lo prefiera.
     this.temporizadorCierre = setTimeout(
       () => this.cerrar(),
       SplashInicioComponent.DURACION_MS

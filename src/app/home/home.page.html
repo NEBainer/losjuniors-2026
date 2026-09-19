@@ -198,6 +198,51 @@
       </div>
     }
 
+    <!-- Punto 12: panel embebido para el mozo, mismo criterio que el panel
+         de "Clientes pendientes" de arriba (correcciones-profesor 13-09) en
+         vez de una tarjeta que navega aparte. -->
+    @if (esPanelMozo()) {
+      <div class="seccion-pendientes">
+        <div class="cabecera-pendientes">
+          <ion-icon name="list-outline"></ion-icon>
+          <h2>Pedidos pendientes</h2>
+        </div>
+
+        @if (mensajeErrorPedidosMozo()) {
+          <div class="mensaje mensaje-error">{{ mensajeErrorPedidosMozo() }}</div>
+        }
+        @if (mensajeOkPedidosMozo()) {
+          <div class="mensaje mensaje-ok">{{ mensajeOkPedidosMozo() }}</div>
+        }
+
+        @if (!cargandoPedidosMozo() && pedidosPendientesMozo().length === 0) {
+          <p class="estado-vacio-pendientes">No hay pedidos esperando confirmación.</p>
+        }
+
+        <div class="lista-pendientes-embebida">
+          @for (pedido of pedidosPendientesMozo(); track pedido.id) {
+            <div class="fila-pendiente">
+              <div class="avatar-chico">
+                <span>{{ pedido.mesaNumero }}</span>
+              </div>
+              <span class="nombre-pendiente">
+                {{ formatearPrecioPedido(pedido.importeTotal) }} · ~{{ pedido.tiempoEstimadoMinutos }} min · {{ pedido.hace }}
+              </span>
+              <div class="acciones-chicas">
+                <button
+                  class="btn-chico btn-aceptar"
+                  (click)="confirmarPedidoMozo(pedido)"
+                  [disabled]="procesandoPedidoId() === pedido.id"
+                >
+                  <ion-icon name="checkmark-circle-outline"></ion-icon>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
     <div class="seccion-logout">
       <button class="boton-logout" (click)="ejecutarCierreSesion()" [disabled]="cargando">
         <ion-icon name="log-out-outline"></ion-icon>

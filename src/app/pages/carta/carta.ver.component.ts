@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonHeader,
   IonToolbar,
   IonTitle,
+  IonButtons,
   IonContent,
   IonSpinner,
   IonNote,
@@ -14,33 +15,22 @@ import {
   IonFabButton,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { fastFoodOutline, wineOutline, timeOutline, pricetagOutline, refreshOutline, restaurantOutline, chatbubbleEllipsesOutline } from 'ionicons/icons';
+import {
+  fastFoodOutline,
+  wineOutline,
+  timeOutline,
+  pricetagOutline,
+  refreshOutline,
+  restaurantOutline,
+  receiptOutline,
+  personOutline,
+  warning,
+  chatbubbleEllipsesOutline,
+} from 'ionicons/icons';
 import { ProductoService, ProductoCarta } from '../producto/producto.service';
-import { CarruselFotosComponent } from './carrusel-fotos.component';
 import { MesaService } from '../../core/services/mesa.service';
+import { CarruselFotosComponent } from './carrusel-fotos.component';
 
-/**
- * carta.ver.component.ts
- * -----------------------
- * Punto 11 del TP: el cliente escanea el QR de la mesa y ve el listado
- * completo de productos (platos y bebidas — "postres" hoy vive adentro
- * de "platos", ver nota en producto.service.ts) con foto, nombre, precio,
- * descripción y tiempo estimado de elaboración.
- *
- * A diferencia de plato.alta/bebida.alta, ACÁ NO hay una capa separada de
- * "página de ruta" + "formulario compartido" — es un solo componente con
- * `ion-page`, `ion-header` e `ion-content` todos juntos. No hay necesidad
- * de reutilizar este formulario en dos rutas distintas, así que esa doble
- * capa (la que nos rompió el flex en plato/bebida-alta) no aplica acá y
- * la evito a propósito.
- *
- * NO incluye el carrito ni "hacer el pedido" (eso es el punto 12, en otra
- * pantalla) — esto es solo la vista de la carta.
- *
- * Ruteo: todavía no sé cómo van a conectarlo con el flujo de QR de mesa
- * (punto 10, que no armé yo). Es un componente standalone y autocontenido
- * — se puede colgar de la ruta que corresponda cuando esté ese flujo.
- */
 @Component({
   selector: 'app-carta-ver',
   standalone: true,
@@ -49,6 +39,7 @@ import { MesaService } from '../../core/services/mesa.service';
     IonHeader,
     IonToolbar,
     IonTitle,
+    IonButtons,
     IonContent,
     IonSpinner,
     IonNote,
@@ -63,6 +54,16 @@ import { MesaService } from '../../core/services/mesa.service';
 <ion-header>
   <ion-toolbar>
     <ion-title>La Carta</ion-title>
+    <ion-buttons slot="end">
+      <ion-button *ngIf="mesaId() && !pedidoEnCurso()" fill="clear" [disabled]="tomandoLock()" (click)="crearPedido()">
+        <ion-icon name="receipt-outline" slot="start"></ion-icon>
+        Pedido
+      </ion-button>
+      <div class="badge-pedido-en-curso" *ngIf="pedidoEnCurso()">
+        <ion-icon name="person-outline"></ion-icon>
+        <span>{{ pedidoEnCurso() }}</span>
+      </div>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
@@ -71,6 +72,11 @@ import { MesaService } from '../../core/services/mesa.service';
      la pantalla, formato página; scroll vertical pasa al
      siguiente/anterior producto"). -->
 <ion-content class="fondo-carta" [scrollY]="false">
+
+  <div class="banner-error" *ngIf="mensajeError()">
+    <ion-icon name="warning"></ion-icon>
+    <span>{{ mensajeError() }}</span>
+  </div>
 
   <div class="velo-cargando" *ngIf="cargando()">
     <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-spinner" />
@@ -119,10 +125,11 @@ import { MesaService } from '../../core/services/mesa.service';
     </article>
   </div>
 
-  <!-- Punto 11: solo aparece cuando se entra desde el QR de una mesa
-       (ruta 'mesa/:numero/carta') -- la ruta 'carta' a secas (acceso
-       directo desde home, sin mesa) no tiene a quién mandarle la consulta. -->
-  @if (mesaId()) {
+  <!-- Punto 11: solo aparece cuando se conoce el número de mesa, o sea
+       cuando se entró por 'mesa/:numero/carta' (QR) -- la ruta vieja
+       'carta/:mesaId' (acceso directo con uuid) no tiene número para
+       armar el link de "consultar al mozo". -->
+  @if (mesaNumero !== null) {
     <ion-fab class="fab-consultar-mozo" vertical="bottom" horizontal="end" slot="fixed">
       <ion-fab-button (click)="irAConsultarMozo()">
         <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
@@ -134,11 +141,6 @@ import { MesaService } from '../../core/services/mesa.service';
   `,
   styles: [`
 :host {
-  /* Mismo aprendizaje que en producto.alta: este host tiene que crecer
-     como flex-item dentro del .ion-page de más afuera Y ser
-     flex-container column para ion-header/ion-content de acá adentro.
-     Acá los dos roles los cumple el mismo elemento (no hay wrapper
-     intermedio), así que alcanza con esto. */
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -325,6 +327,40 @@ ion-header ion-toolbar {
   gap: 4px;
 }
 
+.badge-pedido-en-curso {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(244, 234, 218, 0.18);
+  color: var(--crema);
+  font-size: 0.85rem;
+  font-weight: 600;
+  max-width: 160px;
+}
+.badge-pedido-en-curso span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banner-error {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--rojo-error);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
 ion-fab-button {
   --background: var(--marron);
   --color: var(--crema);
@@ -359,7 +395,7 @@ ion-fab-button {
 }
   `],
 })
-export class CartaVerComponent implements OnInit {
+export class CartaVerComponent implements OnInit, OnDestroy {
   private readonly productoService = inject(ProductoService);
   private readonly mesaService = inject(MesaService);
   private readonly route = inject(ActivatedRoute);
@@ -369,11 +405,19 @@ export class CartaVerComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
   private readonly carta = signal<ProductoCarta[]>([]);
 
-  // Punto 11: solo se completa si se entró por 'mesa/:numero/carta'. En
-  // 'carta' a secas (acceso directo desde home) queda null y no se muestra
-  // el botón de consulta al mozo.
+  // Se completa resolviendo la mesa, sea por 'carta/:mesaId' (uuid
+  // directo) o por 'mesa/:numero/carta' (punto 11, QR). mesaNumero solo
+  // se conoce en el segundo caso -- lo necesita irAConsultarMozo() para
+  // armar la ruta 'mesa/:numero/consulta-mozo'.
   protected readonly mesaId = signal<string | null>(null);
-  private mesaNumero: number | null = null;
+  protected mesaNumero: number | null = null;
+
+  // Punto 12 (nuevo enfoque): lock de armado de pedido por mesa. null =
+  // libre; con nombre = alguien ya está adentro armando el suyo.
+  protected readonly pedidoEnCurso = signal<string | null>(null);
+  protected readonly tomandoLock = signal(false);
+  protected readonly mensajeError = signal('');
+  private canalLock: ReturnType<MesaService['escucharPedidoEnCurso']> | null = null;
 
   // Un solo feed (platos primero, bebidas después) en vez de dos listados
   // separados: el formato "página" pide un scroll vertical continuo que
@@ -393,6 +437,9 @@ export class CartaVerComponent implements OnInit {
       'pricetag-outline': pricetagOutline,
       'refresh-outline': refreshOutline,
       'restaurant-outline': restaurantOutline,
+      'receipt-outline': receiptOutline,
+      'person-outline': personOutline,
+      warning,
       'chatbubble-ellipses-outline': chatbubbleEllipsesOutline,
     });
   }
@@ -402,25 +449,69 @@ export class CartaVerComponent implements OnInit {
     this.resolverMesa();
   }
 
+  ngOnDestroy(): void {
+    this.canalLock?.unsubscribe();
+  }
+
+  // Resuelve la mesa sea cual sea la ruta por la que se entró: con
+  // 'numero' (punto 11, QR) busca por buscarPorNumero(); con 'mesaId'
+  // (ruta vieja 'carta/:mesaId', acceso directo) trae la mesa por id
+  // directo. Una vez resuelta, arranca el lock de pedido en curso (punto
+  // 12) -- estado inicial + Realtime de cambios futuros.
   private async resolverMesa(): Promise<void> {
     const numeroParam = this.route.snapshot.paramMap.get('numero');
-    if (!numeroParam) return;
+    const mesaIdParam = this.route.snapshot.paramMap.get('mesaId');
 
     try {
-      const mesa = await this.mesaService.buscarPorNumero(Number(numeroParam));
-      if (mesa) {
-        this.mesaId.set(mesa.id);
-        this.mesaNumero = mesa.numero;
-      }
+      const mesa = numeroParam
+        ? await this.mesaService.buscarPorNumero(Number(numeroParam))
+        : mesaIdParam
+          ? await this.mesaService.obtenerMesa(mesaIdParam)
+          : null;
+
+      if (!mesa) return;
+
+      this.mesaId.set(mesa.id);
+      this.mesaNumero = mesa.numero;
+      this.pedidoEnCurso.set(mesa.pedido_en_armado_por);
+      this.canalLock = this.mesaService.escucharPedidoEnCurso(mesa.id, (nombre) => {
+        this.pedidoEnCurso.set(nombre);
+      });
     } catch {
-      // Sin mesa resuelta, el FAB de "consultar al mozo" simplemente no
-      // aparece -- no es un error bloqueante para ver el menú.
+      // Sin mesa resuelta, ni el FAB de "consultar al mozo" ni el botón
+      // de "Crear pedido" hacen nada -- no es un error bloqueante para
+      // ver el menú.
     }
   }
 
   protected irAConsultarMozo(): void {
     if (this.mesaNumero === null) return;
     this.router.navigate(['/mesa', this.mesaNumero, 'consulta-mozo']);
+  }
+
+  protected async crearPedido(): Promise<void> {
+    const mesaId = this.mesaId();
+    if (!mesaId || this.tomandoLock() || this.pedidoEnCurso()) return;
+    this.tomandoLock.set(true);
+    try {
+      const obtuvoLock = await this.mesaService.tomarPedidoEnCurso(mesaId);
+      if (obtuvoLock) {
+        this.router.navigate(['/mesa', mesaId, 'pedido']);
+      }
+      // Si no lo obtuvo, alguien lo tomó una fracción de segundo antes --
+      // el mensaje "Fulano está armando el pedido" ya aparece solo por
+      // Realtime, no hace falta avisar nada más acá.
+    } catch (e) {
+      console.error('No se pudo iniciar el pedido', e);
+      this.dispararErrorTransitorio(e instanceof Error ? e.message : 'No se pudo iniciar el pedido.');
+    } finally {
+      this.tomandoLock.set(false);
+    }
+  }
+
+  private dispararErrorTransitorio(mensaje: string): void {
+    this.mensajeError.set(mensaje);
+    setTimeout(() => this.mensajeError.set(''), 4000);
   }
 
   protected async cargarCarta(): Promise<void> {

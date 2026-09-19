@@ -553,6 +553,197 @@ where perfil <> 'cliente_anonimo'
 order by perfil, created_at asc;
 
 grant select on public.accesos_rapidos to anon;
+
+-- ============================================================
+-- Punto 12: pedido completo de la mesa
+-- Agregado 14/09/2026.
+-- El cliente (registrado o anónimo, con mesa asignada) arma un pedido
+-- con productos para cada comensal; el mozo lo confirma. Cocina/cantina
+-- (cuando existan sus pantallas, puntos siguientes) van a filtrar por
+-- estado = 'confirmado' -- no hace falta ningún bloqueo extra acá para
+-- cumplir "no derivar a los sectores hasta que el mozo confirme", alcanza
+-- con que el pedido nazca en 'pendiente_confirmacion'.
+--
+-- ⚠️ Supuesto pendiente de confirmar con el equipo: las policies de abajo
+-- exigen `to authenticated` (igual que productos/mesas), es decir que el
+-- dispositivo del cliente ya tenga una sesión de Supabase Auth -- sea
+-- cliente_registrado logueado, o cliente_anonimo vía signInAnonymously()
+-- si el punto 9/10 termina resolviéndolo así. Hoy ese flujo anónimo
+-- todavía no existe en el código (no encontré ningún signInAnonymously()
+-- ni alta de fila en `usuarios` con perfil cliente_anonimo), así que por
+-- ahora esto se puede probar de punta a punta logueado como
+-- cliente@test.com (semilla ya cargada abajo) -- no bloqueé el punto 12
+-- por esto, pero falta resolverlo junto con el punto 10.
+-- ============================================================
+
+create type estado_pedido as enum ('pendiente_confirmacion', 'confirmado');
+
+create table pedidos (
+  id uuid primary key default gen_random_uuid(),
+  mesa_id uuid not null references mesas(id),
+  estado estado_pedido not null default 'pendiente_confirmacion',
+  -- Snapshot calculado por la app al armar el pedido (mismo criterio que
+  -- pedido_items.precio_unitario): no se recalculan solos si cambia el
+  -- precio o el tiempo de elaboración de un producto después.
+  importe_total numeric(10,2) not null check (importe_total >= 0),
+  -- Tiempo estimado = el MÁXIMO entre los productos pedidos, no la suma:
+  -- cocina y cantina preparan en paralelo (ver PedidoService.crearPedido).
+  tiempo_estimado_minutos integer not null check (tiempo_estimado_minutos > 0),
+  creado_por uuid not null references usuarios(id),
+  created_at timestamptz not null default now()
+);
+
+alter table pedidos enable row level security;
+
+create table pedido_items (
+  id uuid primary key default gen_random_uuid(),
+  pedido_id uuid not null references pedidos(id) on delete cascade,
+  producto_id uuid not null references productos(id),
+  -- Para qué comensal de la mesa es este ítem (punto 12: "elegir los
+  -- productos... para todos los comensales"). No hay tabla de comensales
+  -- aparte -- es un número de 1 a mesas.cantidad_comensales, validado en
+  -- la app antes de insertar acá.
+  comensal_numero integer not null check (comensal_numero > 0),
+  cantidad integer not null check (cantidad > 0),
+  precio_unitario numeric(10,2) not null check (precio_unitario >= 0)
+);
+
+alter table pedido_items enable row level security;
+
+-- pedidos --------------------------------------------------------
+
+create policy "pedidos_lectura_autenticados"
+on pedidos
+for select
+to authenticated
+using ( true );
+
+-- INSERT: cualquier cliente (registrado o anónimo) crea un pedido para
+-- una mesa ocupada. No verificamos acá que la mesa sea "la suya" -- esa
+-- asociación depende de cómo termine resolviéndose el punto 10 (ver
+-- aviso arriba); es una simplificación consciente para no bloquear este
+-- punto.
+create policy "pedidos_cliente_inserta"
+on pedidos
+for insert
+to authenticated
+with check (
+  perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and creado_por = auth.uid()
+  and estado = 'pendiente_confirmacion'
+  and exists (
+    select 1 from mesas m
+    where m.id = pedidos.mesa_id
+    and m.disponibilidad = 'ocupada'
+  )
+);
+
+-- UPDATE: solo el mozo, y solo pendiente -> confirmado (no puede
+-- revertir un pedido confirmado ni saltar a otro estado).
+create policy "pedidos_mozo_confirma"
+on pedidos
+for update
+to authenticated
+using ( perfil_actual() = 'mozo' and estado = 'pendiente_confirmacion' )
+with check ( perfil_actual() = 'mozo' and estado = 'confirmado' );
+
+-- pedido_items -----------------------------------------------------
+
+create policy "pedido_items_lectura_autenticados"
+on pedido_items
+for select
+to authenticated
+using ( true );
+
+create policy "pedido_items_cliente_inserta"
+on pedido_items
+for insert
+to authenticated
+with check (
+  perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and exists (
+    select 1 from pedidos p
+    where p.id = pedido_items.pedido_id
+    and p.estado = 'pendiente_confirmacion'
+    and p.creado_por = auth.uid()
+  )
+);
+
+-- ============================================================
+-- Punto 12 (nuevo enfoque, 2026): lock de "quién está armando el
+-- pedido" de una mesa. Corrido en el SQL Editor -- no había quedado
+-- documentado acá, se agrega ahora para que el archivo refleje lo que
+-- de verdad está en la base.
+--
+-- Va por funciones SECURITY DEFINER en vez de un UPDATE directo +
+-- policy: Supabase ya le da a "authenticated" un GRANT UPDATE amplio
+-- sobre toda la tabla "mesas" por default, así que una policy nueva
+-- acotada a estas dos columnas no hubiera evitado que cualquier cliente
+-- reescriba numero/tipo/foto_url/qr_code de una mesa ocupada. La función
+-- hace el UPDATE atómico (WHERE ... AND pedido_en_armado_por IS NULL)
+-- para que dos comensales que aprietan "Crear pedido" al mismo tiempo no
+-- se pisen el lock.
+-- ============================================================
+
+alter table mesas add column if not exists pedido_en_armado_por text;
+alter table mesas add column if not exists pedido_en_armado_en timestamptz;
+
+create or replace function tomar_pedido_en_curso(p_mesa_id uuid, p_nombre text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_filas integer;
+begin
+  if perfil_actual() not in ('cliente_registrado', 'cliente_anonimo') then
+    raise exception 'No autorizado.';
+  end if;
+
+  update mesas
+  set pedido_en_armado_por = p_nombre,
+      pedido_en_armado_en = now()
+  where id = p_mesa_id
+    and disponibilidad = 'ocupada'
+    and pedido_en_armado_por is null;
+
+  get diagnostics v_filas = row_count;
+  return v_filas > 0;
+end;
+$$;
+
+create or replace function liberar_pedido_en_curso(p_mesa_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update mesas
+  set pedido_en_armado_por = null,
+      pedido_en_armado_en = null
+  where id = p_mesa_id;
+end;
+$$;
+
+grant execute on function tomar_pedido_en_curso(uuid, text) to authenticated;
+grant execute on function liberar_pedido_en_curso(uuid) to authenticated;
+
+-- Tiempo real (punto 12): para que el resto de los comensales vean en
+-- vivo "[Nombre] está realizando el pedido" sin refrescar. Bloque
+-- idempotente porque ya se corrió una vez -- "add table" solo, sin el
+-- chequeo, tira error si la tabla ya es miembro de la publicación.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'mesas'
+  ) then
+    alter publication supabase_realtime add table mesas;
+  end if;
+end $$;
+
 -- =========================================================
 -- v4 (13/09/2026): Punto 9 — cliente anónimo + lista de espera.
 -- Ver supabase/README.md para el detalle de decisiones.

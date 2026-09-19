@@ -1,4 +1,4 @@
-﻿import { Routes } from '@angular/router';
+import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { guardPerfil } from './core/guards/perfil.guard';
 
@@ -61,12 +61,25 @@ export const routes: Routes = [
     canActivate: [authGuard, guardPerfil(['cantinero'])]
   },
   {
+    // Punto 11: "Ver la Carta" desde el home (home.page.ts / irALaCarta()),
+    // sin mesa asociada -- cualquier usuario logueado puede consultar el
+    // menú completo. Faltaba esta ruta: el botón navegaba a '/carta' pero
+    // solo existía 'carta/:mesaId', así que el router no matcheaba nada y
+    // no pasaba nada al tocarlo. CartaVerComponent ya soporta entrar sin
+    // 'numero' ni 'mesaId' (ver resolverMesa()): carga la carta igual,
+    // solo quedan sin efecto el FAB de consultar al mozo y "Crear pedido".
+    path: 'carta',
+    loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
+  },
+  {
     // ⚠️ TEMPORAL para probar la pantalla — el punto 11 en el TP se llega
     // escaneando el QR de la mesa (punto 10), no navegando a una ruta fija.
-    // Cuando esté armado ese flujo, sacar esta ruta o adaptarla (capaz
-    // termine siendo 'mesa/:mesaId/carta' o similar) y decidir si necesita
-    // guard — hoy no tiene ninguno.
-    path: 'carta',
+    // Ahora lleva :mesaId (punto 12, nuevo enfoque: el botón "Crear
+    // pedido" y el lock de armado necesitan saber en qué mesa está el
+    // comensal). Cuando esté armado el flujo de QR, ver si esta ruta se
+    // reemplaza directo por él — sin guard todavía, mismo motivo que
+    // 'mesa/:mesaId/pedido'.
+    path: 'carta/:mesaId',
     loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
   },
   {
@@ -81,7 +94,7 @@ export const routes: Routes = [
     // Punto 11: el cliente llega acá escaneando el QR de la mesa (o desde
     // el botón "Escanear Mesa" en home). Mismo componente que 'carta', con
     // el número de mesa en la ruta para poder mostrar el botón "consultar
-    // al mozo".
+    // al mozo" y el de "Crear pedido" (punto 12).
     path: 'mesa/:numero/carta',
     loadComponent: () => import('./pages/carta/carta.ver.component').then(m => m.CartaVerComponent)
   },
@@ -106,5 +119,20 @@ export const routes: Routes = [
     path: 'metre/lista-espera',
     loadComponent: () => import('./pages/metre-lista-espera/metre-lista-espera.page').then(m => m.MetreListaEsperaPage),
     canActivate: [authGuard, guardPerfil(['metre'])]
+  },
+  {
+    // Punto 12: pedido completo de la mesa. Ruta con :mesaId siguiendo el
+    // mismo criterio que 'carta/:mesaId' — cuando el punto 10 (QR de
+    // mesa) esté resuelto del todo, ver si conviene pasarla a :numero
+    // igual que 'mesa/:numero/carta'. Sin guard por ahora, mismo motivo
+    // que 'carta': todavía no hay sesión de cliente_anonimo resuelta (ver
+    // aviso en supabase/schema.sql).
+    path: 'mesa/:mesaId/pedido',
+    loadComponent: () => import('./pages/pedido/pedido.page').then(m => m.PedidoPage)
+  },
+  {
+    path: 'mozo/pedidos',
+    loadComponent: () => import('./pages/pedidos-mozo/pedidos-mozo.page').then(m => m.PedidosMozoPage),
+    canActivate: [authGuard, guardPerfil(['mozo'])]
   },
 ]

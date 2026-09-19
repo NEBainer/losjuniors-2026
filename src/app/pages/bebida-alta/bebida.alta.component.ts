@@ -5,28 +5,8 @@ import { ProductoAltaComponent, DatosProductoAlta } from '../producto/producto.a
 import { ProductoService } from '../producto/producto.service';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 
-/**
- * bebida.alta.component.ts
- * -------------------------
- * Punto 3 del TP (perfil cantinero). Calcado de plato.alta.component.ts —
- * mismo formulario reutilizable (producto.alta.component.ts) y mismo
- * service (producto.service.ts), solo cambia tipo/ruta/perfil.
- *
- * Reescrito de cero (09/2026), mismos tres cambios que en plato.alta:
- *   1) `host: { class: 'ion-page' }` para que el router de Ionic oculte
- *      correctamente la pantalla anterior al entrar acá.
- *   2) `ionViewDidEnter()` dispara un resize cuando la página termina de
- *      entrar — arregla el "formulario a medio pintar" por hidratación
- *      tardía de los custom elements de Ionic en rutas lazy.
- *   3) Caché en localStorage de la lista de bebidas existentes.
- *
- * Ruteo sugerido (ajustar a como esté armado el resto de las rutas):
- *   { path: 'cantinero/bebida-alta', component: BebidaAltaComponent,
- *     canActivate: [guardPerfil(['cantinero'])] }
- */
-
 const CLAVE_CACHE = 'la-mesa:nombres:bebida';
-const TTL_CACHE_MS = 5 * 60 * 1000; // 5 minutos.
+const TTL_CACHE_MS = 5 * 60 * 1000; 
 
 interface CacheNombres {
   nombres: string[];
@@ -85,7 +65,7 @@ export class BebidaAltaComponent implements OnInit, ViewDidEnter {
     this.errorGuardado.set(null);
     try {
       await this.productoService.crearProducto(datos);
-      this.router.navigateByUrl('/cantinero'); // ⚠️ AJUSTAR: ruta real de vuelta
+      this.router.navigate(['/home']);
     } catch (error) {
       console.error('No se pudo guardar la bebida', error);
       this.errorGuardado.set('No se pudo guardar la bebida. Probá de nuevo.');
@@ -96,7 +76,7 @@ export class BebidaAltaComponent implements OnInit, ViewDidEnter {
   }
 
   alCancelar(): void {
-    this.router.navigateByUrl('/cantinero'); // ⚠️ AJUSTAR: ruta real de vuelta
+    this.router.navigate(['/home']);
   }
 
   private leerCache(): CacheNombres | null {
@@ -116,7 +96,6 @@ export class BebidaAltaComponent implements OnInit, ViewDidEnter {
       const datos: CacheNombres = { nombres, guardadoEn: Date.now() };
       localStorage.setItem(CLAVE_CACHE, JSON.stringify(datos));
     } catch {
-      // No es crítico si falla.
     }
   }
 
@@ -124,7 +103,6 @@ export class BebidaAltaComponent implements OnInit, ViewDidEnter {
     try {
       await Haptics.notification({ type: NotificationType.Error });
     } catch {
-      // Web sin soporte de vibración - no rompe el flujo.
     }
   }
 }
