@@ -384,6 +384,15 @@ export class HomePage {
         return;
       }
 
+      // Punto 10: "el cliente escanea el QR de la mesa asignada" -- sin
+      // este chequeo, cualquier cliente podía escanear el QR de OTRA mesa
+      // (no la que le asignó el metre) y entrar igual a su carta/pedido.
+      const sesion = await this.authService.obtenerSesionActual();
+      if (!sesion || mesa.cliente_actual_id !== sesion.user.id) {
+        this.dispararErrorEscaneo('Esta no es tu mesa asignada.');
+        return;
+      }
+
       this.router.navigate(['/mesa', mesa.numero, 'carta']);
     } catch (error) {
       const mensaje = error instanceof Error ? error.message : 'No se pudo leer el código.';
