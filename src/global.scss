@@ -72,51 +72,8 @@
     gap: 20px;
 
     .logo-spinner {
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-    }
-
-    .spinner-css {
-      width: 40px;
-      height: 40px;
-      border: 4px solid rgba(252, 247, 238, 0.3);
-      border-top-color: var(--ion-color-primary);
-      border-radius: 50%;
-      animation: girar 1s linear infinite;
-    }
-
-    p {
-      font-weight: 600;
-      font-size: 1.1rem;
-      letter-spacing: 0.5px;
-      margin: 0;
-    }
-  }
-}
-
-.overlay-cargando {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: var(--overlay-cargando-bg);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: var(--ion-background-color);
-
-  .contenedor-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-
-    .logo-spinner {
-      width: 80px;
-      height: 80px;
+      width: 140px;
+      height: 140px;
       object-fit: contain;
     }
 

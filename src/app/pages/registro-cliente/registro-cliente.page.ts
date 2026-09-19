@@ -10,7 +10,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { addIcons } from 'ionicons';
 import {
   camera, closeOutline, warning, personAddOutline, cameraOutline, warningOutline, eyeOutline, eyeOffOutline,
-  qrCodeOutline,
+  qrCodeOutline
 } from 'ionicons/icons';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { DniScannerService } from '../../core/services/dni-scanner.service';
@@ -64,7 +64,7 @@ export class RegistroClientePage  implements OnInit {
 
     addIcons({
       camera, warning, warningOutline, personAddOutline, cameraOutline, closeOutline, eyeOutline, eyeOffOutline,
-      qrCodeOutline,
+      qrCodeOutline
     });
    }
 

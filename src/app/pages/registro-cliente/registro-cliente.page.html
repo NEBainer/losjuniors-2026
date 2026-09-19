@@ -1,5 +1,5 @@
 <ion-content class="fondo-registro" [scrollY]="true">
-  <div class="contenedor-registro">
+  <div class="contenedor-registro contenedor-app">
 
     <header class="encabezado">
       <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="mascota-encabezado" />
@@ -88,9 +88,11 @@
             fill="solid"
             class="input-formulario">
           </ion-input>
-          <button type="button" class="boton-ojo" (click)="toggleMostrarClave()" [attr.aria-label]="mostrarClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
-            <ion-icon [name]="mostrarClave() ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
-          </button>
+          <ion-icon
+            [name]="mostrarClave() ? 'eye-off-outline' : 'eye-outline'"
+            (click)="mostrarClave.set(!mostrarClave())"
+            class="icono-ojo">
+          </ion-icon>
         </div>
         @if (formulario.get('clave')?.touched && formulario.get('clave')?.invalid) {
           <span class="error-campo">La contraseña debe tener al menos 6 caracteres.</span>

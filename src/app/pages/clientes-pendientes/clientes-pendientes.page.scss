@@ -72,7 +72,7 @@
 
 .mensaje-error {
   background-color: var(--ion-color-danger);
-  color: #FCF7EE;
+  color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
 }
 
 .mensaje-ok {
@@ -209,47 +209,6 @@
   .btn-rechazar,
   .btn-no {
     background-color: var(--ion-color-danger);
-    color: #FCF7EE;
+    color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
   }
-}
-
-/* Spinner reutilizable (mismo patrón que login/home) */
-.overlay-cargando {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(26, 37, 44, 0.95);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: var(--ion-background-color);
-
-  .contenedor-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-
-    .logo-spinner {
-      width: 140px;
-      height: 140px;
-      object-fit: contain;
-    }
-
-    .spinner-css {
-      width: 40px;
-      height: 40px;
-      border: 4px solid var(--ion-background-color);
-      border-top-color: var(--ion-color-primary);
-      border-radius: 50%;
-      animation: girar 1s linear infinite;
-    }
-  }
-}
-
-@keyframes girar {
-  to { transform: rotate(360deg); }
 }
