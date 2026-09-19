@@ -8,8 +8,16 @@ describe('ConsultaMozoPage', () => {
     const mesaServiceMock = { buscarPorNumero: vi.fn() } as any;
     const usuariosServiceMock = { obtenerUsuarioActual: vi.fn() } as any;
     const consultaMozoServiceMock = overrides.consultaMozoServiceMock ?? {};
+    const notificacionesServiceMock = { avisarConsultaRespondida: vi.fn() } as any;
 
-    return new ConsultaMozoPage(routeMock, routerMock, mesaServiceMock, usuariosServiceMock, consultaMozoServiceMock);
+    return new ConsultaMozoPage(
+      routeMock,
+      routerMock,
+      mesaServiceMock,
+      usuariosServiceMock,
+      consultaMozoServiceMock,
+      notificacionesServiceMock,
+    );
   }
 
   it('reconoce como propio un mensaje del usuario logueado', () => {

@@ -179,6 +179,12 @@ export class HomePage {
     if (this.esMetre()) {
       this.notificacionesService.iniciarEscuchaMetre();
     }
+    if (this.esPanelDueno()) {
+      this.notificacionesService.iniciarEscuchaPendientes();
+    }
+    if (this.esPanelMozo()) {
+      this.notificacionesService.iniciarEscuchaConsultasMozo();
+    }
   }
 
   private async verificarMesaAsignada() {
@@ -454,6 +460,8 @@ export class HomePage {
       // cerrarSesion() fallara, la sesión (y el listener del metre) siguen
       // activos, no queremos cortar la escucha de algo que sigue logueado.
       this.notificacionesService.detenerEscuchaMetre();
+      this.notificacionesService.detenerEscuchaPendientes();
+      this.notificacionesService.detenerEscuchaConsultasMozo();
 
       // Verificar que las credenciales se borren
       // Limpiamos la caché local de Capacitor/Navegador por seguridad extra
