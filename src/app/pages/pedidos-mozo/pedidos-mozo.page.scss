@@ -163,32 +163,24 @@
   .acciones {
     grid-area: acciones;
     display: flex;
-  }
-
-  .btn {
-    flex: 1;
-    display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 12px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: bold;
-
-    ion-icon {
-      font-size: 1.2rem;
-    }
-
-    &:disabled {
-      opacity: 0.5;
-    }
+    gap: 36px;
   }
 
-  .btn-confirmar {
-    background-color: var(--ion-color-success);
-    color: var(--ion-color-success-contrast);
+  .icono-accion {
+    font-size: 2.6rem;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+
+    &:active {
+      transform: scale(0.88);
+    }
+
+    &.deshabilitado {
+      opacity: 0.4;
+      pointer-events: none;
+    }
   }
 }
 

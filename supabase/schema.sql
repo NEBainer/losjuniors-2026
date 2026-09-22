@@ -936,3 +936,33 @@ using ( perfil_actual() = 'mozo' );
 -- Pendiente (fuera del alcance de esta tanda): activar Realtime para
 -- esta tabla desde el dashboard (Database → Replication), igual que
 -- se hizo con lista_espera.
+
+
+-- =========================================================
+-- v8 (21/09/2026): Punto 13 — mozo rechaza el pedido.
+--
+-- Se agrega 'rechazado' al enum y se reemplaza la policy de UPDATE
+-- del mozo para permitir esa transición además de 'confirmado'. El
+-- pedido rechazado NO se borra (se conserva como registro); el
+-- cliente ve el cambio de estado por Realtime (mismo canal que ya
+-- usa para "confirmado") y vuelve a la pantalla de armado con el
+-- carrito que ya tenía en memoria, para poder modificar/agregar/
+-- quitar productos y reenviarlo (PedidoPage.suscribirConfirmacion).
+--
+-- OJO al correr esto en el SQL Editor: "alter type ... add value"
+-- no puede ejecutarse en la misma transacción en la que ya se usa el
+-- valor nuevo. Si tirás todo el bloque junto y da error de "unsafe
+-- use of new value", corré primero sola la línea del alter type,
+-- confirmá, y después el resto (drop/create policy).
+-- =========================================================
+
+alter type estado_pedido add value if not exists 'rechazado';
+
+drop policy if exists "pedidos_mozo_confirma" on pedidos;
+
+create policy "pedidos_mozo_confirma"
+on pedidos
+for update
+to authenticated
+using ( perfil_actual() = 'mozo' and estado = 'pendiente_confirmacion' )
+with check ( perfil_actual() = 'mozo' and estado in ('confirmado', 'rechazado') );

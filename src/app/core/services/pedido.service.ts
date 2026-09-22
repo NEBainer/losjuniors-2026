@@ -127,6 +127,17 @@ export class PedidoService {
     if (error) throw new Error('No se pudo confirmar el pedido.');
   }
 
+  async rechazarPedido(pedidoId: string): Promise<void> {
+    const { error } = await this.client
+      .from('pedidos')
+      .update({ estado: 'rechazado' as EstadoPedido })
+      .eq('id', pedidoId)
+      .select()
+      .single();
+
+    if (error) throw new Error('No se pudo rechazar el pedido.');
+  }
+
   private mapPedido(fila: any): Pedido {
     return {
       id: fila.id,

@@ -67,6 +67,15 @@ export class NotificacionesService {
     );
   }
 
+  async avisarPedidoRechazado(mesaNumero?: number): Promise<void> {
+    await this.notificar(
+      'El mozo rechazó el pedido',
+      mesaNumero
+        ? `Revisá el pedido de la mesa ${mesaNumero} y volvé a enviarlo.`
+        : 'Revisá tu pedido y volvé a enviarlo.',
+    );
+  }
+
   escucharMesaAsignada(clienteId: string, onAsignada: (mesa: { numero: number }) => void): () => void {
     const canal = this.sb
       .channel(`mesa-asignada-${clienteId}`)

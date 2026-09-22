@@ -1,4 +1,4 @@
-export type EstadoPedido = 'pendiente_confirmacion' | 'confirmado';
+export type EstadoPedido = 'pendiente_confirmacion' | 'confirmado' | 'rechazado';
 export interface ItemCarrito {
   productoId: string;
   nombre: string;

@@ -617,11 +617,26 @@ export class PedidoPage implements OnInit, OnDestroy {
   }
 
   private suscribirConfirmacion(pedidoId: string): void {
+    this.canalRealtime?.unsubscribe();
     this.canalRealtime = this.pedidoService.escucharConfirmacion(pedidoId, (pedido) => {
-      this.pedidoActual.set(pedido);
       if (pedido.estado === 'confirmado') {
+        this.pedidoActual.set(pedido);
         this.fase.set('confirmado');
         this.notificacionesService.avisarPedidoConfirmado(this.mesa()?.numero);
+      } else if (pedido.estado === 'rechazado') {
+        this.notificacionesService.avisarPedidoRechazado(this.mesa()?.numero);
+        // El carrito (carritoMapa) sigue en memoria desde que se armó
+        // el pedido -- no hace falta reconstruirlo: al volver a
+        // "armando" el cliente ya ve sus productos y cantidades
+        // cargadas, listos para modificar/agregar/quitar y reenviar.
+        this.pedidoActual.set(null);
+        this.fase.set('armando');
+        // Se había liberado el lock de la mesa al enviar el pedido
+        // (punto 12); como el cliente vuelve a editar, lo retomamos
+        // para que otro comensal no arranque un pedido en paralelo.
+        this.mesaService.tomarPedidoEnCurso(this.mesaId).catch((e) => {
+          console.error('No se pudo retomar el lock de la mesa tras el rechazo', e);
+        });
       }
     });
   }

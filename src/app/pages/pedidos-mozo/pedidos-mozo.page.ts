@@ -7,6 +7,8 @@ import {
   refreshOutline,
   warning,
   checkmarkCircleOutline,
+  checkmarkCircle,
+  closeCircle,
   restaurantOutline,
   timeOutline,
 } from 'ionicons/icons';
@@ -37,7 +39,7 @@ export class PedidosMozoPage {
   readonly mensajeOk = signal('');
 
   constructor(private pedidos: PedidoService, private router: Router) {
-    addIcons({ arrowBackOutline, refreshOutline, warning, checkmarkCircleOutline, restaurantOutline, timeOutline });
+    addIcons({ arrowBackOutline, refreshOutline, warning, checkmarkCircleOutline, checkmarkCircle, closeCircle, restaurantOutline, timeOutline });
   }
 
   volver() {
@@ -70,6 +72,21 @@ export class PedidosMozoPage {
       setTimeout(() => this.mensajeOk.set(''), 3000);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'No se pudo confirmar el pedido.';
+      this.dispararError(msg);
+    } finally {
+      this.procesandoId.set(null);
+    }
+  }
+
+  async rechazar(pedido: PedidoPendiente) {
+    this.procesandoId.set(pedido.id);
+    try {
+      await this.pedidos.rechazarPedido(pedido.id);
+      this.pendientes.update((lista) => lista.filter((p) => p.id !== pedido.id));
+      this.mensajeOk.set(`Pedido de mesa ${pedido.mesaNumero} rechazado.`);
+      setTimeout(() => this.mensajeOk.set(''), 3000);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'No se pudo rechazar el pedido.';
       this.dispararError(msg);
     } finally {
       this.procesandoId.set(null);
