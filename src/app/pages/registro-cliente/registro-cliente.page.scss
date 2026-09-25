@@ -175,14 +175,23 @@
       --padding-end: 40px;
     }
 
-    .icono-ojo {
+    // Mismo botón que el login para los dos campos de contraseña; sin
+    // estilos propios el <button> mostraba el fondo y el borde por default.
+    .boton-ojo {
       position: absolute;
       right: 12px;
-      font-size: 1.2rem;
+      background: none;
+      border: none;
+      padding: 4px;
+      display: flex;
       color: var(--ion-text-color);
       opacity: 0.6;
       cursor: pointer;
       z-index: 2;
+
+      ion-icon {
+        font-size: 1.2rem;
+      }
     }
   }
 
