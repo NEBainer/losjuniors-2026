@@ -15,11 +15,11 @@
   //padding-bottom: calc(20px + env(safe-area-inset-bottom));
   color: var(--ion-text-color);
 
-  // Panel del dueño/supervisor (correcciones-profesor 13-09): la pantalla
-  // se reparte en dos mitades fijas -- accesos rápidos arriba, pendientes
-  // abajo -- en vez de dejar que la grilla crezca libre como en el resto
-  // de los perfiles.
-  &.panel-dueno {
+  // Paneles con una lista integrada abajo (dueño/supervisor con clientes
+  // pendientes, mozo con pedidos pendientes -- correcciones-profesor
+  // 13-09): la pantalla se reparte entre accesos rápidos arriba y la lista
+  // abajo, en vez de dejar que la grilla crezca libre y genere scroll.
+  &.panel-compacto {
     height: 100vh;
     min-height: 0;
 
@@ -69,6 +69,12 @@
         p {
           font-size: 0.9rem;
         }
+      }
+
+      // Con una cantidad impar de tarjetas (el mozo tiene 3), la última
+      // ocupa el ancho completo en vez de dejar un hueco al lado.
+      .modulo-card:last-child:nth-child(odd) {
+        grid-column: span 2;
       }
     }
 
