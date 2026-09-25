@@ -8,6 +8,7 @@ export class NotificacionesService {
   private canalMetre: RealtimeChannel | null = null;
   private canalPendientes: RealtimeChannel | null = null;
   private canalConsultasMozo: RealtimeChannel | null = null;
+  private canalRespuestasCliente: RealtimeChannel | null = null;
   private permisosConcedidos = false;
 
   constructor(private supabaseService: SupabaseService) {}
@@ -116,14 +117,29 @@ export class NotificacionesService {
     }
   }
 
-  // Punto 11: "un mozo responde (push al cliente)" -- se llama desde el
-  // hilo puntual de la mesa (consulta-mozo.page.ts), no desde acá, porque
-  // ahí ya se sabe con certeza que el mensaje nuevo no es propio.
-  async avisarConsultaRespondida(mesaNumero?: number): Promise<void> {
-    await this.notificar(
-      'El mozo respondió',
-      mesaNumero ? `Tenés una respuesta nueva en la consulta de la mesa ${mesaNumero}.` : 'Tenés una respuesta nueva del mozo.',
-    );
+  // Punto 11: "un mozo responde (push al cliente)". Vive acá (singleton,
+  // arranca en home.page.ts) y no en consulta-mozo.page.ts para que el
+  // aviso llegue aunque el cliente no tenga el chat abierto. No hace falta
+  // filtrar por mesa: la policy `mensajes_mozo_cliente_ve_su_mesa` (ver
+  // schema.sql) también aplica a Realtime, así que el cliente solo recibe
+  // los mensajes del hilo de su propia mesa.
+  iniciarEscuchaRespuestasCliente() {
+    if (this.canalRespuestasCliente) return;
+    this.canalRespuestasCliente = this.sb
+      .channel('cliente-respuestas-mozo')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'mensajes_mozo', filter: 'remitente_perfil=eq.mozo' },
+        () => this.notificar('El mozo respondió', 'Tenés una respuesta nueva del mozo.'),
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaRespuestasCliente() {
+    if (this.canalRespuestasCliente) {
+      this.sb.removeChannel(this.canalRespuestasCliente);
+      this.canalRespuestasCliente = null;
+    }
   }
 
   escucharMesaAsignada(clienteId: string, onAsignada: (mesa: { numero: number }) => void): () => void {

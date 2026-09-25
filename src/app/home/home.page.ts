@@ -185,6 +185,9 @@ export class HomePage {
     if (this.esPanelMozo()) {
       this.notificacionesService.iniciarEscuchaConsultasMozo();
     }
+    if (this.puedeEscanearMesa()) {
+      this.notificacionesService.iniciarEscuchaRespuestasCliente();
+    }
   }
 
   private async verificarMesaAsignada() {
@@ -462,6 +465,7 @@ export class HomePage {
       this.notificacionesService.detenerEscuchaMetre();
       this.notificacionesService.detenerEscuchaPendientes();
       this.notificacionesService.detenerEscuchaConsultasMozo();
+      this.notificacionesService.detenerEscuchaRespuestasCliente();
 
       // Verificar que las credenciales se borren
       // Limpiamos la caché local de Capacitor/Navegador por seguridad extra

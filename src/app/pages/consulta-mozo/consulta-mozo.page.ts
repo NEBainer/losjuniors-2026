@@ -20,7 +20,6 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { MesaService } from '../../core/services/mesa.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ConsultaMozoService, MensajeMozo } from '../../core/services/consulta-mozo.service';
-import { NotificacionesService } from '../../core/services/notificaciones.service';
 
 /**
  * consulta-mozo.page.ts
@@ -31,9 +30,10 @@ import { NotificacionesService } from '../../core/services/notificaciones.servic
  * (Realtime). El mozo entra acá desde la bandeja (consultas-mozo.page.ts,
  * que lista todas las mesas con consulta abierta); el cliente entra desde
  * el FAB de la carta. El aviso "notifica a todos los mozos" al llegar una
- * consulta vive en NotificacionesService.iniciarEscuchaConsultasMozo()
- * (arranca en home.page.ts); acá solo el lado cliente, porque recién acá
- * se sabe con certeza que el mensaje entrante no es del propio usuario.
+ * consulta vive en NotificacionesService.iniciarEscuchaConsultasMozo(), y
+ * el aviso al cliente cuando le responden en
+ * NotificacionesService.iniciarEscuchaRespuestasCliente() (las dos
+ * arrancan en home.page.ts, así llegan aunque este chat no esté abierto).
  */
 @Component({
   selector: 'app-consulta-mozo',
@@ -85,7 +85,6 @@ export class ConsultaMozoPage implements OnInit, OnDestroy {
     private mesaService: MesaService,
     private usuariosService: UsuariosService,
     private consultaMozoService: ConsultaMozoService,
-    private notificacionesService: NotificacionesService,
   ) {
     addIcons({ arrowBackOutline, chatbubblesOutline, sendOutline, warningOutline });
   }
@@ -113,14 +112,6 @@ export class ConsultaMozoPage implements OnInit, OnDestroy {
       this.canal = this.consultaMozoService.escucharMensajesNuevos(mesa.id, (mensaje) => {
         this.mensajes.update((lista) => [...lista, mensaje]);
         this.desplazarAlFinal();
-
-        // Punto 11: "un mozo responde (push al cliente)" -- el propio
-        // envío también llega por este mismo canal (enviar() no lo agrega
-        // a mano a la lista), así que hay que descartarlo por remitente_id
-        // para no autonotificarse cada vez que el cliente escribe.
-        if (!this.esMozo && mensaje.remitente_perfil === 'mozo' && mensaje.remitente_id !== this.usuarioId) {
-          this.notificacionesService.avisarConsultaRespondida(this.numeroMesa() ?? undefined);
-        }
       });
     } catch {
       this.dispararError('No se pudo cargar la consulta. Intentá de nuevo.');

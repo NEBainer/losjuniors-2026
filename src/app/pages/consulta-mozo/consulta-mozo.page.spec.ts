@@ -8,7 +8,6 @@ describe('ConsultaMozoPage', () => {
     const mesaServiceMock = { buscarPorNumero: vi.fn() } as any;
     const usuariosServiceMock = { obtenerUsuarioActual: vi.fn() } as any;
     const consultaMozoServiceMock = overrides.consultaMozoServiceMock ?? {};
-    const notificacionesServiceMock = { avisarConsultaRespondida: vi.fn() } as any;
 
     return new ConsultaMozoPage(
       routeMock,
@@ -16,7 +15,6 @@ describe('ConsultaMozoPage', () => {
       mesaServiceMock,
       usuariosServiceMock,
       consultaMozoServiceMock,
-      notificacionesServiceMock,
     );
   }
 
