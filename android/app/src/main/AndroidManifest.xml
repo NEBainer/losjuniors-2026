@@ -27,6 +27,14 @@
             android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Escaneo de QR (mesa, ingreso, DNI): BarcodeScanner.scan() usa el
+             módulo de Google Play Services. Esto hace que se descargue al
+             instalar la app, y no recién en el primer escaneo (que falla con
+             "Google Barcode Scanner Module is not available"). -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode_ui" />
     </application>
 
     <!-- Permissions -->

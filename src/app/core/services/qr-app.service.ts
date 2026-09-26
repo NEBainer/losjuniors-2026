@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
+import { asegurarModuloEscaner } from './escaner.util';
 
 export type QrAppPayload =
   | { tipo: 'ingreso_local' }
@@ -20,6 +21,7 @@ export class QrAppService {
       }
     }
 
+    await asegurarModuloEscaner();
     const { barcodes } = await BarcodeScanner.scan({ formats: [BarcodeFormat.QrCode] });
     if (barcodes.length === 0) return null;
 

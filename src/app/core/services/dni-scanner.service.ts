@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
+import { asegurarModuloEscaner } from './escaner.util';
 
 export interface DatosDni {
   apellidos: string;
@@ -34,6 +35,7 @@ export class DniScannerService {
     }
 
     // PDF417, no QrCode: es el formato real del DNI argentino.
+    await asegurarModuloEscaner();
     const { barcodes } = await BarcodeScanner.scan({ formats: [BarcodeFormat.Pdf417] });
     if (barcodes.length === 0) return null;
 
