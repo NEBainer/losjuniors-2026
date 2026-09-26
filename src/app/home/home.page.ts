@@ -379,28 +379,16 @@ export class HomePage {
   async escanearMesa() {
     this.escaneandoMesa.set(true);
     try {
-      const datos = await this.qrAppService.escanear();
-      if (!datos) return; // el usuario canceló el escaneo
-
-      if (datos.tipo !== 'mesa') {
-        this.dispararErrorEscaneo('Ese código no es el de una mesa.');
-        return;
-      }
-
-      const mesa = await this.mesaService.buscarPorNumero(datos.numero);
-      if (!mesa) {
-        this.dispararErrorEscaneo(`No encontramos la mesa ${datos.numero}.`);
-        return;
-      }
-
-      // Punto 10: "el cliente escanea el QR de la mesa asignada" -- sin
-      // este chequeo, cualquier cliente podía escanear el QR de OTRA mesa
-      // (no la que le asignó el metre) y entrar igual a su carta/pedido.
       const sesion = await this.authService.obtenerSesionActual();
-      if (!sesion || mesa.cliente_actual_id !== sesion.user.id) {
-        this.dispararErrorEscaneo('Esta no es tu mesa asignada.');
+      if (!sesion) {
+        this.dispararErrorEscaneo('Tu sesión expiró. Volvé a ingresar.');
         return;
       }
+
+      // Punto 10: valida tipo de QR, que la mesa exista y que sea la
+      // asignada a este cliente (misma lógica que la lista de espera).
+      const mesa = await this.mesaService.escanearMesaAsignada(sesion.user.id);
+      if (!mesa) return; // el usuario canceló el escaneo
 
       this.router.navigate(['/mesa', mesa.numero, 'carta']);
     } catch (error) {

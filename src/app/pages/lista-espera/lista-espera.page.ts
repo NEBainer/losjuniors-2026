@@ -1,22 +1,25 @@
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
-import { IonButton, IonContent, IonIcon } from '@ionic/angular';
+import { IonButton, IonContent, IonIcon, IonSpinner } from '@ionic/angular';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { AuthService } from '../../core/services/auth.service';
 import { ClienteService } from '../../core/services/cliente.service';
 import { MesaService } from '../../core/services/mesa.service';
 import { NotificacionesService } from '../../core/services/notificaciones.service';
 import { Router } from '@angular/router';
 import { addIcons } from 'ionicons';
-import { checkmarkCircleOutline, timeOutline } from 'ionicons/icons';
+import { checkmarkCircleOutline, qrCodeOutline, timeOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-lista-espera',
   templateUrl: './lista-espera.page.html',
   styleUrls: ['./lista-espera.page.scss'],
-  imports: [IonContent, IonIcon, IonButton]
+  imports: [IonContent, IonIcon, IonButton, IonSpinner]
 })
 export class ListaEsperaPage implements OnInit, OnDestroy {
   private clienteId = '';
   readonly mesaAsignada = signal<{ numero: number } | null>(null);
+  readonly escaneando = signal(false);
+  readonly mensajeError = signal('');
 
   // Se arranca y se para junto con esta pantalla (a diferencia del canal
   // del metre en NotificacionesService, que vive en el service para
@@ -31,7 +34,7 @@ export class ListaEsperaPage implements OnInit, OnDestroy {
     private notificacionesService: NotificacionesService,
     private router: Router,
   ) {
-    addIcons({ timeOutline, checkmarkCircleOutline });
+    addIcons({ timeOutline, checkmarkCircleOutline, qrCodeOutline });
    }
 
   async ngOnInit() {
@@ -75,6 +78,32 @@ export class ListaEsperaPage implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.detenerEscucha?.();
+  }
+
+  // Punto 10: el cliente anónimo no pasa por el home (entra por el QR del
+  // local y queda acá), así que escanea el QR de su mesa desde esta misma
+  // pantalla, sin un paso intermedio.
+  async escanearMiMesa() {
+    this.escaneando.set(true);
+    try {
+      const mesa = await this.mesaService.escanearMesaAsignada(this.clienteId);
+      if (!mesa) return; // el usuario canceló el escaneo
+      this.router.navigate(['/mesa', mesa.numero, 'carta'], { replaceUrl: true });
+    } catch (error) {
+      this.dispararError(error instanceof Error ? error.message : 'No se pudo leer el código.');
+    } finally {
+      this.escaneando.set(false);
+    }
+  }
+
+  private async dispararError(mensaje: string) {
+    this.mensajeError.set(mensaje);
+    try {
+      await Haptics.impact({ style: ImpactStyle.Heavy });
+    } catch {
+      // Ignorar si el dispositivo/navegador no soporta vibración.
+    }
+    setTimeout(() => this.mensajeError.set(''), 4000);
   }
 
    async salir() {

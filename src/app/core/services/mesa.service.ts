@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Camera } from '@capacitor/camera';
 import { SupabaseService } from './supabase.service';
+import { QrAppService } from './qr-app.service';
 
 export interface NuevaMesa {
   numero: number;
@@ -29,6 +30,7 @@ export interface Mesa {
 })
 export class MesaService {
   private supabase = inject(SupabaseService).client;
+  private qrAppService = inject(QrAppService);
 
   // Alta de mesa (punto 4): crea la fila en "mesas" y, si se tomó una foto,
   // la sube antes al bucket "fotos/mesas". El qr_code se arma con el mismo
@@ -102,6 +104,33 @@ export class MesaService {
     }
 
     return data;
+  }
+
+  // Punto 10: el cliente (registrado o anónimo) escanea el QR de la mesa
+  // que le asignó el metre. Lo usan el home y la lista de espera del
+  // anónimo, para que la validación sea la misma en los dos lados.
+  // Devuelve null si el usuario canceló el escaneo; cualquier otro
+  // problema se tira como Error con el mensaje listo para mostrar.
+  async escanearMesaAsignada(clienteId: string): Promise<Mesa | null> {
+    const datos = await this.qrAppService.escanear();
+    if (!datos) return null;
+
+    if (datos.tipo !== 'mesa') {
+      throw new Error('Ese código no es el de una mesa.');
+    }
+
+    const mesa = await this.buscarPorNumero(datos.numero);
+    if (!mesa) {
+      throw new Error(`No encontramos la mesa ${datos.numero}.`);
+    }
+
+    // Sin este chequeo, cualquier cliente podía escanear el QR de OTRA
+    // mesa (no la que le asignó el metre) y entrar igual a su carta.
+    if (mesa.cliente_actual_id !== clienteId) {
+      throw new Error('Esta no es tu mesa asignada.');
+    }
+
+    return mesa;
   }
 
   // Mesa puntual por id (punto 12: la pantalla de pedido necesita saber
