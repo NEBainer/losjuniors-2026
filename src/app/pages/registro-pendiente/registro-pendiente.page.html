@@ -3,10 +3,10 @@
     @switch (estado()) {
       @case ('pendiente') {
         <div class="estado pendiente">
-          <ion-icon name="time-outline"></ion-icon>
-          <h2>Tu registro está pendiente de aprobación</h2>
-          <p>El dueño o supervisor lo revisará en breve. Esta pantalla se actualiza sola.</p>
-          <ion-spinner name="dots"></ion-spinner>
+          <ion-icon name="mail-outline"></ion-icon>
+          <h2>Tu solicitud fue recibida</h2>
+          <p>Te enviamos un correo confirmando que está en revisión. Te vamos a avisar por mail.</p>
+          <ion-button fill="outline" (click)="volverAlInicio()">Volver al inicio</ion-button>
         </div>
       }
       @case ('aceptado') {
@@ -20,7 +20,8 @@
         <div class="estado rechazado">
           <ion-icon name="close-circle"></ion-icon>
           <h2>Registro rechazado</h2>
-          <p>Revisá tu correo electrónico para más información.</p>
+          <p>El restaurante no aprobó tu registro, así que no podés ingresar a la aplicación. Te enviamos un correo con más información.</p>
+          <ion-button fill="outline" (click)="volverAlInicio()">Volver al inicio</ion-button>
         </div>
       }
     }

@@ -5,10 +5,12 @@
 .contenedor-principal {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  // 100% (no 100dvh): dvh es el alto TOTAL de pantalla, sin descontar el
+  // ion-footer -- con eso sobraba justo lo que mide el footer y generaba
+  // un scroll mínimo pero constante (probado en dispositivo real).
+  min-height: 100%;
   padding: 25px;
   gap: 22px;
-  color: var(--ion-text-color);
 }
 
 .cabecera-pagina {
@@ -100,6 +102,23 @@
     }
   }
 
+  .texto-error-campo {
+    color: var(--ion-color-danger);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .campo-invalido {
+    input,
+    select {
+      border-color: var(--ion-color-danger);
+    }
+
+    .contenedor-foto {
+      border: 2px solid var(--ion-color-danger);
+    }
+  }
+
   .campo-foto {
     flex: 1;
     min-height: 0;
@@ -176,6 +195,17 @@
   }
 }
 
+// Fijo abajo (correcciones-profesor 13-09) -- ver comentario en el HTML.
+.pie-guardar {
+  padding: 14px 25px calc(14px + env(safe-area-inset-bottom));
+  background: var(--ion-background-color);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+
+  .boton-principal {
+    width: 100%;
+  }
+}
+
 .boton-secundario {
   background-color: transparent;
   color: var(--ion-color-primary);
@@ -210,7 +240,7 @@
 
 .resultado-alta {
   .icono-exito {
-    color: #2e7d32;
+    color: var(--ion-color-success);
   }
 
   .qr-generado {
@@ -222,50 +252,4 @@
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
-}
-
-.overlay-cargando {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(26, 37, 44, 0.92);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: var(--ion-background-color);
-
-  .contenedor-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 25px;
-
-    .logo-spinner {
-      width: 90px;
-      height: 90px;
-      object-fit: contain;
-    }
-
-    .spinner-css {
-      width: 45px;
-      height: 45px;
-      border: 4px solid rgba(252, 247, 238, 0.3);
-      border-top-color: var(--ion-color-primary);
-      border-radius: 50%;
-      animation: girar 1s linear infinite;
-    }
-
-    p {
-      font-weight: 600;
-      font-size: 1.1rem;
-      letter-spacing: 0.5px;
-    }
-  }
-}
-
-@keyframes girar {
-  to { transform: rotate(360deg); }
 }

@@ -5,7 +5,11 @@
 export const environment = {
   production: false,
   supabaseUrl: 'https://gbclocrtlezunqnmzdhx.supabase.co',
-  supabaseKey: 'sb_publishable_i5Lj7kSpAg6LAF6qSmYD0g_EhXGaoWz'
+  supabaseKey: 'sb_publishable_i5Lj7kSpAg6LAF6qSmYD0g_EhXGaoWz',
+  // Clave compartida de los usuarios de prueba del seed (supabase/schema.sql).
+  // Los accesos rápidos del login solo traen email/perfil/foto de la DB -- la
+  // contraseña real nunca se puede leer (Supabase Auth la guarda hasheada).
+  claveAccesoRapido: 'Test1234!'
 };
 
 /*

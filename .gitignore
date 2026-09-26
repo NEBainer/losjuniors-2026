@@ -24,6 +24,9 @@ android/app/build/
 # Ionic
 www/
 
+# Supabase CLI (cache local de link/deploy, no es código del proyecto)
+supabase/.temp/
+
 # Android
 .idea/
 
@@ -31,6 +34,11 @@ www/
 CLAUDE.local.md
 enunciado-tfi.md
 AVANCES.md
+diseno-visual.md
+.claude/
 
 # Documentacion personal (solo en rama Bainer, no se pushea desde dev)
 docs/
+# Ignorar archivos de documentación interna
+correcciones-profesor.md
+CLAUDE.md

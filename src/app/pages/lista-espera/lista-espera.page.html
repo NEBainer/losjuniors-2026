@@ -1,0 +1,29 @@
+<ion-content class="fondo-registro">
+  <div class="banner-estado contenedor-app">
+    @if (mesaAsignada(); as mesa) {
+      <div class="estado-espera aceptado">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <h2>¡Te asignamos una mesa!</h2>
+        <p>Mesa Nº {{ mesa.numero }}. Andá a tu mesa y escaneá su código QR para ver la carta.</p>
+        @if (mensajeError()) {
+          <div class="mensaje-error">{{ mensajeError() }}</div>
+        }
+        <ion-button expand="block" class="boton-escanear-mesa" [disabled]="escaneando()" (click)="escanearMiMesa()">
+          @if (escaneando()) {
+            <ion-spinner name="crescent"></ion-spinner>
+          } @else {
+            <ion-icon name="qr-code-outline" slot="start"></ion-icon>
+            Escanear QR de mi mesa
+          }
+        </ion-button>
+      </div>
+    } @else {
+      <div class="estado-espera pendiente">
+        <ion-icon name="time-outline"></ion-icon>
+        <h2>Estás en la lista de espera</h2>
+        <p>El metre te va a asignar una mesa en breve.</p>
+        <ion-button fill="outline" (click)="salir()">Salir de la lista</ion-button>
+      </div>
+    }
+  </div>
+</ion-content>

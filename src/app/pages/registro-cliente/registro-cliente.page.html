@@ -1,24 +1,28 @@
 <ion-content class="fondo-registro" [scrollY]="true">
-  <div class="contenedor-registro">
+  <div class="contenedor-registro contenedor-app">
 
     <header class="encabezado">
-      <ion-icon name="person-add-outline"></ion-icon>
+      <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="mascota-encabezado" />
       <h1>Registro de cliente</h1>
-      <p>Completá tus datos para reservar tu lugar en La Mesa</p>
     </header>
 
-    <div class="contenedor-foto" (click)="capturarFoto()">
-      @if (fotoUri()) {
-        <img [src]="fotoUri()" alt="Foto de perfil" class="foto-preview" />
-        <span class="etiqueta-cambiar">Tocar para volver a tomar</span>
-      } @else {
-        <ion-icon name="camera-outline" class="icono-camara"></ion-icon>
-        <span>Tomar foto</span>
-      }
+    <div class="fila-acciones-iniciales">
+      <div class="contenedor-foto" (click)="capturarFoto()">
+        @if (fotoUri()) {
+          <img [src]="fotoUri()" alt="Foto de perfil" class="foto-preview" (click)="$event.stopPropagation(); fotoAmpliada.set(true)" />
+          <span class="etiqueta-cambiar">Tocar para cambiar</span>
+        } @else {
+          <ion-icon name="camera-outline" class="icono-camara"></ion-icon>
+          <span>Tomar foto</span>
+        }
+      </div>
     </div>
 
-    <form [formGroup]="formulario" (ngSubmit)="registrarse()" class="formulario">
+    @if (datosVienenDeQr()) {
+      <p class="aviso-qr">✓ Datos cargados desde el DNI. Completá el resto para continuar.</p>
+    }
 
+    <form [formGroup]="formulario" (ngSubmit)="registrarse()" class="formulario">
       <div class="campo">
         <ion-label>Nombres</ion-label>
         <ion-input
@@ -76,37 +80,96 @@
 
       <div class="campo">
         <ion-label>Contraseña</ion-label>
-        <ion-input
-          formControlName="clave"
-          placeholder="Mínimo 6 caracteres"
-          type="password"
-          fill="solid"
-          class="input-formulario">
-        </ion-input>
+        <div class="input-con-icono">
+          <ion-input
+            formControlName="clave"
+            placeholder="Mínimo 6 caracteres"
+            [type]="mostrarClave() ? 'text' : 'password'"
+            fill="solid"
+            class="input-formulario">
+          </ion-input>
+          <button type="button" class="boton-ojo" (click)="toggleMostrarClave()" [attr.aria-label]="mostrarClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+            <ion-icon [name]="mostrarClave() ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+          </button>
+        </div>
         @if (formulario.get('clave')?.touched && formulario.get('clave')?.invalid) {
           <span class="error-campo">La contraseña debe tener al menos 6 caracteres.</span>
         }
       </div>
 
-      @if (mensajeError()) {
-        <div class="banner-error">
-          <ion-icon name="warning-outline"></ion-icon>
-          <span>{{ mensajeError }}</span>
+      <div class="campo">
+        <ion-label>Repetir contraseña</ion-label>
+        <div class="input-con-icono">
+          <ion-input
+            formControlName="confirmarClave"
+            placeholder="Repetí la contraseña"
+            [type]="mostrarConfirmarClave() ? 'text' : 'password'"
+            fill="solid"
+            class="input-formulario">
+          </ion-input>
+          <button type="button" class="boton-ojo" (click)="toggleMostrarConfirmarClave()" [attr.aria-label]="mostrarConfirmarClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+            <ion-icon [name]="mostrarConfirmarClave() ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+          </button>
         </div>
-      }
-
-      <ion-button
-        type="submit"
-        expand="block"
-        class="boton-registrar"
-        [disabled]="cargando()">
-        @if (cargando()) {
-          <ion-spinner name="crescent"></ion-spinner>
-        } @else {
-          Registrarme
+        @if (formulario.get('confirmarClave')?.touched && formulario.errors?.['clavesNoCoinciden']) {
+          <span class="error-campo">Las contraseñas no coinciden.</span>
         }
-      </ion-button>
+      </div>
 
     </form>
   </div>
+
+  <!-- Overlay, no adentro del flujo del formulario: si empujara el resto
+     del contenido hacia abajo, forzaría el scroll que queremos evitar
+     (correcciones-profesor 13-09) justo cuando el usuario más necesita
+     ver el resto de los campos. -->
+  @if (mensajeError()) {
+    <div class="banner-error">
+      <ion-icon name="warning-outline"></ion-icon>
+      <span>{{ mensajeError() }}</span>
+    </div>
+  }
 </ion-content>
+
+<ion-modal [isOpen]="fotoAmpliada()" (didDismiss)="fotoAmpliada.set(false)" class="modal-foto">
+  <ng-template>
+    <div class="contenido-modal-foto">
+      <button class="boton-cerrar-modal" (click)="fotoAmpliada.set(false)" type="button">
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+      @if (fotoUri()) {
+        <img [src]="fotoUri()" alt="Foto de perfil ampliada" />
+      }
+    </div>
+  </ng-template>
+</ion-modal>
+
+<!-- Fijo abajo (correcciones-profesor: botón "Guardar" fijo y grande +
+     QR cerca del pulgar). Un solo footer para las dos acciones -- un botón
+     flotante con position:fixed tapaba campos del formulario al scrollear
+     (probado en dispositivo real); el footer reserva su propio espacio y
+     el contenido nunca queda debajo. -->
+<ion-footer class="pie-registro">
+  @if (lectorQrDisponible()) {
+    <button type="button" class="boton-qr" (click)="escanearDni()" aria-label="Escanear DNI">
+      @if (escaneando()) {
+        <ion-spinner name="crescent"></ion-spinner>
+      } @else {
+        <ion-icon name="qr-code-outline"></ion-icon>
+        <span>Escanear DNI</span>
+      }
+    </button>
+  }
+  <ion-button
+    type="button"
+    expand="block"
+    class="boton-registrar"
+    [disabled]="cargando()"
+    (click)="registrarse()">
+    @if (cargando()) {
+      <ion-spinner name="crescent"></ion-spinner>
+    } @else {
+      Registrarme
+    }
+  </ion-button>
+</ion-footer>

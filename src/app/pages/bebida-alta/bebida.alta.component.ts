@@ -1,24 +1,23 @@
-﻿import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { ViewDidEnter } from '@ionic/angular';
 import { ProductoAltaComponent, DatosProductoAlta } from '../producto/producto.alta.component';
 import { ProductoService } from '../producto/producto.service';
 import { Haptics, NotificationType } from '@capacitor/haptics';
 
-/**
- * bebida.alta.component.ts
- * -------------------------
- * Punto 3 del TP (perfil cantinero). Es la pantalla real que conecta
- * <app-producto-alta tipo="bebida"> con Supabase — el formulario en sí
- * vive en producto.alta.component.ts y se reutiliza tal cual para plato.
- *
- * Ruteo sugerido (ajustar a como esté armado el resto de las rutas):
- *   { path: 'cantinero/bebida-alta', component: BebidaAltaComponent,
- *     canActivate: [guardPerfil(['cantinero'])] }
- */
+const CLAVE_CACHE = 'la-mesa:nombres:bebida';
+const TTL_CACHE_MS = 5 * 60 * 1000; 
+
+interface CacheNombres {
+  nombres: string[];
+  guardadoEn: number;
+}
+
 @Component({
   selector: 'app-bebida-alta',
   standalone: true,
   imports: [ProductoAltaComponent],
+  host: { class: 'ion-page' },
   template: `
     <app-producto-alta
       tipo="bebida"
@@ -30,7 +29,7 @@ import { Haptics, NotificationType } from '@capacitor/haptics';
     />
   `,
 })
-export class BebidaAltaComponent implements OnInit {
+export class BebidaAltaComponent implements OnInit, ViewDidEnter {
   private readonly productoService = inject(ProductoService);
   private readonly router = inject(Router);
 
@@ -38,17 +37,23 @@ export class BebidaAltaComponent implements OnInit {
   protected readonly guardando = signal(false);
   protected readonly errorGuardado = signal<string | null>(null);
 
+  ionViewDidEnter(): void {
+    requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+  }
+
   async ngOnInit(): Promise<void> {
-    // Reusamos el mismo spinner-con-logo del guardado para esta espera
-    // inicial también — así no hace falta un indicador aparte, y "todas
-    // las esperas" quedan cubiertas con la misma pieza.
-    this.guardando.set(true);
+    const cache = this.leerCache();
+    if (cache) {
+      this.nombresExistentes.set(cache.nombres);
+    } else {
+      this.guardando.set(true);
+    }
+
     try {
       const nombres = await this.productoService.obtenerNombresPorTipo('bebida');
       this.nombresExistentes.set(nombres);
+      this.guardarCache(nombres);
     } catch (error) {
-      // Si esto falla, el chequeo de duplicados queda "vacío" (no bloquea
-      // el alta) pero no debería tumbar la pantalla — se loguea nomás.
       console.error('No se pudieron traer las bebidas existentes', error);
     } finally {
       this.guardando.set(false);
@@ -60,7 +65,7 @@ export class BebidaAltaComponent implements OnInit {
     this.errorGuardado.set(null);
     try {
       await this.productoService.crearProducto(datos);
-      this.router.navigateByUrl('/cantinero'); // ⚠️ AJUSTAR: ruta real de vuelta
+      this.router.navigate(['/home']);
     } catch (error) {
       console.error('No se pudo guardar la bebida', error);
       this.errorGuardado.set('No se pudo guardar la bebida. Probá de nuevo.');
@@ -71,14 +76,33 @@ export class BebidaAltaComponent implements OnInit {
   }
 
   alCancelar(): void {
-    this.router.navigateByUrl('/cantinero'); // ⚠️ AJUSTAR: ruta real de vuelta
+    this.router.navigate(['/home']);
+  }
+
+  private leerCache(): CacheNombres | null {
+    try {
+      const crudo = localStorage.getItem(CLAVE_CACHE);
+      if (!crudo) return null;
+      const datos: CacheNombres = JSON.parse(crudo);
+      const vencio = Date.now() - datos.guardadoEn > TTL_CACHE_MS;
+      return vencio ? null : datos;
+    } catch {
+      return null;
+    }
+  }
+
+  private guardarCache(nombres: string[]): void {
+    try {
+      const datos: CacheNombres = { nombres, guardadoEn: Date.now() };
+      localStorage.setItem(CLAVE_CACHE, JSON.stringify(datos));
+    } catch {
+    }
   }
 
   private async vibrarError(): Promise<void> {
     try {
       await Haptics.notification({ type: NotificationType.Error });
     } catch {
-      // Web sin soporte de vibración - no rompe el flujo.
     }
   }
 }

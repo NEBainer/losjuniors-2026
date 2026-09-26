@@ -9,10 +9,10 @@
     </div>
   }
 
-  <div class="contenedor-principal">
+  <div class="contenedor-principal contenedor-app">
     <div class="cabecera-pagina">
-      <button class="boton-volver" (click)="volver()" type="button">
-        <ion-icon name="arrow-back"></ion-icon>
+      <button class="boton-icono-circular" (click)="volver()" type="button">
+        <ion-icon name="arrow-back-outline"></ion-icon>
       </button>
       <div>
         <h1>Alta de Mesa</h1>
@@ -32,7 +32,7 @@
       <div class="resultado-alta">
         <ion-icon name="checkmark-circle" class="icono-exito"></ion-icon>
         <h2>Mesa {{ mesaCreada.numero }} creada</h2>
-        <p>Código: {{ mesaCreada.qr_code }}</p>
+        <p>Escaneá este código para probarlo desde la app del cliente</p>
 
         @if (qrDataUrl) {
           <img [src]="qrDataUrl" alt="Código QR de la mesa" class="qr-generado" />
@@ -52,14 +52,20 @@
       }
 
       <form [formGroup]="formularioMesa" (ngSubmit)="darDeAlta()" class="formulario">
-        <div class="campo">
+        <div class="campo" [class.campo-invalido]="campoInvalido('numero')">
           <label>Número de mesa</label>
           <input type="number" min="1" formControlName="numero" placeholder="Ej: 6" />
+          @if (campoInvalido('numero')) {
+            <span class="texto-error-campo">Ingresá un número de mesa válido.</span>
+          }
         </div>
 
-        <div class="campo">
+        <div class="campo" [class.campo-invalido]="campoInvalido('cantidad_comensales')">
           <label>Cantidad de comensales</label>
           <input type="number" min="1" formControlName="cantidad_comensales" placeholder="Ej: 4" />
+          @if (campoInvalido('cantidad_comensales')) {
+            <span class="texto-error-campo">Ingresá una cantidad de comensales válida.</span>
+          }
         </div>
 
         <div class="campo">
@@ -71,8 +77,8 @@
           </select>
         </div>
 
-        <div class="campo campo-foto">
-          <label>Foto de la mesa (opcional)</label>
+        <div class="campo campo-foto" [class.campo-invalido]="fotoTocada && !fotoUri">
+          <label>Foto de la mesa</label>
           <button type="button" class="contenedor-foto" (click)="capturarFoto()">
             @if (fotoUri) {
               <img [src]="fotoUri" alt="Vista previa de la mesa" />
@@ -84,12 +90,22 @@
               {{ fotoUri ? 'Volver a tomar foto' : 'Tomar foto' }}
             </span>
           </button>
+          @if (fotoTocada && !fotoUri) {
+            <span class="texto-error-campo">La foto de la mesa es obligatoria.</span>
+          }
         </div>
-
-        <button type="submit" class="boton-principal" [disabled]="guardando || formularioMesa.invalid">
-          Dar de alta
-        </button>
       </form>
     }
   </div>
 </ion-content>
+
+<!-- Botón fijo abajo (correcciones-profesor 13-09): antes vivía adentro del
+     <form>, empujado por la foto (flex:1) -- en pantallas más chicas o con
+     mensaje de error visible, quedaba tapado. -->
+@if (!cargando && tienePermiso && !mesaCreada) {
+  <ion-footer class="pie-guardar">
+    <button type="button" class="boton-principal" [disabled]="guardando" (click)="darDeAlta()">
+      Dar de alta
+    </button>
+  </ion-footer>
+}

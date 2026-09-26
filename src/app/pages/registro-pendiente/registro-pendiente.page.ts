@@ -1,30 +1,50 @@
 import { Component, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonContent, IonIcon, IonSpinner } from '@ionic/angular';
+import { IonButton, IonContent, IonIcon } from '@ionic/angular';
 import { ClienteService } from '../../core/services/cliente.service';
 import { Router } from '@angular/router';
 import { addIcons } from 'ionicons';
-import { checkmarkCircle, closeCircle, timeOutline } from 'ionicons/icons';
+import { checkmarkCircle, closeCircle, mailOutline, timeOutline } from 'ionicons/icons';
+import { SupabaseService } from '../../core/services/supabase.service';
 
 @Component({
   selector: 'app-registro-pendiente',
   templateUrl: './registro-pendiente.page.html',
   styleUrls: ['./registro-pendiente.page.scss'],
-  imports: [IonContent, IonSpinner, IonIcon, CommonModule]
+  imports: [IonContent, IonIcon, IonButton, CommonModule]
 })
 export class RegistroPendientePage implements OnInit, OnDestroy {
   readonly estado = signal<'pendiente' | 'aceptado' | 'rechazado'>('pendiente');
   private canal: any;
 
-  constructor(private clienteService: ClienteService, private router: Router) { 
-    addIcons({ checkmarkCircle, closeCircle, timeOutline });
+  constructor(
+    private clienteService: ClienteService, 
+    private supabaseService: SupabaseService,
+    private router: Router) { 
+    addIcons({ checkmarkCircle, closeCircle, timeOutline, mailOutline });
   }
 
-  ngOnInit() {
+  async ngOnInit() {
     const clienteId = history.state.clienteId;
     if (!clienteId) {
       this.router.navigate(['/login']);
       return;
+    }
+
+    // Viene del authGuard, que lo lee antes de cerrar la sesión.
+    const estadoRecibido = history.state.estado;
+    if (estadoRecibido) {
+      this.estado.set(estadoRecibido);
+    }
+
+    const { data } = await this.supabaseService.client
+      .from('usuarios')
+      .select('estado_aprobacion')
+      .eq('id', clienteId)
+      .single();
+
+    if (data?.estado_aprobacion) {
+      this.estado.set(data.estado_aprobacion);
     }
 
     this.canal = this.clienteService.escucharCambioEstado(clienteId, (nuevoEstado) => {
@@ -33,6 +53,10 @@ export class RegistroPendientePage implements OnInit, OnDestroy {
           setTimeout(() => this.router.navigate(['/home']), 2500);
         }
       });
+  }
+
+  volverAlInicio() {
+    this.router.navigate(['/login']);
   }
 
   ngOnDestroy() {

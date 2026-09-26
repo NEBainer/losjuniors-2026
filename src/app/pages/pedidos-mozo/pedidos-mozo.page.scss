@@ -1,0 +1,225 @@
+.fondo-app {
+  --background: var(--ion-background-color);
+}
+
+.contenedor-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.cabecera-pendientes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  .titulo {
+    flex-grow: 1;
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: var(--ion-color-primary);
+      margin: 0 0 4px 0;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.95rem;
+      opacity: 0.85;
+    }
+  }
+
+  .boton-icono-circular {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--ion-color-step-100);
+    border: 2px solid var(--ion-color-step-150);
+    border-radius: 10px;
+    color: var(--ion-color-primary);
+
+    ion-icon {
+      font-size: 1.4rem;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+}
+
+.mensaje {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+
+  ion-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+}
+
+.mensaje-error {
+  background-color: var(--ion-color-danger);
+  color: #FCF7EE;
+}
+
+.mensaje-ok {
+  background-color: var(--ion-color-success);
+  color: var(--ion-color-success-contrast);
+}
+
+.estado-vacio {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  opacity: 0.8;
+
+  ion-icon {
+    font-size: 3.5rem;
+    color: var(--ion-color-primary);
+  }
+
+  p {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+}
+
+.lista-pendientes {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+
+.pedido-card {
+  background-color: var(--ion-color-step-100);
+  border: 2px solid var(--ion-color-step-150);
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  grid-template-areas:
+    "mesa datos"
+    "acciones acciones";
+  gap: 12px;
+  align-items: center;
+
+  .mesa-badge {
+    grid-area: mesa;
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    background-color: var(--ion-color-primary);
+    color: var(--ion-color-primary-contrast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: bold;
+    line-height: 1.2;
+  }
+
+  .datos {
+    grid-area: datos;
+
+    h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: var(--ion-text-color);
+    }
+
+    .detalle {
+      margin: 4px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      opacity: 0.8;
+
+      ion-icon {
+        font-size: 1rem;
+      }
+    }
+  }
+
+  .acciones {
+    grid-area: acciones;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 36px;
+  }
+
+  .icono-accion {
+    font-size: 2.6rem;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.2s ease;
+
+    &:active {
+      transform: scale(0.88);
+    }
+
+    &.deshabilitado {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+  }
+}
+
+.overlay-cargando {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(26, 37, 44, 0.95);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--ion-background-color);
+
+  .contenedor-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+
+    .logo-spinner {
+      width: 140px;
+      height: 140px;
+      object-fit: contain;
+    }
+
+    .spinner-css {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--ion-background-color);
+      border-top-color: var(--ion-color-primary);
+      border-radius: 50%;
+      animation: girar 1s linear infinite;
+    }
+  }
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}

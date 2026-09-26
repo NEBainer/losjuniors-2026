@@ -5,6 +5,9 @@
 -- + policy de Storage para que dueño/supervisor suban la foto de un
 -- empleado nuevo. Ver supabase/README.md para el detalle completo de
 -- decisiones, pruebas realizadas y pendientes.
+-- v6 (16/09/2026): vínculo cliente↔mesa asignada + policy de UPDATE
+-- para el metre (punto 10). Ver bloque "v6" al final del archivo y
+-- supabase/README.md.
 -- =========================================================
 
 -- =========================================================
@@ -359,15 +362,22 @@ cross join generate_series(1, 3) as s(orden);
 
 -- =========================================================
 -- 9. MESAS DE PRUEBA (5 mesas)
--- qr_code: valor placeholder, a definir con el equipo el formato final.
+-- qr_code: formato decidido por el equipo (16/09/2026, ver gap #17 en
+-- AVANCES.md) - JSON discriminado por `tipo`, igual patrón que ya usa
+-- QrAppService para el QR de ingreso: {"tipo":"mesa","numero":N}, con
+-- `numero` (no `id`/uuid) para no tocar el tipado ya existente.
+-- OJO: esto es el valor que la DB considera "correcto" para probar el
+-- punto 10/11 - `mesa.service.ts` (punto 4) todavía no lo genera así
+-- en runtime, sigue emitiendo `MESA-{numero}` en texto plano. Falta
+-- coordinar esa actualización con quien tenga el punto 4.
 -- =========================================================
 
 insert into mesas (numero, cantidad_comensales, tipo, qr_code, creado_por) values
-  (1, 2, 'estandar',           'MESA-1', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (2, 4, 'estandar',           'MESA-2', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (3, 4, 'vip',                'MESA-3', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (4, 6, 'estandar',           'MESA-4', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
-  (5, 2, 'movilidad_reducida', 'MESA-5', '3c6e305d-5593-4bde-a69a-7262e12e2611');
+  (1, 2, 'estandar',           '{"tipo":"mesa","numero":1}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (2, 4, 'estandar',           '{"tipo":"mesa","numero":2}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (3, 4, 'vip',                '{"tipo":"mesa","numero":3}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (4, 6, 'estandar',           '{"tipo":"mesa","numero":4}', '3c6e305d-5593-4bde-a69a-7262e12e2611'),
+  (5, 2, 'movilidad_reducida', '{"tipo":"mesa","numero":5}', '3c6e305d-5593-4bde-a69a-7262e12e2611');
 
   -- =========================================================
 -- 10. STORAGE: bucket "fotos"
@@ -521,3 +531,437 @@ with check (
 -- El with check fija perfil y estado_aprobacion para que un cliente
 -- no pueda insertarse con otro perfil (ej. 'dueño') ni autoaprobarse
 -- (ej. estado_aprobacion = 'aceptado') en el mismo insert.
+
+-- ============================================================
+-- Login / accesos rápidos (corrección profesor 13-09-2026)
+-- Los botones de acceso rápido del login tienen que reflejar usuarios
+-- reales (foto, nombre, perfil), no una lista hardcodeada. El login
+-- todavía no tiene sesión, y las policies de SELECT sobre `usuarios`
+-- exigen auth.uid() -> un cliente anónimo no puede leer la tabla
+-- directamente. Esta vista bypassea esa RLS (corre con los permisos de
+-- su dueño, no del rol que consulta) exponiendo solo las columnas que
+-- hacen falta para el botón -- nunca dni/cuil. foto_url no es sensible:
+-- el bucket `fotos` ya es público.
+-- Un usuario representativo por perfil (el más antiguo), excluyendo
+-- cliente_anonimo porque ese no requiere login.
+-- ============================================================
+create view public.accesos_rapidos as
+select distinct on (perfil)
+  perfil, nombres, apellidos, foto_url, email
+from usuarios
+where perfil <> 'cliente_anonimo'
+order by perfil, created_at asc;
+
+grant select on public.accesos_rapidos to anon;
+
+-- ============================================================
+-- Punto 12: pedido completo de la mesa
+-- Agregado 14/09/2026.
+-- El cliente (registrado o anónimo, con mesa asignada) arma un pedido
+-- con productos para cada comensal; el mozo lo confirma. Cocina/cantina
+-- (cuando existan sus pantallas, puntos siguientes) van a filtrar por
+-- estado = 'confirmado' -- no hace falta ningún bloqueo extra acá para
+-- cumplir "no derivar a los sectores hasta que el mozo confirme", alcanza
+-- con que el pedido nazca en 'pendiente_confirmacion'.
+--
+-- ⚠️ Supuesto pendiente de confirmar con el equipo: las policies de abajo
+-- exigen `to authenticated` (igual que productos/mesas), es decir que el
+-- dispositivo del cliente ya tenga una sesión de Supabase Auth -- sea
+-- cliente_registrado logueado, o cliente_anonimo vía signInAnonymously()
+-- si el punto 9/10 termina resolviéndolo así. Hoy ese flujo anónimo
+-- todavía no existe en el código (no encontré ningún signInAnonymously()
+-- ni alta de fila en `usuarios` con perfil cliente_anonimo), así que por
+-- ahora esto se puede probar de punta a punta logueado como
+-- cliente@test.com (semilla ya cargada abajo) -- no bloqueé el punto 12
+-- por esto, pero falta resolverlo junto con el punto 10.
+-- ============================================================
+
+create type estado_pedido as enum ('pendiente_confirmacion', 'confirmado');
+
+create table pedidos (
+  id uuid primary key default gen_random_uuid(),
+  mesa_id uuid not null references mesas(id),
+  estado estado_pedido not null default 'pendiente_confirmacion',
+  -- Snapshot calculado por la app al armar el pedido (mismo criterio que
+  -- pedido_items.precio_unitario): no se recalculan solos si cambia el
+  -- precio o el tiempo de elaboración de un producto después.
+  importe_total numeric(10,2) not null check (importe_total >= 0),
+  -- Tiempo estimado = el MÁXIMO entre los productos pedidos, no la suma:
+  -- cocina y cantina preparan en paralelo (ver PedidoService.crearPedido).
+  tiempo_estimado_minutos integer not null check (tiempo_estimado_minutos > 0),
+  creado_por uuid not null references usuarios(id),
+  created_at timestamptz not null default now()
+);
+
+alter table pedidos enable row level security;
+
+create table pedido_items (
+  id uuid primary key default gen_random_uuid(),
+  pedido_id uuid not null references pedidos(id) on delete cascade,
+  producto_id uuid not null references productos(id),
+  -- Para qué comensal de la mesa es este ítem (punto 12: "elegir los
+  -- productos... para todos los comensales"). No hay tabla de comensales
+  -- aparte -- es un número de 1 a mesas.cantidad_comensales, validado en
+  -- la app antes de insertar acá.
+  comensal_numero integer not null check (comensal_numero > 0),
+  cantidad integer not null check (cantidad > 0),
+  precio_unitario numeric(10,2) not null check (precio_unitario >= 0)
+);
+
+alter table pedido_items enable row level security;
+
+-- pedidos --------------------------------------------------------
+
+create policy "pedidos_lectura_autenticados"
+on pedidos
+for select
+to authenticated
+using ( true );
+
+-- INSERT: cualquier cliente (registrado o anónimo) crea un pedido para
+-- una mesa ocupada. No verificamos acá que la mesa sea "la suya" -- esa
+-- asociación depende de cómo termine resolviéndose el punto 10 (ver
+-- aviso arriba); es una simplificación consciente para no bloquear este
+-- punto.
+create policy "pedidos_cliente_inserta"
+on pedidos
+for insert
+to authenticated
+with check (
+  perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and creado_por = auth.uid()
+  and estado = 'pendiente_confirmacion'
+  and exists (
+    select 1 from mesas m
+    where m.id = pedidos.mesa_id
+    and m.disponibilidad = 'ocupada'
+  )
+);
+
+-- UPDATE: solo el mozo, y solo pendiente -> confirmado (no puede
+-- revertir un pedido confirmado ni saltar a otro estado).
+create policy "pedidos_mozo_confirma"
+on pedidos
+for update
+to authenticated
+using ( perfil_actual() = 'mozo' and estado = 'pendiente_confirmacion' )
+with check ( perfil_actual() = 'mozo' and estado = 'confirmado' );
+
+-- pedido_items -----------------------------------------------------
+
+create policy "pedido_items_lectura_autenticados"
+on pedido_items
+for select
+to authenticated
+using ( true );
+
+create policy "pedido_items_cliente_inserta"
+on pedido_items
+for insert
+to authenticated
+with check (
+  perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and exists (
+    select 1 from pedidos p
+    where p.id = pedido_items.pedido_id
+    and p.estado = 'pendiente_confirmacion'
+    and p.creado_por = auth.uid()
+  )
+);
+
+-- ============================================================
+-- Punto 12 (nuevo enfoque, 2026): lock de "quién está armando el
+-- pedido" de una mesa. Corrido en el SQL Editor -- no había quedado
+-- documentado acá, se agrega ahora para que el archivo refleje lo que
+-- de verdad está en la base.
+--
+-- Va por funciones SECURITY DEFINER en vez de un UPDATE directo +
+-- policy: Supabase ya le da a "authenticated" un GRANT UPDATE amplio
+-- sobre toda la tabla "mesas" por default, así que una policy nueva
+-- acotada a estas dos columnas no hubiera evitado que cualquier cliente
+-- reescriba numero/tipo/foto_url/qr_code de una mesa ocupada. La función
+-- hace el UPDATE atómico (WHERE ... AND pedido_en_armado_por IS NULL)
+-- para que dos comensales que aprietan "Crear pedido" al mismo tiempo no
+-- se pisen el lock.
+-- ============================================================
+
+alter table mesas add column if not exists pedido_en_armado_por text;
+alter table mesas add column if not exists pedido_en_armado_en timestamptz;
+
+create or replace function tomar_pedido_en_curso(p_mesa_id uuid, p_nombre text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_filas integer;
+begin
+  if perfil_actual() not in ('cliente_registrado', 'cliente_anonimo') then
+    raise exception 'No autorizado.';
+  end if;
+
+  update mesas
+  set pedido_en_armado_por = p_nombre,
+      pedido_en_armado_en = now()
+  where id = p_mesa_id
+    and disponibilidad = 'ocupada'
+    and pedido_en_armado_por is null;
+
+  get diagnostics v_filas = row_count;
+  return v_filas > 0;
+end;
+$$;
+
+create or replace function liberar_pedido_en_curso(p_mesa_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update mesas
+  set pedido_en_armado_por = null,
+      pedido_en_armado_en = null
+  where id = p_mesa_id;
+end;
+$$;
+
+grant execute on function tomar_pedido_en_curso(uuid, text) to authenticated;
+grant execute on function liberar_pedido_en_curso(uuid) to authenticated;
+
+-- Tiempo real (punto 12): para que el resto de los comensales vean en
+-- vivo "[Nombre] está realizando el pedido" sin refrescar. Bloque
+-- idempotente porque ya se corrió una vez -- "add table" solo, sin el
+-- chequeo, tira error si la tabla ya es miembro de la publicación.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'mesas'
+  ) then
+    alter publication supabase_realtime add table mesas;
+  end if;
+end $$;
+
+-- =========================================================
+-- v4 (13/09/2026): Punto 9 — cliente anónimo + lista de espera.
+-- Ver supabase/README.md para el detalle de decisiones.
+-- =========================================================
+
+-- El cliente anónimo (punto 9) solo carga nombre y foto, sin
+-- apellido. La columna era NOT NULL desde el diseño original
+-- (pensada para empleados/clientes registrados); se afloja acá.
+alter table usuarios alter column apellidos drop not null;
+
+-- =========================================================
+-- Punto 9: lista de espera del cliente anónimo (y registrado,
+-- cuando llega sin reserva). Separada de `usuarios` porque es un
+-- estado transitorio ("estoy esperando mesa ahora"), no un dato
+-- permanente del perfil.
+-- =========================================================
+
+create table lista_espera (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null unique references usuarios(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table lista_espera enable row level security;
+
+-- El cliente (anónimo o registrado) se anota a sí mismo.
+create policy "lista_espera_cliente_se_anota"
+on lista_espera
+for insert
+to authenticated
+with check ( auth.uid() = cliente_id );
+
+-- El cliente ve su propia fila (para saber que sigue en la lista).
+create policy "lista_espera_cliente_ve_su_fila"
+on lista_espera
+for select
+to authenticated
+using ( auth.uid() = cliente_id );
+
+-- El cliente puede sacarse a sí mismo de la lista.
+create policy "lista_espera_cliente_se_retira"
+on lista_espera
+for delete
+to authenticated
+using ( auth.uid() = cliente_id );
+
+-- El metre/dueño/supervisor ven y gestionan toda la lista (punto 10).
+create policy "lista_espera_metre_ve_todo"
+on lista_espera
+for select
+to authenticated
+using ( perfil_actual() in ('metre', 'dueño', 'supervisor') );
+
+create policy "lista_espera_metre_elimina"
+on lista_espera
+for delete
+to authenticated
+using ( perfil_actual() in ('metre', 'dueño', 'supervisor') );
+
+-- =========================================================
+-- v5 (14/09/2026): política de INSERT faltante para cliente
+-- anónimo. Se detectó al probar el punto 9: `clientes_se_
+-- autorregistran` exige perfil = 'cliente_registrado', así que
+-- un insert con perfil = 'cliente_anonimo' no calzaba en ninguna
+-- policy existente -> 403 (42501).
+-- =========================================================
+
+create policy "clientes_anonimos_se_autorregistran"
+on usuarios
+for insert
+to authenticated
+with check (
+  auth.uid() = id
+  and perfil = 'cliente_anonimo'
+);
+
+-- =========================================================
+-- v6 (16/09/2026): vínculo cliente↔mesa asignada, punto 10 (metre
+-- asigna mesa a cliente). Corrida y confirmada en el SQL Editor.
+-- Se agrega a `mesas` en vez de crear una tabla nueva: es una
+-- extensión natural del estado transitorio que ya representa
+-- `disponibilidad` (vacia/ocupada), no un dato permanente. Ver
+-- supabase/README.md para el detalle de la decisión.
+-- =========================================================
+
+alter table mesas add column cliente_actual_id uuid references usuarios(id) on delete set null;
+
+-- Garantiza a nivel DB que un mismo cliente no puede estar vinculado a
+-- dos mesas a la vez (punto 10: "verificar que el cliente no pueda
+-- vincularse con otra mesa"). Parcial porque NULL (mesa vacía) es el
+-- estado normal y no debe contar para la unicidad.
+create unique index mesas_cliente_actual_unico
+  on mesas (cliente_actual_id) where cliente_actual_id is not null;
+
+-- UPDATE: el metre asigna una mesa a un cliente. El `using` exige que
+-- la mesa esté 'vacia' en el momento del update -> si dos asignaciones
+-- llegan casi al mismo tiempo sobre la misma mesa, la segunda encuentra
+-- la fila ya en 'ocupada' y es rechazada por la policy. Cubre a nivel
+-- DB el requisito del enunciado de "verificar que NO se le pueda
+-- asignar dicha mesa a otro cliente". Convive con
+-- "mesas_dueño_supervisor_actualiza" (dueño/supervisor siguen pudiendo
+-- modificar disponibilidad sin esta restricción, ej. para liberar una
+-- mesa manualmente).
+create policy "mesas_metre_asigna"
+on mesas
+for update
+to authenticated
+using ( perfil_actual() = 'metre' and disponibilidad = 'vacia' )
+with check ( perfil_actual() = 'metre' );
+
+-- El metre puede leer `lista_espera` (policy `lista_espera_metre_ve_todo`,
+-- ya existente desde el punto 9) pero no está incluido en
+-- `dueño_supervisor_ven_todos_usuarios` (esa es solo dueño/supervisor) ->
+-- sin esto, la vista del metre solo podía mostrar el `cliente_id` (UUID)
+-- de cada fila de la cola, sin poder resolverlo a nombre/foto reales.
+-- Policy acotada, no una ampliación de la existente: el metre solo ve las
+-- filas de `usuarios` que corresponden a alguien que está ahora mismo en
+-- `lista_espera`, no a cualquier empleado/cliente de la base.
+create policy "usuarios_metre_ve_en_lista_espera"
+on usuarios
+for select
+to authenticated
+using (
+  perfil_actual() = 'metre'
+  and exists (
+    select 1 from lista_espera le where le.cliente_id = usuarios.id
+  )
+);
+
+-- =========================================================
+-- v7 (2026): Punto 11 — "consulta al mozo". Chat simple entre el
+-- cliente vinculado a una mesa (mesas.cliente_actual_id) y
+-- cualquier mozo. Igual que lista_espera: tabla aparte, no una
+-- columna en otra tabla, porque es su propio hilo de conversación.
+--
+-- remitente_perfil / remitente_nombre van desnormalizados en la fila
+-- en vez de resolverse con un join a `usuarios` al leer: la RLS de
+-- `usuarios` no deja que un cliente vea el perfil de un mozo (ni al
+-- revés), así que un join se rompería. Se guardan una sola vez, al
+-- insertar el mensaje.
+-- =========================================================
+
+create table mensajes_mozo (
+  id uuid primary key default gen_random_uuid(),
+  mesa_id uuid not null references mesas(id) on delete cascade,
+  remitente_id uuid not null references usuarios(id) on delete cascade,
+  remitente_perfil perfil_usuario not null,
+  remitente_nombre text not null,
+  texto text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table mensajes_mozo enable row level security;
+
+-- El cliente vinculado a la mesa manda mensajes en su propio hilo.
+create policy "mensajes_mozo_cliente_envia"
+on mensajes_mozo
+for insert
+to authenticated
+with check (
+  auth.uid() = remitente_id
+  and perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and mesa_id in (select id from mesas where cliente_actual_id = auth.uid())
+);
+
+-- Cualquier mozo puede responder en cualquier mesa.
+create policy "mensajes_mozo_mozo_envia"
+on mensajes_mozo
+for insert
+to authenticated
+with check ( auth.uid() = remitente_id and perfil_actual() = 'mozo' );
+
+-- El cliente ve solo el hilo de su propia mesa.
+create policy "mensajes_mozo_cliente_ve_su_mesa"
+on mensajes_mozo
+for select
+to authenticated
+using (
+  perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and mesa_id in (select id from mesas where cliente_actual_id = auth.uid())
+);
+
+-- Todos los mozos ven todos los hilos (para poder atender cualquiera).
+create policy "mensajes_mozo_mozo_ve_todo"
+on mensajes_mozo
+for select
+to authenticated
+using ( perfil_actual() = 'mozo' );
+
+-- Realtime: corrido en el SQL Editor el 25/09/2026 junto con la tabla.
+alter publication supabase_realtime add table mensajes_mozo;
+
+
+-- =========================================================
+-- v8 (21/09/2026): Punto 13 — mozo rechaza el pedido.
+--
+-- Se agrega 'rechazado' al enum y se reemplaza la policy de UPDATE
+-- del mozo para permitir esa transición además de 'confirmado'. El
+-- pedido rechazado NO se borra (se conserva como registro); el
+-- cliente ve el cambio de estado por Realtime (mismo canal que ya
+-- usa para "confirmado") y vuelve a la pantalla de armado con el
+-- carrito que ya tenía en memoria, para poder modificar/agregar/
+-- quitar productos y reenviarlo (PedidoPage.suscribirConfirmacion).
+--
+-- OJO al correr esto en el SQL Editor: "alter type ... add value"
+-- no puede ejecutarse en la misma transacción en la que ya se usa el
+-- valor nuevo. Si tirás todo el bloque junto y da error de "unsafe
+-- use of new value", corré primero sola la línea del alter type,
+-- confirmá, y después el resto (drop/create policy).
+-- =========================================================
+
+alter type estado_pedido add value if not exists 'rechazado';
+
+drop policy if exists "pedidos_mozo_confirma" on pedidos;
+
+create policy "pedidos_mozo_confirma"
+on pedidos
+for update
+to authenticated
+using ( perfil_actual() = 'mozo' and estado = 'pendiente_confirmacion' )
+with check ( perfil_actual() = 'mozo' and estado in ('confirmado', 'rechazado') );

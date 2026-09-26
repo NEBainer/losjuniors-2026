@@ -1,8 +1,9 @@
 import { ChangeDetectorRef, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonContent, IonIcon } from '@ionic/angular';
+import { IonContent, IonFooter, IonIcon, IonModal } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { add, arrowBack, restaurantOutline, warning } from 'ionicons/icons';
+import { addOutline, arrowBack, closeOutline, qrCodeOutline, restaurantOutline, warning } from 'ionicons/icons';
+import { toDataURL } from 'qrcode';
 import { Router } from '@angular/router';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { AuthService } from '../../core/services/auth.service';
@@ -13,7 +14,7 @@ import { Mesa, MesaService } from '../../core/services/mesa.service';
   templateUrl: './mesas-gestion.page.html',
   styleUrls: ['./mesas-gestion.page.scss'],
   standalone: true,
-  imports: [IonContent, IonIcon, CommonModule],
+  imports: [IonContent, IonFooter, IonIcon, IonModal, CommonModule],
 })
 export class MesasGestionPage {
   cargando = true;
@@ -21,6 +22,13 @@ export class MesasGestionPage {
   mensajeError = '';
 
   mesas: Mesa[] = [];
+
+  // Reimpresión del QR (mesa-alta.page.ts lo genera una sola vez, al crear
+  // la mesa, y nunca lo vuelve a mostrar) -- acá se regenera al vuelo con
+  // el mismo qr_code ya guardado en la fila, sin tocar la mesa ni pedirle
+  // nada al backend aparte del listado que ya se cargó.
+  qrDataUrl: string | null = null;
+  mesaQrNumero: number | null = null;
 
   readonly etiquetasTipo: Record<Mesa['tipo'], string> = {
     estandar: 'Estándar',
@@ -34,7 +42,7 @@ export class MesasGestionPage {
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
-    addIcons({ add, arrowBack, restaurantOutline, warning });
+    addIcons({ addOutline, arrowBack, closeOutline, qrCodeOutline, restaurantOutline, warning });
   }
 
   // Lifecycle de Ionic: corre cada vez que se entra a la pantalla (incluido
@@ -78,6 +86,20 @@ export class MesasGestionPage {
       this.cdr.detectChanges();
       this.dispararError('No se pudo actualizar la disponibilidad de la mesa.');
     }
+  }
+
+  async verQr(mesa: Mesa) {
+    try {
+      this.qrDataUrl = await toDataURL(mesa.qr_code, { width: 280, margin: 1 });
+      this.mesaQrNumero = mesa.numero;
+    } catch {
+      this.dispararError('No se pudo generar el QR de la mesa.');
+    }
+  }
+
+  cerrarQr() {
+    this.qrDataUrl = null;
+    this.mesaQrNumero = null;
   }
 
   irAAltaDeMesa() {

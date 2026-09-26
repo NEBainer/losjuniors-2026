@@ -5,10 +5,13 @@
 .contenedor-principal {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  // 100% (no 100dvh): dvh es el alto TOTAL de pantalla, sin descontar el
+  // ion-footer -- con eso sobraba justo lo que mide el footer y generaba
+  // un scroll mínimo pero constante (mismo bug encontrado y corregido en
+  // mesa-alta.page.scss y alta-empleado.page.scss).
+  min-height: 100%;
   padding: 25px;
   gap: 22px;
-  color: var(--ion-text-color);
 }
 
 .cabecera-pagina {
@@ -32,8 +35,7 @@
     flex: 1;
   }
 
-  .boton-volver,
-  .boton-agregar {
+  .boton-volver {
     background-color: var(--ion-color-step-100);
     border: none;
     border-radius: 50%;
@@ -48,11 +50,6 @@
     ion-icon {
       font-size: 1.4rem;
     }
-  }
-
-  .boton-agregar {
-    background-color: var(--ion-color-primary);
-    color: var(--ion-color-primary-contrast);
   }
 }
 
@@ -77,6 +74,11 @@
 }
 
 .boton-principal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
   background-color: var(--ion-color-primary);
   color: var(--ion-color-primary-contrast);
   padding: 18px;
@@ -86,6 +88,17 @@
   font-weight: 800;
   text-transform: uppercase;
   box-shadow: 0 4px 8px rgba(156, 59, 20, 0.3);
+
+  ion-icon {
+    font-size: 1.4rem;
+  }
+}
+
+// Fijo abajo (correcciones-profesor) -- ver comentario en el HTML.
+.pie-agregar {
+  padding: 14px 25px calc(14px + env(safe-area-inset-bottom));
+  background: var(--ion-background-color);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .acceso-denegado,
@@ -108,6 +121,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 16px;
 }
 
@@ -176,6 +190,58 @@
 
     &.ocupada {
       background-color: var(--ion-color-danger);
+    }
+  }
+
+  > .boton-icono-circular {
+    flex-shrink: 0;
+  }
+}
+
+.modal-qr {
+  --width: 100%;
+  --height: 100%;
+  --background: rgba(26, 18, 12, 0.92);
+}
+
+.contenido-modal-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+  gap: 16px;
+
+  h2 {
+    color: #fff;
+    margin: 0;
+  }
+
+  .qr-generado {
+    width: 280px;
+    height: 280px;
+    background-color: #fff;
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .boton-cerrar-modal {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+
+    ion-icon {
+      font-size: 1.4rem;
     }
   }
 }

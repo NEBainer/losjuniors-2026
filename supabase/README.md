@@ -76,6 +76,53 @@ plano, desactualizado respecto al código real de `cliente.service.ts`
 y a la policy ya deployada — ninguno de los dos estaba mal, era solo
 este documento.)*
 
+**Cliente anónimo: `signInAnonymously()`, no un ID generado en el cliente**
+El punto 9 pide que el cliente anónimo se identifique sin mail/contraseña.
+En vez de generar un UUID cualquiera del lado de Angular (que no tendría
+ningún respaldo de RLS), se usa `supabase.auth.signInAnonymously()`:
+crea un usuario real en `auth.users`, sin credenciales, pero que cuenta
+como `authenticated` para todas las políticas ya existentes. Requiere
+tener **"Anonymous Sign-Ins"** activado en Authentication → Providers
+(activado el 13/09/2026).
+
+**`lista_espera` en tabla aparte, no una columna en `usuarios`**
+Es un estado transitorio ("está esperando mesa ahora mismo"), distinto
+de los datos permanentes del perfil. Separarlo evita mezclar el ciclo
+de vida de "soy cliente de La Mesa" con el de "estoy físicamente en el
+local ahora". `cliente_id` es `unique`: un cliente no puede anotarse
+dos veces a la lista de espera.
+
+**`mensajes_mozo` (punto 11): remitente desnormalizado, no un join**
+`remitente_perfil` y `remitente_nombre` se guardan en cada fila en vez
+de resolverse con un join a `usuarios` al leer el chat. Motivo: la RLS
+de `usuarios` no deja que un cliente vea el perfil de un mozo (ni al
+revés), así que un join ahí se rompe silenciosamente (0 filas, no
+error). Guardarlo una vez al insertar evita depender de esa policy en
+cada lectura del chat.
+
+**Formato del QR de mesa: JSON discriminado por `tipo`, no texto plano**
+Decisión de equipo (16/09/2026): `{"tipo":"mesa","numero":N}`, siguiendo
+el mismo patrón que ya usa `QrAppService` para el QR de ingreso
+(`{"tipo":"ingreso_local"}`). Se usa `numero` y no `id`/uuid a propósito,
+para no tener que retipar `QrAppPayload` (que ya trae `numero: number`
+para el caso `'mesa'`) ni tocar el lector unificado que ya lee cualquier
+QR de la app. **Estado real:** desde el 16/09/2026 `mesa.service.ts`
+genera el QR en este formato. Las mesas creadas antes quedaron con el
+formato viejo en texto plano (`MESA-{numero}`); `QrAppService` acepta
+los dos formatos para que esas mesas (y sus QR ya impresos) sigan
+funcionando.
+
+**Vínculo cliente↔mesa asignada: columna en `mesas`, no tabla aparte**
+Para el punto 10 (metre asigna mesa a cliente) hacía falta alguna forma
+de saber qué cliente tiene asignada cada mesa. Se eligió agregar
+`mesas.cliente_actual_id` (nullable, referencia a `usuarios`) en vez de
+una tabla de asignaciones aparte: es una extensión directa del mismo
+estado transitorio que ya representa `disponibilidad` (vacía/ocupada),
+y evita el costo de una tabla + RLS + joins nuevos para lo que este
+punto necesita. Si más adelante hace falta un historial de qué cliente
+pasó por qué mesa (auditoría), ahí sí conviene una tabla aparte — no
+hace falta hoy.
+
 ## Función auxiliar: `perfil_actual()`
 
 Se usa en todas las políticas RLS que dependen del perfil del usuario
@@ -155,6 +202,10 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
 - `storage.objects` (a través de las políticas del bucket `fotos`, no es
   una tabla propia del esquema pero se administra con el mismo mecanismo
   de RLS)
+- `lista_espera`
+- `pedidos`
+- `pedido_items`
+- `mensajes_mozo`
 
 ## Políticas RLS creadas
 
@@ -173,6 +224,32 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
   alta de un empleado nuevo pueda devolver la fila creada). Esta misma
   policy es la que habilita el **listado de clientes pendientes del
   punto 6** — no hizo falta una policy de SELECT nueva.
+
+- **`usuarios_metre_ve_en_lista_espera`** (agregada 16/09/2026 por
+  Maximiliano en el SQL Editor, punto 10) — el metre no está incluido en
+  `dueño_supervisor_ven_todos_usuarios` (esa policy es solo
+  dueño/supervisor), así que sin esto no podía leer nombre/foto de ningún
+  cliente en `lista_espera` — solo veía el `cliente_id` (UUID) de esa
+  tabla, sin poder resolverlo a un nombre real (confirmado con curl antes
+  del fix: `usuarios?select=...&id=eq.<cliente>` con token de metre
+  devolvía `[]`). Policy acotada, no una ampliación de la existente:
+
+  ```sql
+  create policy "usuarios_metre_ve_en_lista_espera"
+  on usuarios
+  for select
+  to authenticated
+  using (
+    perfil_actual() = 'metre'
+    and exists (
+      select 1 from lista_espera le where le.cliente_id = usuarios.id
+    )
+  );
+  ```
+
+  El metre solo ve las filas de `usuarios` que corresponden a alguien que
+  está *ahora mismo* en la lista de espera, no a cualquier empleado/cliente
+  de la base — más acotado que darle acceso total como dueño/supervisor.
 
 - `usuarios_dueño_supervisor_actualiza_clientes` — dueño/supervisor pueden
   hacer `UPDATE` de una fila de `usuarios` **solo si es de un
@@ -205,9 +282,23 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
 
 **`mesas`**
 - `mesas_lectura_autenticados` — cualquier usuario logueado puede ver
-  número, tipo y disponibilidad de las mesas.
+  número, tipo y disponibilidad de las mesas. Esta misma policy alcanza
+  para que el cliente vea su propia mesa asignada (filtrando por
+  `cliente_actual_id = auth.uid()` desde el service) — no hizo falta una
+  policy de SELECT nueva para el punto 10.
 - `mesas_dueño_supervisor_inserta` — solo dueño/supervisor pueden dar de
   alta una mesa nueva.
+- `mesas_dueño_supervisor_actualiza` — dueño/supervisor pueden modificar
+  cualquier mesa sin restricción de estado (punto 4: gestión de mesas).
+- `mesas_metre_asigna` **(agregada 16/09/2026, punto 10)** — el metre
+  puede hacer `UPDATE` sobre una mesa **solo si en ese momento sigue
+  `disponibilidad = 'vacia'`**. Es la pieza que evita, a nivel DB, que
+  dos asignaciones casi simultáneas sobre la misma mesa pasen las dos:
+  la primera que llegue la pone en `'ocupada'`, la segunda ya no
+  encuentra la fila en `'vacia'` y queda bloqueada por la policy, sin
+  depender de que el front gane la carrera. Complementada por el índice
+  único parcial `mesas_cliente_actual_unico` sobre `cliente_actual_id`,
+  que además impide que un mismo cliente termine vinculado a dos mesas.
 
 **`producto_fotos`**
 - `producto_fotos_lectura_autenticados` — cualquier usuario logueado puede
@@ -260,6 +351,69 @@ archivo quedara "de más" en Storage, nunca se podría insertar la fila que
 lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
 (`productos/plato/{id}/...`) y no está pedido por el enunciado.
 
+**`lista_espera`** (punto 9)
+- `lista_espera_cliente_se_anota` / `lista_espera_cliente_ve_su_fila` /
+  `lista_espera_cliente_se_retira` — el cliente (registrado o anónimo)
+  se anota, ve y se saca de la lista solo con su propia fila.
+- `lista_espera_metre_ve_todo` / `lista_espera_metre_elimina` — el metre
+  ve la cola completa y saca a un cliente cuando le asigna mesa.
+
+**`pedidos`** (puntos 12 y 13)
+- `pedidos_lectura_autenticados` — cualquier usuario logueado puede leer
+  pedidos (el mozo los lista; el cliente sigue el estado del suyo).
+- `pedidos_cliente_inserta` — solo un cliente, a su nombre
+  (`creado_por = auth.uid()`), en estado `pendiente_confirmacion` y para
+  una mesa `ocupada`.
+- `pedidos_mozo_confirma` — solo el mozo, y solo sobre un pedido
+  `pendiente_confirmacion`, que puede pasar a `confirmado` o a
+  `rechazado` (v8, punto 13). No puede revertir un pedido ya resuelto.
+
+**`pedido_items`** (punto 12)
+- `pedido_items_lectura_autenticados` — lectura para cualquier logueado.
+- `pedido_items_cliente_inserta` — el cliente solo agrega ítems a un
+  pedido propio que siga en `pendiente_confirmacion`.
+
+**`mensajes_mozo`** (punto 11)
+- `mensajes_mozo_cliente_envia` / `mensajes_mozo_cliente_ve_su_mesa` —
+  el cliente escribe y lee solo el hilo de la mesa que tiene asignada.
+- `mensajes_mozo_mozo_envia` / `mensajes_mozo_mozo_ve_todo` — cualquier
+  mozo lee y responde en cualquier mesa.
+- Estas policies también filtran Realtime: cada cliente recibe en vivo
+  solo los mensajes de su mesa.
+
+## Pedidos (puntos 12 y 13)
+
+- **`pedidos`**: un pedido por mesa, con `estado` (`estado_pedido`:
+  `pendiente_confirmacion` → `confirmado` o `rechazado`),
+  `importe_total` y `tiempo_estimado_minutos` calculados por la app al
+  armarlo. El tiempo estimado es el **máximo** entre los productos, no
+  la suma, porque cocina y barra preparan en paralelo.
+- **`pedido_items`**: cada producto del pedido, con `comensal_numero`
+  (para quién es, de 1 a `mesas.cantidad_comensales`), `cantidad` y
+  `precio_unitario` guardado al momento de pedir (si después cambia el
+  precio en la carta, el pedido no se modifica).
+- **El pedido no llega a cocina/barra hasta que el mozo lo confirma**:
+  nace en `pendiente_confirmacion` y los sectores filtran por
+  `confirmado`.
+- **Rechazo (v8, punto 13)**: el mozo lo pasa a `rechazado`. El pedido no
+  se borra; el cliente se entera por Realtime y vuelve a la pantalla de
+  armado con lo que ya tenía cargado para modificarlo y reenviarlo.
+- **"Quién está armando el pedido"**: columnas `mesas.pedido_en_armado_por`
+  y `mesas.pedido_en_armado_en`, manejadas solo por las funciones
+  `tomar_pedido_en_curso()` y `liberar_pedido_en_curso()` (`security
+  definer`). Evitan que dos comensales de la misma mesa armen pedidos a
+  la vez, y no abren un `UPDATE` general sobre `mesas` a los clientes.
+  `mesas` está en la publicación `supabase_realtime` para que el resto de
+  la mesa vea en vivo quién está pidiendo.
+
+## Vista `accesos_rapidos` (login)
+
+Los botones de acceso rápido del login muestran usuarios reales (foto,
+nombre y perfil), uno por perfil. Como en el login todavía no hay
+sesión y la RLS de `usuarios` exige estar logueado, se lee desde la
+vista `accesos_rapidos`, que expone solo las columnas necesarias (nunca
+DNI ni CUIL) y tiene permiso de lectura para `anon`.
+
 ## Datos de prueba cargados
 
 Requerido por la consigna ("Preparación inicial"): tener almacenado un
@@ -284,9 +438,12 @@ cliente registrado, más al menos 5 platos, 5 bebidas y 5 mesas.
   listado del punto 11 funciona (cada producto trae sus 3 fotos
   correctamente relacionadas). Se reemplazan por fotos reales subidas a
   Supabase Storage cuando el cocinero/cantinero las carguen desde la app.
-- **5 mesas**, todas creadas por el usuario dueño de prueba. `qr_code` es
-  un valor placeholder (`MESA-1`, `MESA-2`, etc.) — falta definir con el
-  equipo el formato final de lo que se codifica en el QR real.
+- **5 mesas**, todas creadas por el usuario dueño de prueba. `qr_code`
+  ya tiene el formato decidido por el equipo (`{"tipo":"mesa","numero":N}`,
+  ver "Decisiones de diseño") — pero `mesa.service.ts` todavía no lo
+  genera así en la app real, sigue en texto plano `MESA-{numero}`. El
+  seed sirve para probar el punto 10/11 contra el formato correcto
+  aunque esa parte del punto 4 no esté actualizada todavía.
 - **1 cliente en estado `pendiente`**: se marcó `cliente@test.com` (Julián
   Torres) con `estado_aprobacion = 'pendiente'` a mano, para poder probar
   el listado del punto 6 antes de que exista el alta de cliente registrado
@@ -356,6 +513,49 @@ confirmar que Storage funciona — todavía falta un `insert`/`update`/
 `delete` directo con `curl` sobre esa tabla puntual, para tener la misma
 confianza que sobre Storage.
 
+**Prueba (16/09/2026) de `mesas_metre_asigna` + `mesas_cliente_actual_unico`
+(punto 10)** — 4 casos con `curl` contra Supabase real, usuarios de prueba
+del seed, sobre mesas ya existentes en la base (no las 5 del seed original,
+la tabla ya tiene filas cargadas por pruebas del punto 4):
+
+1. **Metre asigna una mesa `vacia`** (`PATCH /mesas?id=eq.<mesa_vacia>` con
+   `disponibilidad: 'ocupada', cliente_actual_id: <cliente>`) → `200`, la
+   fila se actualiza y el `select` de vuelta confirma el cambio.
+2. **Ese mismo metre intenta reasignar la misma mesa** (ya `ocupada`) a
+   otro cliente → `200` con body `[]` (0 filas: el `using` de la policy ya
+   no matchea porque `disponibilidad` dejó de ser `'vacia'`).
+3. **Mozo intenta asignar una mesa `vacia`** (mismo payload que el caso 1,
+   token de `mozo@test.com`) → `200` con body `[]` (bloqueado: `perfil_actual()
+   != 'metre'`).
+4. **Metre intenta asignar una segunda mesa `vacia` al mismo cliente** que
+   ya tiene una mesa asignada (caso 1) → `409`, `{"code":"23505", "message":
+   "duplicate key value violates unique constraint \"mesas_cliente_actual_unico\""}`.
+
+Confirma que la protección contra doble asignación funciona a nivel de
+datos, no solo que las policies compilan. Nota aparte, no relacionada con
+RLS: la mesa usada en la prueba (número 9991, creada 06/09) todavía tiene
+`qr_code = "MESA-9991"` en texto plano — evidencia real (no solo lectura de
+código) de que `mesa.service.ts` sigue sin generar el formato JSON acordado
+para el QR de mesa (ver gap #17 en `AVANCES.md`). La mesa se liberó
+(`disponibilidad: 'vacia', cliente_actual_id: null`) al terminar la prueba
+para no dejar estado de prueba ensuciando la demo.
+
+**Prueba (16/09/2026) de `usuarios_metre_ve_en_lista_espera` (punto 10)**
+— 4 casos con `curl`, cliente de prueba `cliente@test.com` anotado a mano
+en `lista_espera` para la prueba (se sacó al terminar):
+
+1. **Metre lee nombre/foto del cliente que está en la lista** (`GET
+   /usuarios?select=id,nombres,apellidos,foto_url&id=eq.<cliente>`) →
+   devuelve la fila completa (antes de la policy devolvía `[]`).
+2. **Metre lee el embed `lista_espera?select=...,usuarios(...)`** → el
+   objeto `usuarios` viene resuelto (nombre/apellido/foto), no `null`.
+3. **Metre intenta leer un usuario que NO está en la lista** (ej. el
+   cocinero de prueba) → `[]`. Confirma que la policy es acotada a
+   `lista_espera`, no una puerta abierta a toda la tabla.
+4. **Mozo intenta leer al mismo cliente que sí está en la lista** → `[]`.
+   Confirma que la policy es específica de `perfil_actual() = 'metre'`, no
+   alcanza a cualquier perfil autenticado.
+
 ## Pendiente (a propósito, según lo visto en clase)
 
 - Políticas de `UPDATE`/`DELETE` en `productos` y `mesas` (ej.: cocinero
@@ -367,8 +567,10 @@ confianza que sobre Storage.
   `producto_fotos`.
 - Prueba directa con `curl` de `usuarios_cliente_se_autorregistra` (ver
   nota en la sección anterior).
-- Alta de empleados desde la app real: la solución está **diseñada pero
-  no implementada** (la DB ya está lista, ver más abajo). Requiere una
+- ~~Alta de empleados desde la app real~~ — **implementada** (12/09/2026)
+  con la Edge Function `crear-empleado`, siguiendo el diseño de abajo.
+  Se conserva el detalle como registro de la decisión: ~~la solución está
+  diseñada pero no implementada (la DB ya está lista, ver más abajo).~~ Requiere una
   **Edge Function** con `admin.createUser()` (usando la `service_role`
   key) para el paso de Auth únicamente — el resto del flujo (insert en
   `usuarios`, subida de foto a Storage) se hace directo desde el cliente
@@ -387,6 +589,106 @@ confianza que sobre Storage.
 - Validaciones adicionales a nivel DB: largo máximo de descripción,
   nombres duplicados en la carta.
 - Postres cargados en el seed.
-- Tablas de los puntos siguientes del TFI (estadías, lista de espera,
-  pedidos, encuestas, etc.) — se agregan a medida que el equipo avance
-  con esas partes de la app.
+- Tablas de los puntos siguientes del TFI (estadías, encuestas, pagos,
+  etc.) — se agregan a medida que el equipo avance con esas partes de la
+  app. `lista_espera`, `pedidos`, `pedido_items` y `mensajes_mozo` ya
+  existen.
+- ~~Realtime en `lista_espera`~~ — agregada a la publicación
+  `supabase_realtime` el 13/09/2026, mismo mecanismo que `usuarios`.
+- Punto 9 (cliente anónimo): DB lista y confirmada (policies + Realtime).
+  La pantalla del metre viendo la lista en vivo ya existe (punto 10).
+- Punto 10: DB lista y confirmada (15-16/09/2026) — `mesas.cliente_actual_id`,
+  índice único parcial `mesas_cliente_actual_unico`, policy
+  `mesas_metre_asigna` (UPDATE, metre, solo si `disponibilidad = 'vacia'`)
+  y policy `usuarios_metre_ve_en_lista_espera` corridas en el SQL Editor
+  (documentadas en `schema.sql` v6). Front implementado: pantalla del
+  metre (`metre-lista-espera`) con la cola en vivo, asignación de mesa y
+  aviso local al cliente vía `NotificacionesService`. El QR de mesa ya se
+  genera con el formato decidido (16/09/2026).
+- Punto 9 (cliente anónimo): **funcionando de punta a punta** —
+  ingreso vía QR + registro anónimo + lista de espera confirmados
+  en dispositivo real (14/09/2026). La pantalla del metre con la
+  lista en vivo se completó en el punto 10.
+- Punto 11 (consulta al mozo): tabla `mensajes_mozo` + policies
+  (`schema.sql` v7) corridas en el SQL Editor y Realtime activado para
+  esa tabla el 25/09/2026 (hasta esa fecha el chat fallaba al enviar
+  porque la tabla no existía en la base real). Chat cliente–mozo
+  probado en dispositivo real.
+- Punto 13 (mozo rechaza el pedido): `schema.sql` v8 — valor `rechazado`
+  en `estado_pedido` (confirmado en la base el 25/09/2026) y
+  `pedidos_mozo_confirma` actualizada para permitir esa transición.
+
+  ## Sistema de mail automático (puntos 7/8)
+
+Notifica al cliente por correo el estado de su registro (pendiente al
+registrarse, aceptado/rechazado cuando dueño/supervisor lo confirma).
+No requiere ninguna tabla ni columna nueva — invoca una Edge Function
+con los datos que la base ya tenía.
+
+**Arquitectura:** Edge Function `enviar-correo-estado`, invocada desde
+`cliente.service.ts` (estado 'pendiente') y `usuarios.service.ts`
+(estado 'aceptado'/'rechazado', dentro de `setEstadoCliente`).
+
+## Bug encontrado y resuelto: SMTP directo no funciona desde Edge Functions
+
+El primer intento usó SMTP directo (Gmail, vía `denomailer`) desde la
+Edge Function. Nunca llegó a enviar nada — los logs mostraban `booted`
+seguido de `shutdown` con `reason: "EarlyDrop"` después de ~75
+segundos, sin ningún error explícito.
+
+**Causa:** Deno Deploy (la infraestructura donde corren las Edge
+Functions de Supabase) bloquea las conexiones salientes a los puertos
+SMTP (25, 465, 587) como medida antispam — está documentado incluso en
+ejemplos oficiales de Supabase. La conexión a `smtp.gmail.com:465`
+quedaba colgada indefinidamente hasta que la plataforma mataba la
+función por inactividad.
+
+**Solución:** se migró a **Brevo** (API HTTP, no SMTP) — funciona
+porque usa el puerto 443 (HTTPS), no bloqueado. Se descartó Resend
+antes de esto porque exige dominio propio verificado para mandar a
+destinatarios que no sean el dueño de la cuenta; Brevo permite mandar
+a cualquier destinatario verificando solo el mail remitente (sin DNS),
+con 300 mails/día gratis.
+
+**Limitación aceptada:** sin dominio propio con SPF/DKIM, hay más
+chance de que el mail caiga en spam (especialmente en Gmail/Yahoo).
+No bloqueante para la entrega, pero avisar de esto al mostrar la demo.
+
+## Bug encontrado y resuelto: CORS faltante bloqueaba el envío desde la app
+
+Con la función ya usando Brevo, seguía sin llegar ningún mail — los
+logs mostraban `"request.method": "OPTIONS"` con `500`. El navegador
+manda automáticamente una petición `OPTIONS` (preflight) antes del
+`POST` real; la función intentaba leer `req.json()` también en ese
+caso, fallaba, y el navegador cortaba ahí sin llegar a mandar la
+petición real con los datos del mail.
+
+**Solución:** manejar `OPTIONS` explícitamente al principio del
+`Deno.serve()`, devolviendo los headers de CORS antes que nada, y
+agregar esos mismos headers a todas las respuestas (incluidas las de
+error).
+
+## Bug encontrado y resuelto: faltaba policy de INSERT para cliente anónimo
+
+Al probar el ingreso anónimo (punto 9), el insert en `usuarios`
+fallaba con 403 (`42501 - new row violates row-level security
+policy`). Causa: la policy `clientes_se_autorregistran` (armada para
+el punto 5) exige explícitamente `perfil = 'cliente_registrado'` en
+su `with check` — no contempla ningún otro perfil. Como el cliente
+anónimo inserta con `perfil = 'cliente_anonimo'`, ninguna policy
+existente lo autorizaba.
+
+**Lección para el resto del equipo**: cada perfil nuevo que se
+autorregistre en `usuarios` (sin pasar por el alta de un dueño/
+supervisor) necesita su propia policy de INSERT explícita — no
+alcanza con "ya hay una policy de autorregistro", hay que revisar
+si esa policy filtra por perfil específico antes de asumir que
+cubre un caso nuevo.
+
+## Pendiente
+
+- `verify_jwt = true` en `supabase/config.toml` para
+  `enviar-correo-estado` (mejora de seguridad: sin esto, cualquiera con
+  la clave pública de la app podría invocar la función directo y mandar
+  mails arbitrarios).
+- Dominio propio para mejorar deliverability (opcional, no bloqueante).

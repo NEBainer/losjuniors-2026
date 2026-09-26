@@ -1,0 +1,45 @@
+<ion-content class="fondo-registro" [scrollY]="true">
+  <div class="contenedor-registro contenedor-app">
+
+    <header class="encabezado">
+      <img src="assets/mascota/gatito-anonimo.png" alt="Mascota La Mesa" class="mascota-encabezado" />
+      <h1>Ingreso rápido</h1>
+    </header>
+
+    <div class="contenedor-foto-centrado" (click)="capturarFoto()">
+      @if (fotoUri()) {
+        <img [src]="fotoUri()" alt="Foto del visitante" class="foto-preview" />
+      } @else {
+        <ion-icon name="camera-outline" class="icono-camara"></ion-icon>
+        <span>Tomar foto</span>
+      }
+    </div>
+
+    <form [formGroup]="formulario" (ngSubmit)="ingresar()" class="formulario">
+      <div class="campo">
+        <ion-label>Tu nombre</ion-label>
+        <ion-input
+          formControlName="nombre"
+          placeholder="Ej: Julián"
+          fill="solid"
+          class="input-formulario">
+        </ion-input>
+      </div>
+
+      @if (mensajeError()) {
+        <div class="banner-error">
+          <ion-icon name="warning-outline"></ion-icon>
+          <span>{{ mensajeError() }}</span>
+        </div>
+      }
+
+      <ion-button type="submit" expand="block" class="boton-registrar" [disabled]="cargando()">
+        @if (cargando()) {
+          <ion-spinner name="crescent"></ion-spinner>
+        } @else {
+          Ingresar
+        }
+      </ion-button>
+    </form>
+  </div>
+</ion-content>

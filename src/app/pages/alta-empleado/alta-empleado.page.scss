@@ -1,0 +1,307 @@
+.fondo-app {
+  --background: var(--ion-background-color);
+}
+
+.contenedor-principal {
+  display: flex;
+  flex-direction: column;
+  // 100% (no 100dvh): dvh es el alto TOTAL de pantalla, sin descontar el
+  // ion-footer -- con eso sobraba justo lo que mide el footer y generaba
+  // un scroll mínimo pero constante (mismo bug encontrado y corregido en
+  // mesa-alta.page.scss).
+  min-height: 100%;
+  padding: var(--app-padding);
+  gap: 14px;
+  // Reparte el espacio sobrante entre header/foto/formulario en vez de
+  // dejarlo todo junto como un hueco vacío abajo (diseno-visual.md: no se
+  // admiten espacios neutros/vacíos; probado en dispositivo real).
+  justify-content: space-evenly;
+  color: var(--ion-text-color);
+}
+
+.cabecera-pagina {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 900;
+    margin: 0;
+    color: var(--ion-color-primary);
+  }
+
+  p {
+    margin: 0;
+    opacity: 0.8;
+    font-size: 0.85rem;
+  }
+
+  .boton-volver {
+    background-color: var(--ion-color-step-100);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ion-color-primary);
+
+    ion-icon {
+      font-size: 1.3rem;
+    }
+  }
+}
+
+.texto-centrado {
+  text-align: center;
+  opacity: 0.8;
+}
+
+.banner-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ion-color-danger);
+  color: var(--ion-color-primary-contrast);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+
+  ion-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+}
+
+.fila-acciones-iniciales {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.contenedor-foto {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: var(--ion-color-step-100);
+  border: 2px solid var(--ion-color-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+
+  ion-icon {
+    font-size: 34px;
+    color: var(--ion-color-primary);
+  }
+
+  span {
+    font-size: 0.72rem;
+    color: var(--ion-text-color);
+    text-align: center;
+    padding: 0 8px;
+    line-height: 1.2;
+  }
+}
+
+.foto-preview {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.etiqueta-cambiar {
+  position: absolute;
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.58rem;
+  color: var(--ion-text-color);
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.aviso-qr {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--ion-text-color);
+  opacity: 0.85;
+  margin: 0;
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.grilla-campos {
+  padding: 0;
+
+  ion-row {
+    margin: 0;
+  }
+
+  ion-col {
+    padding: 8px;
+  }
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  // Antes usábamos el label interno de ion-input (labelPlacement="stacked"),
+  // pero ese componente no expone ninguna forma de agrandar el espacio
+  // entre el label y el placeholder -- por eso pasamos a un <ion-label>
+  // aparte (mismo patrón que login/registro-cliente), donde este gap sí
+  // se puede ajustar (pedido explícito: "que respiren un poquito más").
+  gap: 6px;
+
+  ion-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ion-text-color);
+  }
+
+  .input-formulario {
+    --background: var(--ion-color-step-100);
+    --color: var(--ion-text-color);
+    --placeholder-color: rgba(99, 42, 18, 0.5);
+    --padding-start: 14px;
+    --padding-end: 14px;
+    --padding-top: 14px;
+    --padding-bottom: 14px;
+    border-radius: 10px;
+    font-size: 1.05rem;
+  }
+
+  .error-campo {
+    font-size: 0.7rem;
+    color: var(--ion-color-danger);
+    font-weight: 600;
+  }
+}
+
+.pie-registrar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px var(--app-padding) calc(12px + env(safe-area-inset-bottom));
+  background: var(--ion-background-color);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.boton-registrar {
+  flex: 1 1 auto;
+  --border-radius: 999px;
+  height: 54px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+// Mismo patrón que registro-cliente.page.scss: mismo border-radius y
+// mayúsculas que .boton-registrar para que no parezcan dos estilos de
+// botón distintos.
+.boton-qr {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 54px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: none;
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+
+  ion-icon {
+    font-size: 22px;
+  }
+
+  span {
+    // Mismo tamaño que .boton-registrar (1.05rem) -- antes eran 0.8rem y
+    // no combinaban (probado en dispositivo real).
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+}
+
+.boton-principal {
+  background-color: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  padding: 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.acceso-denegado {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+
+  ion-icon {
+    font-size: 3.5rem;
+    color: var(--ion-color-primary);
+  }
+}
+
+// Preview de foto tocable ampliado (mismo patrón que van a necesitar
+// plato/bebida): modal a pantalla completa con botón de cierre (X).
+.modal-foto {
+  --width: 100%;
+  --height: 100%;
+  --background: rgba(26, 18, 12, 0.92);
+}
+
+.contenido-modal-foto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
+
+  img {
+    max-width: 90%;
+    max-height: 80%;
+    border-radius: 12px;
+    object-fit: contain;
+  }
+
+  .boton-cerrar-modal {
+    position: absolute;
+    top: var(--app-padding);
+    right: var(--app-padding);
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+
+    ion-icon {
+      font-size: 1.4rem;
+    }
+  }
+}

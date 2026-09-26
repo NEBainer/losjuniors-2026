@@ -1,0 +1,79 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="volver()">
+        <ion-icon name="arrow-back-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>
+      <span class="titulo-mesa">Mesa {{ numeroMesa() }}</span>
+      <span class="subtitulo-fecha">{{ horaApertura | date: "d/MM/yyyy · HH:mm" }}</span>
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="fondo-consulta" [scrollEvents]="false">
+
+  @if (cargando()) {
+    <div class="velo-cargando">
+      <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-spinner" />
+      <ion-spinner name="crescent" color="light"></ion-spinner>
+      <p>Abriendo la consulta…</p>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="banner-error">
+      <ion-icon name="warning-outline"></ion-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  @if (!cargando()) {
+    <div class="lista-mensajes">
+      @if (!hayMensajes()) {
+        <div class="estado-vacio">
+          <ion-icon name="chatbubbles-outline"></ion-icon>
+          <p>Todavía no mandaste ninguna consulta.</p>
+          <p class="ayuda">Escribí tu mensaje y se lo notificamos a los mozos.</p>
+        </div>
+      }
+
+      @for (mensaje of mensajes(); track mensaje.id) {
+        <div class="burbuja" [class.burbuja-propia]="esMio(mensaje)" [class.burbuja-mozo]="!esMio(mensaje)">
+          @if (!esMio(mensaje)) {
+            <span class="remitente">{{ mensaje.remitente_nombre }}</span>
+          }
+          <p class="texto-mensaje">{{ mensaje.texto }}</p>
+          <span class="hora-mensaje">{{ mensaje.created_at | date: "HH:mm" }}</span>
+        </div>
+      }
+
+      <div #finDeLista></div>
+    </div>
+  }
+
+</ion-content>
+
+@if (!cargando()) {
+  <ion-footer>
+    <ion-toolbar class="barra-envio">
+      <div class="campo-envio">
+        <textarea
+          class="input-mensaje"
+          placeholder="Escribí tu consulta para el mozo…"
+          rows="1"
+          [ngModel]="texto()"
+          (ngModelChange)="texto.set($event)">
+        </textarea>
+        <ion-button class="boton-enviar" [disabled]="!texto().trim() || enviando()" (click)="enviar()">
+          @if (enviando()) {
+            <ion-spinner name="crescent"></ion-spinner>
+          } @else {
+            <ion-icon name="send-outline" slot="icon-only"></ion-icon>
+          }
+        </ion-button>
+      </div>
+    </ion-toolbar>
+  </ion-footer>
+}

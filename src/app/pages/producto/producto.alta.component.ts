@@ -1,15 +1,19 @@
-﻿import {
+import {
   Component,
+  DestroyRef,
+  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   OnInit,
   Output,
   SimpleChanges,
+  ViewChild,
   computed,
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -23,6 +27,7 @@ import {
   IonButton,
   IonButtons,
   IonContent,
+  IonFooter,
   IonHeader,
   IonIcon,
   IonInput,
@@ -35,50 +40,11 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { camera, images, close, addCircleOutline } from 'ionicons/icons';
+import { camera, images, close, addCircleOutline, refreshOutline, textOutline, documentTextOutline, timeOutline, pricetagOutline, createOutline, checkmarkCircle, closeCircle } from 'ionicons/icons';
 import { Camera, MediaTypeSelection } from '@capacitor/camera';
 import { Haptics, NotificationType } from '@capacitor/haptics';
-
-/**
- * producto.alta.component.ts
- * ---------------------------
- * Alta de plato (perfil cocinero, punto 2 del TP) y alta de bebida (perfil
- * cantinero, punto 3) — son el mismo formulario con dos etiquetas distintas,
- * así que en vez de duplicar dos pantallas casi idénticas, un solo componente
- * con @Input() tipo decide el texto y qué se emite.
- *
- * Uso:
- *   <app-producto-alta
- *     tipo="plato"
- *     [nombresExistentes]="nombresDeLaCarta"
- *     [guardando]="guardandoEnSupabase"
- *     [errorGuardado]="errorDelUltimoIntento"
- *     (guardar)="onGuardarProducto($event)"
- *     (cancelar)="volver()"
- *   />
- *
- * Este componente NO habla con Supabase directamente — solo arma y valida
- * los datos, y los emite por (guardar). La pantalla que lo use es la que
- * hace el insert real (mismo patrón que ya usan con AuthService.client:
- * un solo dueño de la conexión, todo lo demás lo recibe inyectado/emitido).
- *
- * Fotos: a diferencia del alta de empleado/cliente (que fuerza cámara),
- * acá el TP permite elegir cámara O galería — por eso se arma un selector
- * propio (ion-action-sheet) y se usa la API actual del plugin:
- *   Camera.takePhoto()        -> cámara
- *   Camera.chooseFromGallery() -> galería
- * (getPhoto() quedó deprecado en la versión que ya tienen instalada).
- *
- * Vibración en error: Haptics.notification({ type: NotificationType.Error })
- * se dispara si se intenta guardar con el formulario inválido o con fotos
- * faltantes — cumple el requisito excluyente "vibraciones en TODOS los
- * errores" sin usar alert().
- */
-
 export interface FotoProducto {
-  /** Para mostrar en <img src>, sirve tanto en web como en nativo. */
   webPath: string;
-  /** Solo nativo (iOS/Android) — lo necesita quien suba el archivo real a Storage. */
   uri?: string;
 }
 
@@ -90,6 +56,19 @@ export interface DatosProductoAlta {
   precio: number;
   fotos: FotoProducto[];
 }
+
+interface BorradorProducto {
+  nombre: string;
+  descripcion: string;
+  tiempoElaboracion: string;
+  precio: string;
+  guardadoEn: number;
+}
+
+const TIEMPO_MAXIMO_MINUTOS = 480; 
+const PRECIO_MAXIMO = 999999.99;
+const DEMORA_AUTOGUARDADO_MS = 800;
+const DURACION_AVISO_BORRADOR_MS = 5000;
 
 function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorFn {
   return (control): ValidationErrors | null => {
@@ -114,6 +93,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
     IonButtons,
     IonBackButton,
     IonContent,
+    IonFooter,
     IonItem,
     IonLabel,
     IonInput,
@@ -127,22 +107,25 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-back-button defaultHref="/" text="" (click)="cancelar.emit()"></ion-back-button>
+      <ion-back-button defaultHref="/" text="" (click)="alPresionarVolver($event)"></ion-back-button>
     </ion-buttons>
     <ion-title>{{ tipo === 'plato' ? 'Nuevo plato' : 'Nueva bebida' }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="fondo-carta">
+<ion-content class="fondo-carta" #contenido>
 <form [formGroup]="formulario" (ngSubmit)="alEnviar()" class="formulario" novalidate>
 
-  <p class="ayuda">
-    Completá los datos {{ tipo === 'plato' ? 'del plato' : 'de la bebida' }} para
-    {{ tipo === 'plato' ? 'agregarlo' : 'agregarla' }} a la carta.
-  </p>
+  <div class="aviso-borrador" role="status" *ngIf="mostrarAvisoBorrador()">
+    <ion-icon name="refresh-outline"></ion-icon>
+    <span>Borrador recuperado — volvé a elegir las fotos.</span>
+    <button type="button" class="cerrar-aviso" (click)="mostrarAvisoBorrador.set(false)" aria-label="Cerrar aviso">
+      <ion-icon name="close"></ion-icon>
+    </button>
+  </div>
 
   <ion-item fill="outline" class="campo" [class.campo-error]="tocadoInvalido('nombre')">
-    <ion-label position="stacked">Nombre</ion-label>
+    <ion-label position="stacked"><ion-icon name="text-outline" class="icono-etiqueta"></ion-icon> Nombre</ion-label>
     <ion-input
       formControlName="nombre"
       type="text"
@@ -155,7 +138,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   </ion-note>
 
   <ion-item fill="outline" class="campo" [class.campo-error]="tocadoInvalido('descripcion')">
-    <ion-label position="stacked">Descripción</ion-label>
+    <ion-label position="stacked"><ion-icon name="document-text-outline" class="icono-etiqueta"></ion-icon> Descripción</ion-label>
     <ion-textarea
       formControlName="descripcion"
       autoGrow="true"
@@ -170,12 +153,13 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   <div class="fila-doble">
     <div class="mitad">
       <ion-item fill="outline" class="campo" [class.campo-error]="tocadoInvalido('tiempoElaboracion')">
-        <ion-label position="stacked">Tiempo (min)</ion-label>
+        <ion-label position="stacked"><ion-icon name="time-outline" class="icono-etiqueta"></ion-icon> Tiempo (min)</ion-label>
         <ion-input
           formControlName="tiempoElaboracion"
           type="number"
           inputmode="numeric"
           min="1"
+          [max]="tiempoMaximo"
           placeholder="15"
         ></ion-input>
       </ion-item>
@@ -186,12 +170,13 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
 
     <div class="mitad">
       <ion-item fill="outline" class="campo" [class.campo-error]="tocadoInvalido('precio')">
-        <ion-label position="stacked">Precio</ion-label>
+        <ion-label position="stacked"><ion-icon name="pricetag-outline" class="icono-etiqueta"></ion-icon> Precio</ion-label>
         <ion-input
           formControlName="precio"
           type="number"
           inputmode="decimal"
           min="0.01"
+          [max]="precioMaximo"
           step="0.01"
           placeholder="0.00"
         >
@@ -205,7 +190,7 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   </div>
 
   <p class="etiqueta-fotos">
-    Fotos (3)
+    <ion-icon name="camera" class="icono-etiqueta"></ion-icon> Fotos (3)
     <ion-note color="danger" *ngIf="intentoGuardar() && !fotosCompletas()">
       &nbsp;— faltan fotos
     </ion-note>
@@ -215,12 +200,15 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
     <button
       type="button"
       class="contenedor-foto"
-      *ngFor="let foto of fotos(); let i = index"
+      *ngFor="let foto of fotos(); let i = index; trackBy: trackByIndice"
       [class.contenedor-foto-error]="intentoGuardar() && !foto"
+      [attr.aria-label]="foto ? 'Cambiar foto ' + (i + 1) : 'Agregar foto ' + (i + 1)"
       (click)="abrirSelector(i)"
     >
-      <img *ngIf="foto" [src]="foto.webPath" [alt]="'Foto ' + (i + 1)" class="imagen-foto" />
-      <div class="marca-cambiar" *ngIf="foto">Cambiar</div>
+      <img *ngIf="foto" [src]="foto.webPath" [alt]="'Foto ' + (i + 1) + ' del producto'" class="imagen-foto" />
+      <div class="marca-cambiar" *ngIf="foto" aria-hidden="true">
+        <ion-icon name="create-outline"></ion-icon>
+      </div>
 
       <div class="marcador-vacio" *ngIf="!foto">
         <ion-icon name="add-circle-outline"></ion-icon>
@@ -233,22 +221,31 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
     {{ errorGuardado }}
   </ion-note>
 
-  <ion-button
-    expand="block"
-    type="submit"
-    class="boton-guardar"
-    [disabled]="guardando"
-  >
-    {{ guardando ? 'Guardando…' : (tipo === 'plato' ? 'Guardar plato' : 'Guardar bebida') }}
-  </ion-button>
-
   <div class="cierre-decorativo" aria-hidden="true">
     <span class="linea-cierre"></span><span class="rombo-cierre"></span><span class="linea-cierre"></span>
   </div>
 
 </form>
 
-<!-- selector cámara/galería, propio, sin depender de un plugin nativo aparte -->
+</ion-content>
+
+<!-- Botón fijo abajo (correcciones-profesor 13-09): así queda siempre a
+     mano, aunque el formulario sea largo o el teclado esté abierto. -->
+<ion-footer class="pie-guardar">
+  <ion-button
+    expand="block"
+    type="button"
+    class="boton-guardar"
+    [disabled]="guardando"
+    (click)="alEnviar()"
+  >
+    {{ guardando ? 'Guardando…' : (tipo === 'plato' ? 'Guardar plato' : 'Guardar bebida') }}
+  </ion-button>
+</ion-footer>
+
+<!-- Afuera de ion-content a propósito: un position:fixed adentro queda
+     limitado al área con scroll, así que el velo terminaba donde empieza
+     el footer y el botón Guardar tapaba "Elegir de galería". -->
 <div class="velo-selector" *ngIf="mostrarSelector()" (click)="mostrarSelector.set(false)">
   <div class="hoja-selector" (click)="$event.stopPropagation()">
     <button type="button" class="opcion-selector" (click)="elegirFuente('camara')">
@@ -266,14 +263,27 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   </div>
 </div>
 
-<!-- spinner con logo mientras se guarda -->
+<div class="velo-confirmar" *ngIf="mostrarConfirmarSalida()">
+  <div class="tarjeta-confirmar" role="alertdialog" aria-modal="true">
+    <p class="titulo-confirmar">¿Salir sin terminar de cargar {{ tipo === 'plato' ? 'el plato' : 'la bebida' }}?</p>
+    <p class="texto-confirmar">Guardamos tu progreso — vas a poder retomarlo la próxima vez que entres acá.</p>
+    <div class="botones-confirmar">
+      <button type="button" class="boton-seguir" (click)="mostrarConfirmarSalida.set(false)">
+        <ion-icon name="checkmark-circle"></ion-icon>
+        <span>Seguir</span>
+      </button>
+      <button type="button" class="boton-salir" (click)="confirmarSalida()">
+        <ion-icon name="close-circle"></ion-icon>
+        <span>Salir</span>
+      </button>
+    </div>
+  </div>
+</div>
 <div class="velo-guardando" *ngIf="guardando">
   <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-spinner" />
   <ion-spinner name="crescent" color="light"></ion-spinner>
-  <p>Guardando {{ tipo === 'plato' ? 'el plato' : 'la bebida' }}…</p>
+  <p>Guardando…</p>
 </div>
-
-</ion-content>
   `,
   styles: [`
 :host {
@@ -283,6 +293,15 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   --dorado: #c68a34;
   --texto-gris: #9c9186;
   --rojo-error: #b3261e;
+  color-scheme: only light;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+ion-content {
+  flex: 1 1 auto;
 }
 
 ion-header ion-toolbar {
@@ -303,15 +322,55 @@ ion-header ion-toolbar {
 
 .formulario {
   padding: 16px;
-  padding-bottom: 48px;
-  display: block;
+  padding-bottom: 24px;
+  // Ocupa todo el alto disponible: el espacio que sobra se lo llevan las
+  // fotos (.grilla-fotos crece) en vez de quedar un hueco vacío arriba
+  // del botón Guardar (correcciones-profesor 13-09: sin espacios en blanco).
+  min-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
-.ayuda {
-  color: var(--marron);
+.pie-guardar {
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--crema);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.aviso-borrador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(198, 138, 52, 0.18);
+  border: 1px solid var(--dorado);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
   font-family: 'EB Garamond', Georgia, serif;
-  font-size: 0.95rem;
-  margin: 0 0 16px;
+  font-size: 0.85rem;
+  color: var(--marron-osc);
+}
+.aviso-borrador ion-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.aviso-borrador span {
+  flex: 1;
+}
+.cerrar-aviso {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--marron-osc);
+  flex-shrink: 0;
+}
+
+.icono-etiqueta {
+  font-size: 0.9em;
+  vertical-align: -2px;
+  margin-right: 2px;
+  color: var(--dorado);
 }
 
 .campo {
@@ -362,11 +421,15 @@ ion-header ion-toolbar {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-bottom: 16px;
+  flex: 1 1 auto;
+  // Nunca más bajas que cuadradas, aunque la pantalla sea chica.
+  min-height: calc((100vw - 52px) / 3);
+  max-height: 340px;
 }
 
 .contenedor-foto {
   position: relative;
-  aspect-ratio: 1;
+  height: 100%;
   border-radius: 12px;
   border: 2px dashed var(--dorado);
   background: #fffdf8;
@@ -381,7 +444,7 @@ ion-header ion-toolbar {
 .imagen-foto {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain; 
   display: block;
 }
 
@@ -390,9 +453,11 @@ ion-header ion-toolbar {
   inset: auto 0 0 0;
   background: rgba(90, 42, 23, 0.75);
   color: #fff;
-  font-size: 0.7rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 3px 0;
+  font-size: 0.9rem;
 }
 
 .marcador-vacio {
@@ -406,14 +471,20 @@ ion-header ion-toolbar {
   font-size: 0.75rem;
 }
 .marcador-vacio ion-icon {
-  font-size: 1.6rem;
+  font-size: 2rem;
+}
+.marcador-vacio span {
+  font-size: 0.9rem;
 }
 
 .boton-guardar {
   --background: var(--marron);
   --background-activated: var(--marron-osc);
   --border-radius: 999px;
-  margin-top: 12px;
+  --padding-top: 18px;
+  --padding-bottom: 18px;
+  margin: 0;
+  font-size: 1.05rem;
   font-weight: 600;
 }
 
@@ -422,7 +493,7 @@ ion-header ion-toolbar {
   align-items: center;
   justify-content: center;
   gap: 0.5em;
-  margin-top: 28px;
+  margin-top: 12px;
 }
 .linea-cierre {
   width: 40px;
@@ -475,6 +546,72 @@ ion-header ion-toolbar {
   font-size: 1.3rem;
 }
 
+.velo-confirmar {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 20002;
+}
+.tarjeta-confirmar {
+  background: var(--crema);
+  border-radius: 16px;
+  padding: 22px 20px;
+  max-width: 340px;
+  width: 100%;
+  font-family: 'EB Garamond', Georgia, serif;
+  border: 1px solid var(--dorado);
+}
+.titulo-confirmar {
+  color: var(--marron-osc);
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0 0 8px;
+}
+.texto-confirmar {
+  color: var(--texto-gris);
+  font-size: 0.9rem;
+  margin: 0 0 18px;
+}
+.botones-confirmar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.boton-seguir,
+.boton-salir {
+  width: 100%;
+  padding: 12px;
+  border-radius: 999px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.boton-seguir {
+  background: var(--marron);
+  color: var(--crema);
+}
+.boton-seguir ion-icon {
+  color: #6fcf7d;
+  font-size: 1.2rem;
+}
+.boton-salir {
+  background: transparent;
+  color: var(--texto-gris);
+}
+.boton-salir ion-icon {
+  color: var(--rojo-error);
+  font-size: 1.2rem;
+}
+
 .velo-guardando {
   position: fixed;
   inset: 0;
@@ -489,8 +626,8 @@ ion-header ion-toolbar {
   z-index: 20001;
 }
 .logo-spinner {
-  width: 96px;
-  height: 96px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
 }
   `],
@@ -504,15 +641,29 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
   @Output() guardar = new EventEmitter<DatosProductoAlta>();
   @Output() cancelar = new EventEmitter<void>();
 
+  protected readonly tiempoMaximo = TIEMPO_MAXIMO_MINUTOS;
+  protected readonly precioMaximo = PRECIO_MAXIMO;
+
   protected readonly fotos = signal<(FotoProducto | null)[]>([null, null, null]);
   protected readonly fotosCompletas = computed(() =>
     this.fotos().every((f) => f !== null)
   );
   protected readonly intentoGuardar = signal(false);
   protected readonly mostrarSelector = signal(false);
+  protected readonly mostrarConfirmarSalida = signal(false);
+  protected readonly mostrarAvisoBorrador = signal(false);
   private indiceFotoActiva: number | null = null;
 
+  @ViewChild('contenido', { read: ElementRef })
+  private contenidoRef?: ElementRef<HTMLElement>;
+
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
+
+  // Se usan para detectar "terminó de guardar con éxito" comparando el
+  // valor anterior y el actual de @Input() guardando en ngOnChanges.
+  private guardandoAnterior = false;
+  private envioEnCurso = false;
 
   protected readonly formulario = this.fb.group({
     nombre: [
@@ -520,24 +671,83 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
       [Validators.required, Validators.minLength(2), Validators.maxLength(60)],
     ],
     descripcion: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(300)]],
-    tiempoElaboracion: ['', [Validators.required, Validators.pattern(/^[1-9][0-9]*$/)]],
-    precio: ['', [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/), Validators.min(0.01)]],
+    tiempoElaboracion: [
+      '',
+      [Validators.required, Validators.pattern(/^[1-9][0-9]*$/), Validators.max(TIEMPO_MAXIMO_MINUTOS)],
+    ],
+    precio: [
+      '',
+      [
+        Validators.required,
+        Validators.pattern(/^\d+(\.\d{1,2})?$/),
+        Validators.min(0.01),
+        Validators.max(PRECIO_MAXIMO),
+      ],
+    ],
   });
 
   constructor() {
-    addIcons({ camera, images, close, 'add-circle-outline': addCircleOutline });
+    addIcons({
+      camera,
+      images,
+      close,
+      'add-circle-outline': addCircleOutline,
+      'refresh-outline': refreshOutline,
+      'text-outline': textOutline,
+      'document-text-outline': documentTextOutline,
+      'time-outline': timeOutline,
+      'pricetag-outline': pricetagOutline,
+      'create-outline': createOutline,
+      'checkmark-circle': checkmarkCircle,
+      'close-circle': closeCircle,
+    });
   }
 
   ngOnInit(): void {
     this.formulario
       .get('nombre')!
       .addValidators(validadorNombreDuplicado(() => this.nombresExistentes));
+
+    this.restaurarBorradorSiExiste();
+
+    this.formulario.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.programarAutoguardado());
   }
 
   ngOnChanges(cambios: SimpleChanges): void {
     if (cambios['nombresExistentes'] && !cambios['nombresExistentes'].firstChange) {
       this.formulario.get('nombre')!.updateValueAndValidity({ emitEvent: false });
     }
+
+    if (cambios['guardando']) {
+      const terminoDeGuardar = this.guardandoAnterior && !this.guardando;
+      if (terminoDeGuardar && this.envioEnCurso) {
+        if (!this.errorGuardado) {
+          this.limpiarBorrador();
+          this.formulario.reset();
+          this.fotos.set([null, null, null]);
+          this.intentoGuardar.set(false);
+        }
+        this.envioEnCurso = false;
+      }
+      this.guardandoAnterior = this.guardando;
+    }
+  }
+
+  /**
+   * Fuerza un recálculo síncrono de layout leyendo `offsetHeight` del
+   * contenido real — es lo mismo que hace Chrome por su cuenta cuando
+   * inspeccionás un elemento en DevTools (necesita su geometría exacta
+   * para dibujar el recuadro de resaltado). Comprobado a mano: eso
+   * arreglaba el formulario cuando ni un resize real de ventana ni un
+   * evento sintético lo hacían. Pensado para llamarse una sola vez,
+   * desde `ionViewDidEnter` de la página que envuelve este formulario.
+   */
+  public forzarRecalculoLayout(): void {
+    if (!this.contenidoRef) return;
+    // La lectura en sí (no el valor) es lo que fuerza el reflow.
+    void this.contenidoRef.nativeElement.offsetHeight;
   }
 
   protected tocadoInvalido(campo: string): boolean {
@@ -556,8 +766,12 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
       return `No puede superar los ${control.errors['maxlength'].requiredLength} caracteres.`;
     if (campo === 'tiempoElaboracion' && control.errors['pattern'])
       return 'Ingresá un número entero de minutos, mayor a 0.';
+    if (campo === 'tiempoElaboracion' && control.errors['max'])
+      return `No puede superar los ${TIEMPO_MAXIMO_MINUTOS} minutos (8 horas).`;
     if (campo === 'precio' && (control.errors['pattern'] || control.errors['min']))
       return 'Ingresá un precio válido, mayor a 0 (hasta 2 decimales).';
+    if (campo === 'precio' && control.errors['max'])
+      return `No puede superar los $${PRECIO_MAXIMO.toLocaleString('es-AR')}.`;
     return 'Dato inválido.';
   }
 
@@ -585,9 +799,13 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
         }
       }
     } catch (error) {
-      // El usuario canceló el selector nativo o no dio permisos.
-      // No es un error de validación del formulario, así que no se muestra nada.
+      const fueCancelado =
+        error instanceof Error &&
+        /cancel|denied/i.test(error.message ?? '');
       console.warn('No se pudo obtener la foto', error);
+      if (!fueCancelado) {
+        await this.vibrarError();
+      }
     }
   }
 
@@ -595,6 +813,10 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
     const copia = [...this.fotos()];
     copia[indice] = foto;
     this.fotos.set(copia);
+  }
+
+  protected trackByIndice(indice: number): number {
+    return indice;
   }
 
   protected async alEnviar(): Promise<void> {
@@ -607,6 +829,7 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
     }
 
     const valores = this.formulario.getRawValue();
+    this.envioEnCurso = true;
     this.guardar.emit({
       tipo: this.tipo,
       nombre: (valores.nombre ?? '').trim(),
@@ -617,11 +840,98 @@ export class ProductoAltaComponent implements OnInit, OnChanges {
     });
   }
 
+  protected alPresionarVolver(evento: Event): void {
+    evento.preventDefault();
+    this.intentarCancelar();
+  }
+
+  protected intentarCancelar(): void {
+    if (this.hayCambiosSinGuardar()) {
+      this.mostrarConfirmarSalida.set(true);
+      return;
+    }
+    this.cancelar.emit();
+  }
+
+  protected confirmarSalida(): void {
+    this.mostrarConfirmarSalida.set(false);
+    this.cancelar.emit();
+  }
+
+  private hayCambiosSinGuardar(): boolean {
+    return this.formulario.dirty || this.fotos().some((f) => f !== null);
+  }
+
   private async vibrarError(): Promise<void> {
     try {
       await Haptics.notification({ type: NotificationType.Error });
     } catch {
-      // Web sin soporte de vibración - no rompe el flujo.
+    }
+  }
+
+
+  private claveBorrador(): string {
+    return `la-mesa:borrador:${this.tipo}`;
+  }
+
+  private autoguardadoPendiente: ReturnType<typeof setTimeout> | null = null;
+
+  private programarAutoguardado(): void {
+    if (this.autoguardadoPendiente) clearTimeout(this.autoguardadoPendiente);
+    this.autoguardadoPendiente = setTimeout(
+      () => this.guardarBorrador(),
+      DEMORA_AUTOGUARDADO_MS
+    );
+  }
+
+  private guardarBorrador(): void {
+    const valores = this.formulario.getRawValue();
+    const vacio =
+      !valores.nombre?.trim() &&
+      !valores.descripcion?.trim() &&
+      !valores.tiempoElaboracion &&
+      !valores.precio;
+    if (vacio) {
+      this.limpiarBorrador();
+      return;
+    }
+    const borrador: BorradorProducto = {
+      nombre: valores.nombre ?? '',
+      descripcion: valores.descripcion ?? '',
+      tiempoElaboracion: valores.tiempoElaboracion ?? '',
+      precio: valores.precio ?? '',
+      guardadoEn: Date.now(),
+    };
+    try {
+      localStorage.setItem(this.claveBorrador(), JSON.stringify(borrador));
+    } catch {
+    }
+  }
+
+  private limpiarBorrador(): void {
+    try {
+      localStorage.removeItem(this.claveBorrador());
+    } catch {
+    }
+  }
+
+  private restaurarBorradorSiExiste(): void {
+    try {
+      const crudo = localStorage.getItem(this.claveBorrador());
+      if (!crudo) return;
+      const borrador: BorradorProducto = JSON.parse(crudo);
+      this.formulario.patchValue(
+        {
+          nombre: borrador.nombre,
+          descripcion: borrador.descripcion,
+          tiempoElaboracion: borrador.tiempoElaboracion,
+          precio: borrador.precio,
+        },
+        { emitEvent: false }
+      );
+      this.mostrarAvisoBorrador.set(true);
+      setTimeout(() => this.mostrarAvisoBorrador.set(false), DURACION_AVISO_BORRADOR_MS);
+    } catch {
     }
   }
 }

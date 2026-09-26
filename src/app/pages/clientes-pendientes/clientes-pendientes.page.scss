@@ -5,9 +5,7 @@
 .contenedor-principal {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  padding: 20px;
-  color: var(--ion-text-color);
+  gap: 22px;
 }
 
 /* Cabecera con volver + refrescar */
@@ -42,7 +40,7 @@
     align-items: center;
     justify-content: center;
     background-color: var(--ion-color-step-100);
-    border: 2px solid #D8C4A6;
+    border: 2px solid var(--ion-color-step-150);
     border-radius: 10px;
     color: var(--ion-color-primary);
 
@@ -74,12 +72,12 @@
 
 .mensaje-error {
   background-color: var(--ion-color-danger);
-  color: #FCF7EE;
+  color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
 }
 
 .mensaje-ok {
-  background-color: #2E6E4E;
-  color: #FCF7EE;
+  background-color: var(--ion-color-success); 
+  color: var(--ion-color-success-contrast);
 }
 
 /* Estado sin pendientes */
@@ -106,14 +104,19 @@
 
 /* Listado */
 .lista-pendientes {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  // Con pocos pendientes (o solo uno) el listado se centra en vez de
+  // quedar pegado arriba con un hueco vacío abajo (diseno-visual.md: no
+  // se admiten espacios neutros/vacíos).
+  justify-content: center;
   gap: 16px;
 }
 
 .cliente-card {
   background-color: var(--ion-color-step-100);
-  border: 2px solid #D8C4A6;
+  border: 2px solid var(--ion-color-step-150);
   border-radius: 12px;
   padding: 16px;
   display: grid;
@@ -199,54 +202,13 @@
 
   .btn-aceptar,
   .btn-si {
-    background-color: #2E6E4E;
-    color: #FCF7EE;
+    background-color: var(--ion-color-success); 
+    color: var(--ion-color-success-contrast);
   }
 
   .btn-rechazar,
   .btn-no {
     background-color: var(--ion-color-danger);
-    color: #FCF7EE;
+    color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
   }
-}
-
-/* Spinner reutilizable (mismo patrón que login/home) */
-.overlay-cargando {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(26, 37, 44, 0.95);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: var(--ion-background-color);
-
-  .contenedor-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-
-    .logo-spinner {
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-    }
-
-    .spinner-css {
-      width: 40px;
-      height: 40px;
-      border: 4px solid var(--ion-background-color);
-      border-top-color: var(--ion-color-primary);
-      border-radius: 50%;
-      animation: girar 1s linear infinite;
-    }
-  }
-}
-
-@keyframes girar {
-  to { transform: rotate(360deg); }
 }
