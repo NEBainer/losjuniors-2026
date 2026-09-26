@@ -41,8 +41,11 @@
   <div class="contenedor-principal contenedor-app" [class.panel-dueno]="esPanelDueno()">
 
     <div class="cabecera-dashboard">
-      <h1>Panel de Control</h1>
-      <p>Seleccione un módulo para operar</p>
+      <img [src]="'assets/mascota/' + mascotaActual()" alt="Mascota La Mesa" class="mascota-cabecera" />
+      <div class="textos-cabecera">
+        <h1>Panel de Control</h1>
+        <p>Seleccione un módulo para operar</p>
+      </div>
     </div>
 
     @if (mensajeErrorEscaneo()) {

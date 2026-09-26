@@ -35,6 +35,15 @@ function haceCuanto(fechaIso: string): string {
   return `hace ${minutos} min`;
 }
 
+const MASCOTAS_POR_PERFIL: Partial<Record<PerfilUsuario, string>> = {
+  'dueño': 'gatito-dueno.png',
+  supervisor: 'gatito-supervisor.png',
+  metre: 'gatito-metre.png',
+  mozo: 'gatito-mozo.png',
+  cocinero: 'gatito-cocinero.png',
+  cantinero: 'gatito-cantinero.png',
+};
+
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
@@ -139,6 +148,10 @@ export class HomePage {
   // termine en lista_espera Y con mesa al mismo tiempo: el unique de
   // lista_espera no chequea contra mesas.cliente_actual_id).
   readonly mesaAsignada = signal<Mesa | null>(null);
+  readonly mascotaActual = computed(() => {
+  const p = this.perfil();
+  return (p && MASCOTAS_POR_PERFIL[p]) ?? 'gatito-login.png';
+});
 
   constructor(
     private authService: AuthService,
