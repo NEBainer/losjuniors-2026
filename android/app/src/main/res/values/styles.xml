@@ -16,7 +16,14 @@
     </style>
 
 
+    <!-- Splash estático. En Android 12+ el sistema ignora android:background
+         y solo dibuja un color de fondo y un ícono centrado: sin estos dos
+         items usaba el color del tema (negro en modo oscuro, blanco en modo
+         claro). Mismo crema que backgroundColor en capacitor.config.ts. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">#F4EADA</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icono</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
