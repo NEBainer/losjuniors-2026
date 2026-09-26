@@ -10,6 +10,7 @@ export class NotificacionesService {
   private canalConsultasMozo: RealtimeChannel | null = null;
   private canalRespuestasCliente: RealtimeChannel | null = null;
   private canalPedidosMozo: RealtimeChannel | null = null;
+  private alLlegarPendiente: (() => void) | null = null;
   private alLlegarPedido: (() => void) | null = null;
   private permisosConcedidos = false;
 
@@ -97,19 +98,28 @@ export class NotificacionesService {
   // supervisor (ver schema.sql) -- solo el alta de un cliente registrado
   // (punto 5) inserta la fila ya en 'pendiente', así que alcanza con
   // filtrar por ese valor sin distinguir perfil.
-  iniciarEscuchaPendientes() {
+  // onNuevo se reemplaza en cada llamada (home lo vuelve a pasar al
+  // entrar) para que la lista embebida del panel se recargue sola, sin
+  // tener que salir y volver a entrar -- mismo patrón que
+  // iniciarEscuchaPedidosMozo().
+  iniciarEscuchaPendientes(onNuevo?: () => void) {
+    this.alLlegarPendiente = onNuevo ?? null;
     if (this.canalPendientes) return;
     this.canalPendientes = this.sb
       .channel('dueno-clientes-pendientes')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'usuarios', filter: 'estado_aprobacion=eq.pendiente' },
-        () => this.notificar('Nuevo cliente pendiente', 'Hay un cliente registrado esperando aprobación.'),
+        () => {
+          this.notificar('Nuevo cliente pendiente', 'Hay un cliente registrado esperando aprobación.');
+          this.alLlegarPendiente?.();
+        },
       )
       .subscribe();
   }
 
   detenerEscuchaPendientes() {
+    this.alLlegarPendiente = null;
     if (this.canalPendientes) {
       this.sb.removeChannel(this.canalPendientes);
       this.canalPendientes = null;

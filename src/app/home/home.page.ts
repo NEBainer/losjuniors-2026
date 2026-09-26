@@ -180,7 +180,7 @@ export class HomePage {
       this.notificacionesService.iniciarEscuchaMetre();
     }
     if (this.esPanelDueno()) {
-      this.notificacionesService.iniciarEscuchaPendientes();
+      this.notificacionesService.iniciarEscuchaPendientes(() => this.cargarPendientes());
     }
     if (this.esPanelMozo()) {
       this.notificacionesService.iniciarEscuchaConsultasMozo();
