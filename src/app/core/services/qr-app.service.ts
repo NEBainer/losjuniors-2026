@@ -28,6 +28,18 @@ export class QrAppService {
       throw new Error('No se pudo leer el contenido del código.');
     }
 
+    return this.interpretar(raw);
+  }
+
+  // Las mesas creadas desde la app antes del 16/09 guardaron el QR en
+  // texto plano (`MESA-{numero}`), no en el JSON actual -- se aceptan los
+  // dos formatos para que esas mesas (y sus QR ya impresos) sigan andando.
+  interpretar(raw: string): QrAppPayload {
+    const formatoViejo = /^MESA-(\d+)$/.exec(raw.trim());
+    if (formatoViejo) {
+      return { tipo: 'mesa', numero: Number(formatoViejo[1]) };
+    }
+
     try {
       return JSON.parse(raw) as QrAppPayload;
     } catch {

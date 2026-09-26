@@ -9,7 +9,13 @@ describe('ConsultaMozoPage', () => {
     const usuariosServiceMock = { obtenerUsuarioActual: vi.fn() } as any;
     const consultaMozoServiceMock = overrides.consultaMozoServiceMock ?? {};
 
-    return new ConsultaMozoPage(routeMock, routerMock, mesaServiceMock, usuariosServiceMock, consultaMozoServiceMock);
+    return new ConsultaMozoPage(
+      routeMock,
+      routerMock,
+      mesaServiceMock,
+      usuariosServiceMock,
+      consultaMozoServiceMock,
+    );
   }
 
   it('reconoce como propio un mensaje del usuario logueado', () => {

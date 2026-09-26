@@ -47,7 +47,7 @@
 
 .mensaje-error {
   background-color: var(--ion-color-danger);
-  color: #FCF7EE;
+  color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
 }
 
 .mensaje-ok {

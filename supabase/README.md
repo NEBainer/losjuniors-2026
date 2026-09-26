@@ -543,11 +543,10 @@ en `lista_espera` para la prueba (se sacó al terminar):
   en dispositivo real (14/09/2026). Falta la pantalla del metre
   viendo la lista en vivo — corresponde al punto 10.
 - Punto 11 (consulta al mozo): tabla `mensajes_mozo` + policies
-  agregadas (`schema.sql` v7) — falta correrlas en Supabase y activar
-  Realtime para esa tabla. Lado cliente (ver carta desde el QR de
-  mesa + mandar consulta + ver el historial en vivo) implementado.
-  Bandeja del mozo (listar consultas, responder, notificación) queda
-  para la próxima tanda.
+  (`schema.sql` v7) corridas en el SQL Editor y Realtime activado para
+  esa tabla el 25/09/2026 (hasta esa fecha el chat fallaba al enviar
+  porque la tabla no existía en la base real). Chat cliente–mozo
+  probado en dispositivo real.
 
   ## Sistema de mail automático (puntos 7/8)
 

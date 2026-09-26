@@ -1,11 +1,11 @@
 .accesos-rapidos {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 
   .titulo {
     text-align: center;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -20,7 +20,7 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px 8px;
+    gap: 8px 6px;
   }
 }
 
@@ -30,7 +30,7 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  width: 52px;
+  width: 48px;
   background: none;
   border: none;
   padding: 0;
@@ -39,8 +39,8 @@
   color: var(--ion-text-color);
 
   .avatar {
-    width: 46px;
-    height: 46px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     overflow: hidden;
     background-color: var(--ion-color-primary);

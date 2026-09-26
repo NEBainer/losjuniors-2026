@@ -6,6 +6,9 @@ import { SupabaseService } from './supabase.service';
 @Injectable({ providedIn: 'root' })
 export class NotificacionesService {
   private canalMetre: RealtimeChannel | null = null;
+  private canalPendientes: RealtimeChannel | null = null;
+  private canalConsultasMozo: RealtimeChannel | null = null;
+  private canalRespuestasCliente: RealtimeChannel | null = null;
   private permisosConcedidos = false;
 
   constructor(private supabaseService: SupabaseService) {}
@@ -74,6 +77,78 @@ export class NotificacionesService {
         ? `Revisá el pedido de la mesa ${mesaNumero} y volvé a enviarlo.`
         : 'Revisá tu pedido y volvé a enviarlo.',
     );
+  }
+
+  // Punto 6: dueño/supervisor se entera de un cliente registrado nuevo
+  // esperando aprobación. `estado_aprobacion` es NULL para empleados/dueño/
+  // supervisor (ver schema.sql) -- solo el alta de un cliente registrado
+  // (punto 5) inserta la fila ya en 'pendiente', así que alcanza con
+  // filtrar por ese valor sin distinguir perfil.
+  iniciarEscuchaPendientes() {
+    if (this.canalPendientes) return;
+    this.canalPendientes = this.sb
+      .channel('dueno-clientes-pendientes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'usuarios', filter: 'estado_aprobacion=eq.pendiente' },
+        () => this.notificar('Nuevo cliente pendiente', 'Hay un cliente registrado esperando aprobación.'),
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaPendientes() {
+    if (this.canalPendientes) {
+      this.sb.removeChannel(this.canalPendientes);
+      this.canalPendientes = null;
+    }
+  }
+
+  // Punto 11: "notifica a todos los mozos" cuando llega una consulta nueva
+  // de un cliente. `remitente_perfil=neq.mozo` cubre cliente_registrado y
+  // cliente_anonimo sin enumerarlos -- así un mensaje de otro mozo
+  // respondiendo no vuelve a notificar al resto del equipo de sala.
+  iniciarEscuchaConsultasMozo() {
+    if (this.canalConsultasMozo) return;
+    this.canalConsultasMozo = this.sb
+      .channel('mozo-consultas-nuevas')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'mensajes_mozo', filter: 'remitente_perfil=neq.mozo' },
+        () => this.notificar('Nueva consulta', 'Un cliente escribió una consulta.'),
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaConsultasMozo() {
+    if (this.canalConsultasMozo) {
+      this.sb.removeChannel(this.canalConsultasMozo);
+      this.canalConsultasMozo = null;
+    }
+  }
+
+  // Punto 11: "un mozo responde (push al cliente)". Vive acá (singleton,
+  // arranca en home.page.ts) y no en consulta-mozo.page.ts para que el
+  // aviso llegue aunque el cliente no tenga el chat abierto. No hace falta
+  // filtrar por mesa: la policy `mensajes_mozo_cliente_ve_su_mesa` (ver
+  // schema.sql) también aplica a Realtime, así que el cliente solo recibe
+  // los mensajes del hilo de su propia mesa.
+  iniciarEscuchaRespuestasCliente() {
+    if (this.canalRespuestasCliente) return;
+    this.canalRespuestasCliente = this.sb
+      .channel('cliente-respuestas-mozo')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'mensajes_mozo', filter: 'remitente_perfil=eq.mozo' },
+        () => this.notificar('El mozo respondió', 'Tenés una respuesta nueva del mozo.'),
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaRespuestasCliente() {
+    if (this.canalRespuestasCliente) {
+      this.sb.removeChannel(this.canalRespuestasCliente);
+      this.canalRespuestasCliente = null;
+    }
   }
 
   escucharMesaAsignada(clienteId: string, onAsignada: (mesa: { numero: number }) => void): () => void {

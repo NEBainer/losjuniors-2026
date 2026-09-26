@@ -29,8 +29,11 @@ import { ConsultaMozoService, MensajeMozo } from '../../core/services/consulta-m
  * dos lados (cliente y mozo): manda mensajes y ve el historial en vivo
  * (Realtime). El mozo entra acá desde la bandeja (consultas-mozo.page.ts,
  * que lista todas las mesas con consulta abierta); el cliente entra desde
- * el FAB de la carta. Falta: notificación push a los mozos/al cliente
- * (todo el proyecto no tiene push implementado todavía).
+ * el FAB de la carta. El aviso "notifica a todos los mozos" al llegar una
+ * consulta vive en NotificacionesService.iniciarEscuchaConsultasMozo(), y
+ * el aviso al cliente cuando le responden en
+ * NotificacionesService.iniciarEscuchaRespuestasCliente() (las dos
+ * arrancan en home.page.ts, así llegan aunque este chat no esté abierto).
  */
 @Component({
   selector: 'app-consulta-mozo',
