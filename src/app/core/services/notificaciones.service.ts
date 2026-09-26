@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
@@ -10,6 +10,11 @@ export class NotificacionesService {
   private canalConsultasMozo: RealtimeChannel | null = null;
   private canalRespuestasCliente: RealtimeChannel | null = null;
   private permisosConcedidos = false;
+
+  // Respuestas del mozo que el cliente todavía no vio: la carta lo muestra
+  // como burbuja sobre el botón del chat y se vuelve a cero al entrar a la
+  // consulta (consulta-mozo.page.ts).
+  readonly respuestasSinLeer = signal(0);
 
   constructor(private supabaseService: SupabaseService) {}
 
@@ -26,21 +31,27 @@ export class NotificacionesService {
       }
       this.permisosConcedidos = estado.display === 'granted';
       return this.permisosConcedidos;
-    } catch {
+    } catch (error) {
+      console.error('[Notificaciones] no se pudieron verificar los permisos', JSON.stringify(error));
       return false;
     }
   }
 
   private async notificar(titulo: string, cuerpo: string) {
+    console.log('[Notificaciones] notificar:', titulo);
     const permitido = await this.asegurarPermisos();
-    if (!permitido) return;
+    if (!permitido) {
+      console.warn('[Notificaciones] sin permiso para mostrar notificaciones');
+      return;
+    }
     try {
       await LocalNotifications.schedule({
         notifications: [
           { id: Math.floor(Math.random() * 100000), title: titulo, body: cuerpo },
         ],
       });
-    } catch {
+    } catch (error) {
+      console.error('[Notificaciones] falló schedule()', JSON.stringify(error));
     }
   }
 
@@ -104,19 +115,24 @@ export class NotificacionesService {
   }
 
   // Punto 11: "notifica a todos los mozos" cuando llega una consulta nueva
-  // de un cliente. `remitente_perfil=neq.mozo` cubre cliente_registrado y
+  // de un cliente. `remitente_perfil !== 'mozo'` cubre cliente_registrado y
   // cliente_anonimo sin enumerarlos -- así un mensaje de otro mozo
-  // respondiendo no vuelve a notificar al resto del equipo de sala.
+  // respondiendo no vuelve a notificar al resto del equipo de sala. Se
+  // filtra acá y no con `filter` de Realtime: `remitente_perfil` es un
+  // enum y el filtro del servidor de Realtime puede no disparar el evento.
   iniciarEscuchaConsultasMozo() {
     if (this.canalConsultasMozo) return;
     this.canalConsultasMozo = this.sb
       .channel('mozo-consultas-nuevas')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'mensajes_mozo', filter: 'remitente_perfil=neq.mozo' },
-        () => this.notificar('Nueva consulta', 'Un cliente escribió una consulta.'),
+        { event: 'INSERT', schema: 'public', table: 'mensajes_mozo' },
+        (payload) => {
+          if ((payload.new as { remitente_perfil: string }).remitente_perfil === 'mozo') return;
+          this.notificar('Nueva consulta', 'Un cliente escribió una consulta.');
+        },
       )
-      .subscribe();
+      .subscribe((estado) => console.log('[Notificaciones] canal consultas mozo:', estado));
   }
 
   detenerEscuchaConsultasMozo() {
@@ -131,20 +147,30 @@ export class NotificacionesService {
   // aviso llegue aunque el cliente no tenga el chat abierto. No hace falta
   // filtrar por mesa: la policy `mensajes_mozo_cliente_ve_su_mesa` (ver
   // schema.sql) también aplica a Realtime, así que el cliente solo recibe
-  // los mensajes del hilo de su propia mesa.
+  // los mensajes del hilo de su propia mesa. El perfil se filtra acá por
+  // el mismo motivo que en iniciarEscuchaConsultasMozo().
   iniciarEscuchaRespuestasCliente() {
     if (this.canalRespuestasCliente) return;
     this.canalRespuestasCliente = this.sb
       .channel('cliente-respuestas-mozo')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'mensajes_mozo', filter: 'remitente_perfil=eq.mozo' },
-        () => this.notificar('El mozo respondió', 'Tenés una respuesta nueva del mozo.'),
+        { event: 'INSERT', schema: 'public', table: 'mensajes_mozo' },
+        (payload) => {
+          if ((payload.new as { remitente_perfil: string }).remitente_perfil !== 'mozo') return;
+          this.respuestasSinLeer.update((cantidad) => cantidad + 1);
+          this.notificar('El mozo respondió', 'Tenés una respuesta nueva del mozo.');
+        },
       )
-      .subscribe();
+      .subscribe((estado) => console.log('[Notificaciones] canal respuestas cliente:', estado));
+  }
+
+  marcarRespuestasLeidas() {
+    this.respuestasSinLeer.set(0);
   }
 
   detenerEscuchaRespuestasCliente() {
+    this.respuestasSinLeer.set(0);
     if (this.canalRespuestasCliente) {
       this.sb.removeChannel(this.canalRespuestasCliente);
       this.canalRespuestasCliente = null;
