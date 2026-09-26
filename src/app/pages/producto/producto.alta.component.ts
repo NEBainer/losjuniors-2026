@@ -227,6 +227,25 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
 
 </form>
 
+</ion-content>
+
+<!-- Botón fijo abajo (correcciones-profesor 13-09): así queda siempre a
+     mano, aunque el formulario sea largo o el teclado esté abierto. -->
+<ion-footer class="pie-guardar">
+  <ion-button
+    expand="block"
+    type="button"
+    class="boton-guardar"
+    [disabled]="guardando"
+    (click)="alEnviar()"
+  >
+    {{ guardando ? 'Guardando…' : (tipo === 'plato' ? 'Guardar plato' : 'Guardar bebida') }}
+  </ion-button>
+</ion-footer>
+
+<!-- Afuera de ion-content a propósito: un position:fixed adentro queda
+     limitado al área con scroll, así que el velo terminaba donde empieza
+     el footer y el botón Guardar tapaba "Elegir de galería". -->
 <div class="velo-selector" *ngIf="mostrarSelector()" (click)="mostrarSelector.set(false)">
   <div class="hoja-selector" (click)="$event.stopPropagation()">
     <button type="button" class="opcion-selector" (click)="elegirFuente('camara')">
@@ -265,22 +284,6 @@ function validadorNombreDuplicado(obtenerExistentes: () => string[]): ValidatorF
   <ion-spinner name="crescent" color="light"></ion-spinner>
   <p>Guardando…</p>
 </div>
-
-</ion-content>
-
-<!-- Botón fijo abajo (correcciones-profesor 13-09): así queda siempre a
-     mano, aunque el formulario sea largo o el teclado esté abierto. -->
-<ion-footer class="pie-guardar">
-  <ion-button
-    expand="block"
-    type="button"
-    class="boton-guardar"
-    [disabled]="guardando"
-    (click)="alEnviar()"
-  >
-    {{ guardando ? 'Guardando…' : (tipo === 'plato' ? 'Guardar plato' : 'Guardar bebida') }}
-  </ion-button>
-</ion-footer>
   `,
   styles: [`
 :host {
@@ -320,7 +323,13 @@ ion-header ion-toolbar {
 .formulario {
   padding: 16px;
   padding-bottom: 24px;
-  display: block;
+  // Ocupa todo el alto disponible: el espacio que sobra se lo llevan las
+  // fotos (.grilla-fotos crece) en vez de quedar un hueco vacío arriba
+  // del botón Guardar (correcciones-profesor 13-09: sin espacios en blanco).
+  min-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .pie-guardar {
@@ -412,11 +421,15 @@ ion-header ion-toolbar {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   margin-bottom: 16px;
+  flex: 1 1 auto;
+  // Nunca más bajas que cuadradas, aunque la pantalla sea chica.
+  min-height: calc((100vw - 52px) / 3);
+  max-height: 340px;
 }
 
 .contenedor-foto {
   position: relative;
-  aspect-ratio: 1;
+  height: 100%;
   border-radius: 12px;
   border: 2px dashed var(--dorado);
   background: #fffdf8;
@@ -458,7 +471,10 @@ ion-header ion-toolbar {
   font-size: 0.75rem;
 }
 .marcador-vacio ion-icon {
-  font-size: 1.6rem;
+  font-size: 2rem;
+}
+.marcador-vacio span {
+  font-size: 0.9rem;
 }
 
 .boton-guardar {
@@ -477,7 +493,7 @@ ion-header ion-toolbar {
   align-items: center;
   justify-content: center;
   gap: 0.5em;
-  margin-top: 28px;
+  margin-top: 12px;
 }
 .linea-cierre {
   width: 40px;
