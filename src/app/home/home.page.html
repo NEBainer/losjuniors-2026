@@ -229,6 +229,16 @@
                 {{ formatearPrecioPedido(pedido.importeTotal) }} · ~{{ pedido.tiempoEstimadoMinutos }} min · {{ pedido.hace }}
               </span>
               <div class="acciones-chicas">
+                <!-- Punto 13: rechazo directo, sin diálogo (convención de
+                     aceptar/rechazar con íconos). El cliente recibe la push
+                     y vuelve a armar el pedido con lo que ya tenía. -->
+                <button
+                  class="btn-chico btn-rechazar"
+                  (click)="rechazarPedidoMozo(pedido)"
+                  [disabled]="procesandoPedidoId() === pedido.id"
+                >
+                  <ion-icon name="close-circle-outline"></ion-icon>
+                </button>
                 <button
                   class="btn-chico btn-aceptar"
                   (click)="confirmarPedidoMozo(pedido)"

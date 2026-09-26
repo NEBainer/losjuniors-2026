@@ -9,6 +9,8 @@ export class NotificacionesService {
   private canalPendientes: RealtimeChannel | null = null;
   private canalConsultasMozo: RealtimeChannel | null = null;
   private canalRespuestasCliente: RealtimeChannel | null = null;
+  private canalPedidosMozo: RealtimeChannel | null = null;
+  private alLlegarPedido: (() => void) | null = null;
   private permisosConcedidos = false;
 
   // Respuestas del mozo que el cliente todavía no vio: la carta lo muestra
@@ -174,6 +176,35 @@ export class NotificacionesService {
     if (this.canalRespuestasCliente) {
       this.sb.removeChannel(this.canalRespuestasCliente);
       this.canalRespuestasCliente = null;
+    }
+  }
+
+  // Punto 12/13: "el cliente termina el pedido (nuevamente) -> push al
+  // mozo". Cada envío (y cada reenvío después de un rechazo) inserta una
+  // fila nueva en `pedidos` en estado pendiente_confirmacion, así que
+  // alcanza con escuchar los INSERT. onNuevo se reemplaza en cada llamada
+  // (home lo vuelve a pasar al entrar) para refrescar la lista embebida.
+  iniciarEscuchaPedidosMozo(onNuevo?: () => void) {
+    this.alLlegarPedido = onNuevo ?? null;
+    if (this.canalPedidosMozo) return;
+    this.canalPedidosMozo = this.sb
+      .channel('mozo-pedidos-nuevos')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'pedidos' },
+        () => {
+          this.notificar('Nuevo pedido', 'Hay un pedido esperando tu confirmación.');
+          this.alLlegarPedido?.();
+        },
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaPedidosMozo() {
+    this.alLlegarPedido = null;
+    if (this.canalPedidosMozo) {
+      this.sb.removeChannel(this.canalPedidosMozo);
+      this.canalPedidosMozo = null;
     }
   }
 

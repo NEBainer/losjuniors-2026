@@ -83,6 +83,28 @@ export class PedidoService {
     return this.mapPedido(data);
   }
 
+  // Punto 13: productos del pedido rechazado, para que el cliente vuelva
+  // a armarlo desde ahí (modificar/agregar/quitar) aunque haya cerrado la
+  // app entre el envío y el rechazo. Nombre y tiempo los completa
+  // PedidoPage con la carta que ya tiene cargada.
+  async obtenerItems(
+    pedidoId: string,
+  ): Promise<{ productoId: string; comensalNumero: number; cantidad: number; precioUnitario: number }[]> {
+    const { data, error } = await this.client
+      .from('pedido_items')
+      .select('producto_id, comensal_numero, cantidad, precio_unitario')
+      .eq('pedido_id', pedidoId);
+
+    if (error) throw new Error('No se pudieron recuperar los productos del pedido.');
+
+    return (data ?? []).map((fila: any) => ({
+      productoId: fila.producto_id,
+      comensalNumero: fila.comensal_numero,
+      cantidad: fila.cantidad,
+      precioUnitario: Number(fila.precio_unitario),
+    }));
+  }
+
   escucharConfirmacion(pedidoId: string, callback: (pedido: Pedido) => void) {
     return this.client
       .channel(`pedido-${pedidoId}`)

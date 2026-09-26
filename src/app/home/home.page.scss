@@ -302,7 +302,7 @@
   .acciones-confirmar-chicas {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
     flex-shrink: 0;
   }
 
@@ -317,14 +317,33 @@
     background: var(--ion-color-step-150, #e5dcca);
     color: var(--ion-text-color);
   }
+  // Aceptar/rechazar: botones grandes y cuadrados (mínimo ~44px, tamaño
+  // cómodo para el dedo) -- son la acción más frecuente del panel.
+  .btn-rechazar,
   .btn-aceptar {
-    background: var(--ion-color-success, #2d7a3e);
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 12px;
     color: #fff;
     display: flex;
     align-items: center;
+    justify-content: center;
     ion-icon {
-      font-size: 1rem;
+      font-size: 1.7rem;
     }
+    &:active {
+      transform: scale(0.92);
+    }
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+  .btn-rechazar {
+    background: var(--ion-color-danger);
+  }
+  .btn-aceptar {
+    background: var(--ion-color-success, #2d7a3e);
   }
   .btn-si {
     background: var(--ion-color-success, #2d7a3e);

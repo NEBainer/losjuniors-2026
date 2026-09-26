@@ -89,6 +89,9 @@ export class RegistroClientePage  implements OnInit {
 
     this.cargando.set(true);
     const { nombres, apellidos, dni, email, clave } = this.formulario.value;
+    // En qué paso estamos, para poder decir qué falló en vez de un
+    // mensaje genérico.
+    let paso: 'cuenta' | 'foto' | 'datos' = 'cuenta';
 
     try {
       const { data, error: errorAuth } = await this.supabaseService.client.auth.signUp({
@@ -97,8 +100,10 @@ export class RegistroClientePage  implements OnInit {
       console.log('¿Hay sesión activa?', data.session); // Si en consola vemos  null, "Confirm email" está activada y se resuelve desactivando "Confirm email" en el dashboard. Sino se ejecuta como usuario anonimo.
       if (errorAuth || !data.user) throw errorAuth;
 
+      paso = 'foto';
       const fotoUrl = await this.clienteService.subirFoto(this.fotoUri()!, data.user.id);
 
+      paso = 'datos';
       await this.clienteService.registrarCliente({
         id: data.user.id, nombres, apellidos, dni, email, fotoUrl
       });
@@ -108,9 +113,30 @@ export class RegistroClientePage  implements OnInit {
       this.router.navigate(['/registro-pendiente'], { state: { clienteId: data.user.id } });
 
     } catch (error) {
+      console.error('Registro de cliente falló en el paso', paso, error);
       this.cargando.set(false);
-      this.dispararError('No se pudo completar el registro. Intente nuevamente.');
+      this.dispararError(this.mensajeDeError(paso, error));
     }
+  }
+
+  private mensajeDeError(paso: 'cuenta' | 'foto' | 'datos', error: unknown): string {
+    const e = (error ?? {}) as { code?: string; message?: string; details?: string };
+    const texto = `${e.message ?? ''} ${e.details ?? ''}`.toLowerCase();
+
+    if (paso === 'cuenta') {
+      if (e.code === 'user_already_exists' || texto.includes('already registered')) {
+        return 'Ese correo ya está registrado.';
+      }
+      return 'No se pudo crear la cuenta. Revisá el correo y la contraseña.';
+    }
+    if (paso === 'foto') {
+      return 'No se pudo subir la foto. Tomala de nuevo e intentá otra vez.';
+    }
+    if (e.code === '23505') {
+      if (texto.includes('dni')) return 'Ese DNI ya está registrado.';
+      if (texto.includes('email')) return 'Ese correo ya está registrado.';
+    }
+    return 'No se pudo completar el registro. Intente nuevamente.';
   }
 
   async escanearDni() {
