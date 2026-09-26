@@ -933,9 +933,8 @@ for select
 to authenticated
 using ( perfil_actual() = 'mozo' );
 
--- Pendiente (fuera del alcance de esta tanda): activar Realtime para
--- esta tabla desde el dashboard (Database → Replication), igual que
--- se hizo con lista_espera.
+-- Realtime: corrido en el SQL Editor el 25/09/2026 junto con la tabla.
+alter publication supabase_realtime add table mensajes_mozo;
 
 
 -- =========================================================
