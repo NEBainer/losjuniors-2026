@@ -62,10 +62,20 @@
           </div>
 
           <div class="acciones">
-            <button class="btn btn-confirmar" (click)="confirmar(pedido)" [disabled]="procesandoId() === pedido.id">
-              <ion-icon name="checkmark-circle-outline"></ion-icon>
-              <span>Confirmar</span>
-            </button>
+            <ion-icon
+              name="close-circle"
+              color="danger"
+              class="icono-accion"
+              [class.deshabilitado]="procesandoId() === pedido.id"
+              (click)="rechazar(pedido)"
+            ></ion-icon>
+            <ion-icon
+              name="checkmark-circle"
+              color="success"
+              class="icono-accion"
+              [class.deshabilitado]="procesandoId() === pedido.id"
+              (click)="confirmar(pedido)"
+            ></ion-icon>
           </div>
 
         </div>

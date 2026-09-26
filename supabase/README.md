@@ -106,11 +106,11 @@ el mismo patrón que ya usa `QrAppService` para el QR de ingreso
 (`{"tipo":"ingreso_local"}`). Se usa `numero` y no `id`/uuid a propósito,
 para no tener que retipar `QrAppPayload` (que ya trae `numero: number`
 para el caso `'mesa'`) ni tocar el lector unificado que ya lee cualquier
-QR de la app. **Estado real:** la DB y el seed ya reflejan este formato
-(ver sección 9 de `schema.sql`), pero `mesa.service.ts` (punto 4)
-todavía genera el QR real como texto plano `MESA-{numero}` — falta
-coordinar esa actualización con quien tenga el punto 4 antes de que el
-punto 10/11 dependa de escanear una mesa real.
+QR de la app. **Estado real:** desde el 16/09/2026 `mesa.service.ts`
+genera el QR en este formato. Las mesas creadas antes quedaron con el
+formato viejo en texto plano (`MESA-{numero}`); `QrAppService` acepta
+los dos formatos para que esas mesas (y sus QR ya impresos) sigan
+funcionando.
 
 **Vínculo cliente↔mesa asignada: columna en `mesas`, no tabla aparte**
 Para el punto 10 (metre asigna mesa a cliente) hacía falta alguna forma
@@ -203,6 +203,9 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
   una tabla propia del esquema pero se administra con el mismo mecanismo
   de RLS)
 - `lista_espera`
+- `pedidos`
+- `pedido_items`
+- `mensajes_mozo`
 
 ## Políticas RLS creadas
 
@@ -347,6 +350,69 @@ tipo correctamente antes de guardar la referencia — así que aunque el
 archivo quedara "de más" en Storage, nunca se podría insertar la fila que
 lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
 (`productos/plato/{id}/...`) y no está pedido por el enunciado.
+
+**`lista_espera`** (punto 9)
+- `lista_espera_cliente_se_anota` / `lista_espera_cliente_ve_su_fila` /
+  `lista_espera_cliente_se_retira` — el cliente (registrado o anónimo)
+  se anota, ve y se saca de la lista solo con su propia fila.
+- `lista_espera_metre_ve_todo` / `lista_espera_metre_elimina` — el metre
+  ve la cola completa y saca a un cliente cuando le asigna mesa.
+
+**`pedidos`** (puntos 12 y 13)
+- `pedidos_lectura_autenticados` — cualquier usuario logueado puede leer
+  pedidos (el mozo los lista; el cliente sigue el estado del suyo).
+- `pedidos_cliente_inserta` — solo un cliente, a su nombre
+  (`creado_por = auth.uid()`), en estado `pendiente_confirmacion` y para
+  una mesa `ocupada`.
+- `pedidos_mozo_confirma` — solo el mozo, y solo sobre un pedido
+  `pendiente_confirmacion`, que puede pasar a `confirmado` o a
+  `rechazado` (v8, punto 13). No puede revertir un pedido ya resuelto.
+
+**`pedido_items`** (punto 12)
+- `pedido_items_lectura_autenticados` — lectura para cualquier logueado.
+- `pedido_items_cliente_inserta` — el cliente solo agrega ítems a un
+  pedido propio que siga en `pendiente_confirmacion`.
+
+**`mensajes_mozo`** (punto 11)
+- `mensajes_mozo_cliente_envia` / `mensajes_mozo_cliente_ve_su_mesa` —
+  el cliente escribe y lee solo el hilo de la mesa que tiene asignada.
+- `mensajes_mozo_mozo_envia` / `mensajes_mozo_mozo_ve_todo` — cualquier
+  mozo lee y responde en cualquier mesa.
+- Estas policies también filtran Realtime: cada cliente recibe en vivo
+  solo los mensajes de su mesa.
+
+## Pedidos (puntos 12 y 13)
+
+- **`pedidos`**: un pedido por mesa, con `estado` (`estado_pedido`:
+  `pendiente_confirmacion` → `confirmado` o `rechazado`),
+  `importe_total` y `tiempo_estimado_minutos` calculados por la app al
+  armarlo. El tiempo estimado es el **máximo** entre los productos, no
+  la suma, porque cocina y barra preparan en paralelo.
+- **`pedido_items`**: cada producto del pedido, con `comensal_numero`
+  (para quién es, de 1 a `mesas.cantidad_comensales`), `cantidad` y
+  `precio_unitario` guardado al momento de pedir (si después cambia el
+  precio en la carta, el pedido no se modifica).
+- **El pedido no llega a cocina/barra hasta que el mozo lo confirma**:
+  nace en `pendiente_confirmacion` y los sectores filtran por
+  `confirmado`.
+- **Rechazo (v8, punto 13)**: el mozo lo pasa a `rechazado`. El pedido no
+  se borra; el cliente se entera por Realtime y vuelve a la pantalla de
+  armado con lo que ya tenía cargado para modificarlo y reenviarlo.
+- **"Quién está armando el pedido"**: columnas `mesas.pedido_en_armado_por`
+  y `mesas.pedido_en_armado_en`, manejadas solo por las funciones
+  `tomar_pedido_en_curso()` y `liberar_pedido_en_curso()` (`security
+  definer`). Evitan que dos comensales de la misma mesa armen pedidos a
+  la vez, y no abren un `UPDATE` general sobre `mesas` a los clientes.
+  `mesas` está en la publicación `supabase_realtime` para que el resto de
+  la mesa vea en vivo quién está pidiendo.
+
+## Vista `accesos_rapidos` (login)
+
+Los botones de acceso rápido del login muestran usuarios reales (foto,
+nombre y perfil), uno por perfil. Como en el login todavía no hay
+sesión y la RLS de `usuarios` exige estar logueado, se lee desde la
+vista `accesos_rapidos`, que expone solo las columnas necesarias (nunca
+DNI ni CUIL) y tiene permiso de lectura para `anon`.
 
 ## Datos de prueba cargados
 
@@ -501,8 +567,10 @@ en `lista_espera` para la prueba (se sacó al terminar):
   `producto_fotos`.
 - Prueba directa con `curl` de `usuarios_cliente_se_autorregistra` (ver
   nota en la sección anterior).
-- Alta de empleados desde la app real: la solución está **diseñada pero
-  no implementada** (la DB ya está lista, ver más abajo). Requiere una
+- ~~Alta de empleados desde la app real~~ — **implementada** (12/09/2026)
+  con la Edge Function `crear-empleado`, siguiendo el diseño de abajo.
+  Se conserva el detalle como registro de la decisión: ~~la solución está
+  diseñada pero no implementada (la DB ya está lista, ver más abajo).~~ Requiere una
   **Edge Function** con `admin.createUser()` (usando la `service_role`
   key) para el paso de Auth únicamente — el resto del flujo (insert en
   `usuarios`, subida de foto a Storage) se hace directo desde el cliente
@@ -521,33 +589,34 @@ en `lista_espera` para la prueba (se sacó al terminar):
 - Validaciones adicionales a nivel DB: largo máximo de descripción,
   nombres duplicados en la carta.
 - Postres cargados en el seed.
-- Tablas de los puntos siguientes del TFI (estadías, lista de espera,
-  pedidos, encuestas, etc.) — se agregan a medida que el equipo avance
-  con esas partes de la app.
+- Tablas de los puntos siguientes del TFI (estadías, encuestas, pagos,
+  etc.) — se agregan a medida que el equipo avance con esas partes de la
+  app. `lista_espera`, `pedidos`, `pedido_items` y `mensajes_mozo` ya
+  existen.
 - ~~Realtime en `lista_espera`~~ — agregada a la publicación
   `supabase_realtime` el 13/09/2026, mismo mecanismo que `usuarios`.
 - Punto 9 (cliente anónimo): DB lista y confirmada (policies + Realtime).
-  Falta la pantalla del metre viendo la lista en vivo — corresponde al
-  punto 10, coordinar con quien lo desarrolle.
+  La pantalla del metre viendo la lista en vivo ya existe (punto 10).
 - Punto 10: DB lista y confirmada (15-16/09/2026) — `mesas.cliente_actual_id`,
   índice único parcial `mesas_cliente_actual_unico`, policy
   `mesas_metre_asigna` (UPDATE, metre, solo si `disponibilidad = 'vacia'`)
   y policy `usuarios_metre_ve_en_lista_espera` corridas en el SQL Editor
   (documentadas en `schema.sql` v6). Front implementado: pantalla del
   metre (`metre-lista-espera`) con la cola en vivo, asignación de mesa y
-  aviso local al cliente vía `NotificacionesService`. Falta coordinar con
-  quien tenga el punto 4 la actualización de `mesa.service.ts` al formato
-  de QR ya decidido.
+  aviso local al cliente vía `NotificacionesService`. El QR de mesa ya se
+  genera con el formato decidido (16/09/2026).
 - Punto 9 (cliente anónimo): **funcionando de punta a punta** —
   ingreso vía QR + registro anónimo + lista de espera confirmados
-  en dispositivo real (14/09/2026). Falta la pantalla del metre
-  viendo la lista en vivo — corresponde al punto 10.
+  en dispositivo real (14/09/2026). La pantalla del metre con la
+  lista en vivo se completó en el punto 10.
 - Punto 11 (consulta al mozo): tabla `mensajes_mozo` + policies
-  agregadas (`schema.sql` v7) — falta correrlas en Supabase y activar
-  Realtime para esa tabla. Lado cliente (ver carta desde el QR de
-  mesa + mandar consulta + ver el historial en vivo) implementado.
-  Bandeja del mozo (listar consultas, responder, notificación) queda
-  para la próxima tanda.
+  (`schema.sql` v7) corridas en el SQL Editor y Realtime activado para
+  esa tabla el 25/09/2026 (hasta esa fecha el chat fallaba al enviar
+  porque la tabla no existía en la base real). Chat cliente–mozo
+  probado en dispositivo real.
+- Punto 13 (mozo rechaza el pedido): `schema.sql` v8 — valor `rechazado`
+  en `estado_pedido` (confirmado en la base el 25/09/2026) y
+  `pedidos_mozo_confirma` actualizada para permitir esa transición.
 
   ## Sistema de mail automático (puntos 7/8)
 

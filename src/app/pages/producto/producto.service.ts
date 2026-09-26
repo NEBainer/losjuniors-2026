@@ -1,5 +1,5 @@
 ﻿import { Injectable, inject } from '@angular/core';
-import { SupabaseService } from '../../core/services/supabase.service'; // asume que este archivo vive en src/app/pages/producto/, junto a producto.alta.component.ts
+import { SupabaseService } from '../../core/services/supabase.service'; 
 import type { DatosProductoAlta, FotoProducto } from './producto.alta.component';
 
 @Injectable({ providedIn: 'root' })
@@ -59,6 +59,11 @@ export class ProductoService {
     const { data, error } = await this.client
       .from('productos')
       .select('id, tipo, nombre, descripcion, tiempo_elaboracion_minutos, precio')
+      // Productos dados de baja a mano en Supabase (activo_en_carta = false)
+      // no deben verse en la carta, aunque sigan en la tabla por los
+      // pedidos históricos que los referencian (ver pedido_items.producto_id,
+      // sin on delete cascade a propósito).
+      .eq('activo_en_carta', true)
       .order('nombre', { ascending: true });
 
     if (error) throw error;

@@ -24,6 +24,8 @@ import {
   checkmarkCircleOutline,
   peopleOutline,
   warning,
+  closeCircle,
+  checkmarkCircle,
 } from 'ionicons/icons';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { ProductoService, ProductoCarta } from '../producto/producto.service';
@@ -79,6 +81,18 @@ type FasePedido = 'armando' | 'esperando' | 'confirmado';
     <div class="banner-error" *ngIf="mensajeError()">
       <ion-icon name="warning"></ion-icon>
       <span>{{ mensajeError() }}</span>
+    </div>
+
+    <!-- Punto 13: aviso en pantalla (además de la push) cuando el mozo
+         rechaza. Al tocar "Revisar pedido" se cierra y el cliente sigue
+         en el armado con sus productos cargados, listo para reenviar. -->
+    <div class="aviso-overlay" *ngIf="avisoRechazo()">
+      <div class="aviso-card">
+        <ion-icon name="close-circle" color="danger" class="aviso-icono"></ion-icon>
+        <h2>Pedido rechazado</h2>
+        <p>Revisalo y volvé a enviarlo.</p>
+        <ion-button expand="block" (click)="cerrarAvisoRechazo()">Revisar pedido</ion-button>
+      </div>
     </div>
 
     <div class="selector-comensales">
@@ -143,6 +157,12 @@ type FasePedido = 'armando' | 'esperando' | 'confirmado';
       </ion-button>
     </div>
   </ng-container>
+
+  <!-- Aviso en pantalla (además de la push) cuando el mozo confirma. -->
+  <div class="banner-ok" *ngIf="avisoConfirmado()">
+    <ion-icon name="checkmark-circle"></ion-icon>
+    <span>El mozo confirmó tu pedido</span>
+  </div>
 
   <div class="estado-pedido" *ngIf="fase() === 'esperando' || fase() === 'confirmado'">
     <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-estado" />
@@ -457,6 +477,67 @@ ion-header ion-toolbar {
   font-size: 0.85rem;
 }
 
+.banner-ok {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 30; // por encima de .estado-pedido (25)
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #2d7a3e;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.banner-ok ion-icon {
+  font-size: 1.4rem;
+}
+
+.aviso-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+.aviso-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--crema);
+  border-radius: 20px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.aviso-card h2 {
+  margin: 0;
+  color: var(--marron-osc);
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.5rem;
+}
+.aviso-card p {
+  margin: 0 0 8px;
+  color: var(--marron);
+}
+.aviso-card ion-button {
+  width: 100%;
+}
+.aviso-icono {
+  font-size: 4rem;
+}
+
 .velo-cargando {
   position: fixed;
   inset: 0;
@@ -501,6 +582,11 @@ export class PedidoPage implements OnInit, OnDestroy {
   protected readonly comensalActual = signal(1);
   protected readonly pedidoActual = signal<Pedido | null>(null);
 
+  // Punto 13: avisos en pantalla, además de la push del sistema (que solo
+  // aparece en la barra de notificaciones y es fácil de no ver).
+  protected readonly avisoRechazo = signal(false);
+  protected readonly avisoConfirmado = signal(false);
+
   private readonly carritoMapa = signal<Map<string, ItemCarrito>>(new Map());
   protected readonly carritoItems = computed(() => Array.from(this.carritoMapa().values()));
   protected readonly importeAcumulado = computed(() =>
@@ -530,6 +616,8 @@ export class PedidoPage implements OnInit, OnDestroy {
       'add-circle-outline': addCircleOutline,
       'checkmark-circle-outline': checkmarkCircleOutline,
       'people-outline': peopleOutline,
+      'close-circle': closeCircle,
+      'checkmark-circle': checkmarkCircle,
       warning,
     });
   }
@@ -557,7 +645,14 @@ export class PedidoPage implements OnInit, OnDestroy {
       this.mesa.set(mesa);
       this.carta.set(carta);
 
-      if (pedidoActivo) {
+      if (pedidoActivo?.estado === 'rechazado') {
+        // Punto 13: si el cliente salió de esta pantalla (o cerró la app)
+        // y el mozo rechazó el pedido mientras tanto, vuelve a "armando"
+        // con los productos del pedido rechazado ya cargados -- antes
+        // quedaba trabado en "Esperando confirmación" para siempre.
+        await this.cargarCarritoDesde(pedidoActivo.id, carta);
+        this.avisoRechazo.set(true);
+      } else if (pedidoActivo) {
         this.pedidoActual.set(pedidoActivo);
         if (pedidoActivo.estado === 'confirmado') {
           this.fase.set('confirmado');
@@ -572,6 +667,34 @@ export class PedidoPage implements OnInit, OnDestroy {
     } finally {
       this.cargando.set(false);
     }
+  }
+
+  private async cargarCarritoDesde(pedidoId: string, carta: ProductoCarta[]): Promise<void> {
+    try {
+      const items = await this.pedidoService.obtenerItems(pedidoId);
+      const mapa = new Map<string, ItemCarrito>();
+      for (const item of items) {
+        const producto = carta.find((p) => p.id === item.productoId);
+        if (!producto) continue; // producto dado de baja desde el pedido original
+        mapa.set(this.claveItem(item.productoId, item.comensalNumero), {
+          productoId: item.productoId,
+          nombre: producto.nombre,
+          precioUnitario: producto.precio,
+          tiempoElaboracionMinutos: producto.tiempoElaboracionMinutos,
+          comensalNumero: item.comensalNumero,
+          cantidad: item.cantidad,
+        });
+      }
+      this.carritoMapa.set(mapa);
+    } catch (e) {
+      // Si falla, el cliente arma el pedido de nuevo desde cero -- no es
+      // bloqueante, sigue pudiendo pedir.
+      console.error('No se pudo recuperar el pedido rechazado', e);
+    }
+  }
+
+  protected cerrarAvisoRechazo(): void {
+    this.avisoRechazo.set(false);
   }
 
   protected seleccionarComensal(numero: number): void {
@@ -617,11 +740,29 @@ export class PedidoPage implements OnInit, OnDestroy {
   }
 
   private suscribirConfirmacion(pedidoId: string): void {
+    this.canalRealtime?.unsubscribe();
     this.canalRealtime = this.pedidoService.escucharConfirmacion(pedidoId, (pedido) => {
-      this.pedidoActual.set(pedido);
       if (pedido.estado === 'confirmado') {
+        this.pedidoActual.set(pedido);
         this.fase.set('confirmado');
         this.notificacionesService.avisarPedidoConfirmado(this.mesa()?.numero);
+        this.avisoConfirmado.set(true);
+        setTimeout(() => this.avisoConfirmado.set(false), 4000);
+      } else if (pedido.estado === 'rechazado') {
+        this.notificacionesService.avisarPedidoRechazado(this.mesa()?.numero);
+        // El carrito (carritoMapa) sigue en memoria desde que se armó
+        // el pedido -- no hace falta reconstruirlo: al volver a
+        // "armando" el cliente ya ve sus productos y cantidades
+        // cargadas, listos para modificar/agregar/quitar y reenviar.
+        this.pedidoActual.set(null);
+        this.fase.set('armando');
+        this.avisoRechazo.set(true);
+        // Se había liberado el lock de la mesa al enviar el pedido
+        // (punto 12); como el cliente vuelve a editar, lo retomamos
+        // para que otro comensal no arranque un pedido en paralelo.
+        this.mesaService.tomarPedidoEnCurso(this.mesaId).catch((e) => {
+          console.error('No se pudo retomar el lock de la mesa tras el rechazo', e);
+        });
       }
     });
   }

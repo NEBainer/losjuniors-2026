@@ -31,6 +31,12 @@ export class RegistroPendientePage implements OnInit, OnDestroy {
       return;
     }
 
+    // Viene del authGuard, que lo lee antes de cerrar la sesión.
+    const estadoRecibido = history.state.estado;
+    if (estadoRecibido) {
+      this.estado.set(estadoRecibido);
+    }
+
     const { data } = await this.supabaseService.client
       .from('usuarios')
       .select('estado_aprobacion')

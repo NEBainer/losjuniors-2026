@@ -20,6 +20,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { MesaService } from '../../core/services/mesa.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { ConsultaMozoService, MensajeMozo } from '../../core/services/consulta-mozo.service';
+import { NotificacionesService } from '../../core/services/notificaciones.service';
 
 /**
  * consulta-mozo.page.ts
@@ -29,8 +30,11 @@ import { ConsultaMozoService, MensajeMozo } from '../../core/services/consulta-m
  * dos lados (cliente y mozo): manda mensajes y ve el historial en vivo
  * (Realtime). El mozo entra acá desde la bandeja (consultas-mozo.page.ts,
  * que lista todas las mesas con consulta abierta); el cliente entra desde
- * el FAB de la carta. Falta: notificación push a los mozos/al cliente
- * (todo el proyecto no tiene push implementado todavía).
+ * el FAB de la carta. El aviso "notifica a todos los mozos" al llegar una
+ * consulta vive en NotificacionesService.iniciarEscuchaConsultasMozo(), y
+ * el aviso al cliente cuando le responden en
+ * NotificacionesService.iniciarEscuchaRespuestasCliente() (las dos
+ * arrancan en home.page.ts, así llegan aunque este chat no esté abierto).
  */
 @Component({
   selector: 'app-consulta-mozo',
@@ -82,6 +86,7 @@ export class ConsultaMozoPage implements OnInit, OnDestroy {
     private mesaService: MesaService,
     private usuariosService: UsuariosService,
     private consultaMozoService: ConsultaMozoService,
+    private notificacionesService: NotificacionesService,
   ) {
     addIcons({ arrowBackOutline, chatbubblesOutline, sendOutline, warningOutline });
   }
@@ -106,6 +111,9 @@ export class ConsultaMozoPage implements OnInit, OnDestroy {
       this.esMozo = usuario.perfil === 'mozo';
 
       this.mensajes.set(await this.consultaMozoService.obtenerHistorial(mesa.id));
+      if (!this.esMozo) {
+        this.notificacionesService.marcarRespuestasLeidas();
+      }
       this.canal = this.consultaMozoService.escucharMensajesNuevos(mesa.id, (mensaje) => {
         this.mensajes.update((lista) => [...lista, mensaje]);
         this.desplazarAlFinal();
@@ -119,6 +127,10 @@ export class ConsultaMozoPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Lo que llegó mientras el cliente tenía el chat abierto ya lo vio.
+    if (!this.esMozo) {
+      this.notificacionesService.marcarRespuestasLeidas();
+    }
     if (this.canal) {
       this.consultaMozoService.cerrarCanal(this.canal);
     }

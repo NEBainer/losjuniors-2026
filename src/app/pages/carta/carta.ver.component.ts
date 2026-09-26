@@ -30,6 +30,7 @@ import {
 import { ProductoService, ProductoCarta } from '../producto/producto.service';
 import { MesaService } from '../../core/services/mesa.service';
 import { CarruselFotosComponent } from './carrusel-fotos.component';
+import { NotificacionesService } from '../../core/services/notificaciones.service';
 
 @Component({
   selector: 'app-carta-ver',
@@ -131,9 +132,12 @@ import { CarruselFotosComponent } from './carrusel-fotos.component';
        armar el link de "consultar al mozo". -->
   @if (mesaNumero !== null) {
     <ion-fab class="fab-consultar-mozo" vertical="bottom" horizontal="end" slot="fixed">
-      <ion-fab-button (click)="irAConsultarMozo()">
+      <ion-fab-button (click)="irAConsultarMozo()" [class.con-respuestas]="respuestasSinLeer() > 0">
         <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
       </ion-fab-button>
+      @if (respuestasSinLeer() > 0) {
+        <span class="badge-respuestas" aria-label="Respuestas sin leer del mozo">{{ respuestasSinLeer() }}</span>
+      }
     </ion-fab>
   }
 
@@ -373,6 +377,41 @@ ion-fab-button {
 .fab-consultar-mozo {
   margin-bottom: calc(20px + env(safe-area-inset-bottom));
   margin-right: 4px;
+
+  ion-fab-button.con-respuestas {
+    animation: latido-respuesta 1.4s ease-in-out infinite;
+  }
+
+  .badge-respuestas {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 12px;
+    background: var(--rojo-error);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--crema);
+    pointer-events: none;
+    z-index: 2;
+  }
+}
+
+@keyframes latido-respuesta {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fab-consultar-mozo ion-fab-button.con-respuestas {
+    animation: none;
+  }
 }
 
 .velo-cargando {
@@ -400,6 +439,9 @@ export class CartaVerComponent implements OnInit, OnDestroy {
   private readonly mesaService = inject(MesaService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly notificacionesService = inject(NotificacionesService);
+
+  protected readonly respuestasSinLeer = this.notificacionesService.respuestasSinLeer;
 
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -473,6 +515,12 @@ export class CartaVerComponent implements OnInit, OnDestroy {
 
       this.mesaId.set(mesa.id);
       this.mesaNumero = mesa.numero;
+      // A 'mesa/:numero/carta' solo llega el cliente vinculado (desde el
+      // home o, el anónimo, desde la lista de espera, que no pasa por el
+      // home): se arranca acá también la escucha de respuestas del mozo.
+      if (numeroParam) {
+        this.notificacionesService.iniciarEscuchaRespuestasCliente();
+      }
       this.pedidoEnCurso.set(mesa.pedido_en_armado_por);
       this.canalLock = this.mesaService.escucharPedidoEnCurso(mesa.id, (nombre) => {
         this.pedidoEnCurso.set(nombre);

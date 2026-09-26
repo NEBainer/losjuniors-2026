@@ -51,4 +51,26 @@
   &.rechazado ion-icon {
     color: var(--ion-color-danger);
   }
+
+  .boton-escanear-mesa {
+    width: 100%;
+    margin-top: 8px;
+    --border-radius: 12px;
+    font-weight: 700;
+
+    ion-icon {
+      font-size: 1.4rem;
+      color: inherit;
+    }
+  }
+
+  .mensaje-error {
+    width: 100%;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(179, 38, 30, 0.15);
+    color: var(--ion-color-danger);
+  }
 }

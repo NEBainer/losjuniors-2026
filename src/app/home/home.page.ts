@@ -15,7 +15,7 @@ import { addIcons } from 'ionicons';
 import {
   bookOutline, chatbubblesOutline, checkmarkCircleOutline, checkmarkOutline, closeOutline,
   fastFoodOutline, informationCircleOutline, listOutline, logOutOutline, peopleOutline,
-  personAddOutline, qrCodeOutline, restaurantOutline, timeOutline, wineOutline,
+  personAddOutline, qrCodeOutline, restaurantOutline, timeOutline, wineOutline, closeCircleOutline,
 } from 'ionicons/icons';
 
 // Fila lista para pintar en la lista embebida de pendientes: mismo patrón
@@ -166,7 +166,7 @@ export class HomePage {
     addIcons({
       logOutOutline, restaurantOutline, listOutline, peopleOutline, personAddOutline,
       fastFoodOutline, wineOutline, bookOutline, checkmarkOutline, qrCodeOutline,
-      chatbubblesOutline, informationCircleOutline, closeOutline, timeOutline,
+      chatbubblesOutline, informationCircleOutline, closeOutline, timeOutline, closeCircleOutline,
       checkmarkCircleOutline,
     });
   }
@@ -191,6 +191,18 @@ export class HomePage {
     // componente se destruya al navegar a otra pantalla.
     if (this.esMetre()) {
       this.notificacionesService.iniciarEscuchaMetre();
+    }
+    if (this.esPanelDueno()) {
+      this.notificacionesService.iniciarEscuchaPendientes(() => this.cargarPendientes());
+    }
+    if (this.esPanelMozo()) {
+      this.notificacionesService.iniciarEscuchaConsultasMozo();
+      // Punto 12/13: push al mozo cuando entra un pedido nuevo o reenviado
+      // tras un rechazo, y la lista embebida se recarga sola.
+      this.notificacionesService.iniciarEscuchaPedidosMozo(() => this.cargarPedidosPendientesMozo());
+    }
+    if (this.puedeEscanearMesa()) {
+      this.notificacionesService.iniciarEscuchaRespuestasCliente();
     }
   }
 
@@ -316,6 +328,24 @@ export class HomePage {
     }
   }
 
+  // Punto 13: el mozo rechaza el pedido para que el cliente lo modifique.
+  // Mismo patrón que confirmarPedidoMozo(); el cliente se entera por
+  // Realtime (PedidoPage.suscribirConfirmacion) y recibe la push ahí.
+  async rechazarPedidoMozo(pedido: PedidoVista) {
+    this.procesandoPedidoId.set(pedido.id);
+    try {
+      await this.pedidoService.rechazarPedido(pedido.id);
+      this.pedidosPendientesMozo.update((lista) => lista.filter((p) => p.id !== pedido.id));
+      this.mensajeOkPedidosMozo.set(`Pedido de mesa ${pedido.mesaNumero} rechazado.`);
+      setTimeout(() => this.mensajeOkPedidosMozo.set(''), 3000);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'No se pudo rechazar el pedido.';
+      this.dispararErrorPedidosMozo(msg);
+    } finally {
+      this.procesandoPedidoId.set(null);
+    }
+  }
+
   async confirmarPedidoMozo(pedido: PedidoVista) {
     this.procesandoPedidoId.set(pedido.id);
     try {
@@ -383,19 +413,16 @@ export class HomePage {
   async escanearMesa() {
     this.escaneandoMesa.set(true);
     try {
-      const datos = await this.qrAppService.escanear();
-      if (!datos) return; // el usuario canceló el escaneo
-
-      if (datos.tipo !== 'mesa') {
-        this.dispararErrorEscaneo('Ese código no es el de una mesa.');
+      const sesion = await this.authService.obtenerSesionActual();
+      if (!sesion) {
+        this.dispararErrorEscaneo('Tu sesión expiró. Volvé a ingresar.');
         return;
       }
 
-      const mesa = await this.mesaService.buscarPorNumero(datos.numero);
-      if (!mesa) {
-        this.dispararErrorEscaneo(`No encontramos la mesa ${datos.numero}.`);
-        return;
-      }
+      // Punto 10: valida tipo de QR, que la mesa exista y que sea la
+      // asignada a este cliente (misma lógica que la lista de espera).
+      const mesa = await this.mesaService.escanearMesaAsignada(sesion.user.id);
+      if (!mesa) return; // el usuario canceló el escaneo
 
       this.router.navigate(['/mesa', mesa.numero, 'carta']);
     } catch (error) {
@@ -458,6 +485,10 @@ export class HomePage {
       // cerrarSesion() fallara, la sesión (y el listener del metre) siguen
       // activos, no queremos cortar la escucha de algo que sigue logueado.
       this.notificacionesService.detenerEscuchaMetre();
+      this.notificacionesService.detenerEscuchaPendientes();
+      this.notificacionesService.detenerEscuchaConsultasMozo();
+      this.notificacionesService.detenerEscuchaRespuestasCliente();
+      this.notificacionesService.detenerEscuchaPedidosMozo();
 
       // Verificar que las credenciales se borren
       // Limpiamos la caché local de Capacitor/Navegador por seguridad extra

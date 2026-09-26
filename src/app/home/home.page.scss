@@ -15,11 +15,11 @@
   //padding-bottom: calc(20px + env(safe-area-inset-bottom));
   color: var(--ion-text-color);
 
-  // Panel del dueño/supervisor (correcciones-profesor 13-09): la pantalla
-  // se reparte en dos mitades fijas -- accesos rápidos arriba, pendientes
-  // abajo -- en vez de dejar que la grilla crezca libre como en el resto
-  // de los perfiles.
-  &.panel-dueno {
+  // Paneles con una lista integrada abajo (dueño/supervisor con clientes
+  // pendientes, mozo con pedidos pendientes -- correcciones-profesor
+  // 13-09): la pantalla se reparte entre accesos rápidos arriba y la lista
+  // abajo, en vez de dejar que la grilla crezca libre y genere scroll.
+  &.panel-compacto {
     height: 100vh;
     min-height: 0;
 
@@ -72,6 +72,12 @@
         p {
           font-size: 0.9rem;
         }
+      }
+
+      // Con una cantidad impar de tarjetas (el mozo tiene 3), la última
+      // ocupa el ancho completo en vez de dejar un hueco al lado.
+      .modulo-card:last-child:nth-child(odd) {
+        grid-column: span 2;
       }
     }
 
@@ -317,7 +323,7 @@
   .acciones-confirmar-chicas {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
     flex-shrink: 0;
   }
 
@@ -332,14 +338,33 @@
     background: var(--ion-color-step-150, #e5dcca);
     color: var(--ion-text-color);
   }
+  // Aceptar/rechazar: botones grandes y cuadrados (mínimo ~44px, tamaño
+  // cómodo para el dedo) -- son la acción más frecuente del panel.
+  .btn-rechazar,
   .btn-aceptar {
-    background: var(--ion-color-success, #2d7a3e);
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 12px;
     color: #fff;
     display: flex;
     align-items: center;
+    justify-content: center;
     ion-icon {
-      font-size: 1rem;
+      font-size: 1.7rem;
     }
+    &:active {
+      transform: scale(0.92);
+    }
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+  .btn-rechazar {
+    background: var(--ion-color-danger);
+  }
+  .btn-aceptar {
+    background: var(--ion-color-success, #2d7a3e);
   }
   .btn-si {
     background: var(--ion-color-success, #2d7a3e);

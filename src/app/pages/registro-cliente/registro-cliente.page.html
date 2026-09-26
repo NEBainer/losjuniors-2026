@@ -88,11 +88,9 @@
             fill="solid"
             class="input-formulario">
           </ion-input>
-          <ion-icon
-            [name]="mostrarClave() ? 'eye-off-outline' : 'eye-outline'"
-            (click)="mostrarClave.set(!mostrarClave())"
-            class="icono-ojo">
-          </ion-icon>
+          <button type="button" class="boton-ojo" (click)="toggleMostrarClave()" [attr.aria-label]="mostrarClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+            <ion-icon [name]="mostrarClave() ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+          </button>
         </div>
         @if (formulario.get('clave')?.touched && formulario.get('clave')?.invalid) {
           <span class="error-campo">La contraseña debe tener al menos 6 caracteres.</span>

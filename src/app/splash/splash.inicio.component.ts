@@ -55,7 +55,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
         <div class="item autores" style="--i:4">
           Cicchelli, Lucía<br />
           Bainer, Ezequiel<br />
-          Ariceri, Maximiliano<br />
+          Arcieri, Maximiliano<br />
           Storgato, Noelia
         </div>
         <div class="item pie" style="--i:5">Trabajo Final Integrador</div>

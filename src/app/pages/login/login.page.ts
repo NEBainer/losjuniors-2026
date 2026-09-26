@@ -77,6 +77,7 @@ export class LoginPage implements OnInit {
       // con éxito, nunca antes (si fallara, la sesión vieja seguiría
       // activa y no debería perder su listener).
       this.notificacionesService.detenerEscuchaMetre();
+      this.notificacionesService.detenerEscuchaRespuestasCliente();
       // Simulacion de espera para que se aprecie el spinner con logo
       setTimeout(() => {
         this.cargando = false;

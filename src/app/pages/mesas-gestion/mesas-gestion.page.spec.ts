@@ -22,6 +22,7 @@ describe('MesasGestionPage', () => {
       foto_url: null,
       qr_code: 'MESA-1',
       cliente_actual_id: null,
+      pedido_en_armado_por: null,
     };
   }
 

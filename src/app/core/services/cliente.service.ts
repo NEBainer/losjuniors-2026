@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Camera } from '@capacitor/camera';
 import { SupabaseService } from './supabase.service';
+import { redimensionarImagen } from './imagen.util';
 
 export interface EstadoCliente {
   id: string;
@@ -29,8 +30,13 @@ export class ClienteService {
     return foto.webPath!;
   }
 
+  // Se achica antes de subir (igual que empleado.service.ts): las fotos
+  // de algunas cámaras superan el límite de 5MB del bucket `fotos` y el
+  // registro fallaba solo en esos teléfonos. Lo usan el cliente
+  // registrado y el anónimo.
   async subirFoto(webPath: string, uid: string): Promise<string> {
-    const blob = await (await fetch(webPath)).blob();
+    const blobOriginal = await (await fetch(webPath)).blob();
+    const blob = await redimensionarImagen(blobOriginal);
     const nombreArchivo = `usuarios/${uid}/foto.jpg`; 
 
     const { error } = await this.supabaseService.client.storage

@@ -26,7 +26,12 @@ export const authGuard: CanActivateFn = async (route, state) => {
 
   if (!error && data?.perfil === 'cliente_registrado' && data.estado_aprobacion !== 'aceptado') {
     await authService.cerrarSesion();
-    router.navigate(['/registro-pendiente'], { state: { clienteId: sesion.user.id } });
+    // El estado viaja en el state porque, con la sesión ya cerrada, la
+    // pantalla de destino no puede leerlo de `usuarios` (RLS no devuelve
+    // nada) y se quedaba mostrando "pendiente" a un cliente rechazado.
+    router.navigate(['/registro-pendiente'], {
+      state: { clienteId: sesion.user.id, estado: data.estado_aprobacion },
+    });
     return false;
   }
 
