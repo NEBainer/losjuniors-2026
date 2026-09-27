@@ -1,8 +1,8 @@
 # Base de datos - Supabase
 
 Esquema de la base de datos para la app de gestión de restaurante (TFI UTN).
-Cubre la **preparación inicial** y los puntos **1, 2, 3, 4, 5, 6 y 11** del
-listado de funcionalidades. El código ejecutable está en [`schema.sql`](./schema.sql).
+Cubre la preparación inicial y los puntos funcionales trabajados hasta ahora (el detalle por punto está en la sección 'Pendiente' del final)".
+El código ejecutable está en [`schema.sql`](./schema.sql).
 
 ## Cómo se armó
 
@@ -122,6 +122,30 @@ y evita el costo de una tabla + RLS + joins nuevos para lo que este
 punto necesita. Si más adelante hace falta un historial de qué cliente
 pasó por qué mesa (auditoría), ahí sí conviene una tabla aparte — no
 hace falta hoy.
+
+**Estado del pedido por sector: booleanos en `pedidos`, no filas por sector**
+Para los puntos 18 y 19 (decisión de equipo 27/09/2026) el avance de
+cada sector se guarda en `pedidos.cocina_lista` y `pedidos.bar_listo`
+(booleanos, default `false`), no en una tabla de estados por sector:
+son solo dos sectores fijos y evita una tabla + RLS + joins nuevos. El
+punto 19 pide dos acciones distintas ("el mozo entrega" y "el cliente
+confirma la recepción"), así que se suma `entregado_por_mozo`: el mozo
+lo marca al entregar y recién ahí el cliente puede pasar el pedido a
+`'entregado'`.
+
+**Nadie hace UPDATE directo sobre el estado del pedido: todo va por
+funciones `security definer`**
+Mismo criterio que el lock de mesa (`tomar_pedido_en_curso`): el
+cocinero, el cantinero y el cliente no tienen policy de UPDATE sobre
+`pedidos`. Cada transición pasa por una función que valida el perfil
+adentro (ver sección "Pedidos"). Así no se abre un UPDATE general sobre
+la tabla y toda la lógica de "cuándo está completo" vive en un solo lugar.
+
+**Cocina = todo lo que no sea bebida**
+Coherente con la decisión del 13/09 (postre = plato): el sector cocina
+interviene si el pedido tiene algún producto con `tipo <> 'bebida'`, y
+el bar si tiene alguno con `tipo = 'bebida'`. El valor `'postre'` del
+enum sigue existiendo sin uso.
 
 ## Función auxiliar: `perfil_actual()`
 
@@ -358,7 +382,7 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
 - `lista_espera_metre_ve_todo` / `lista_espera_metre_elimina` — el metre
   ve la cola completa y saca a un cliente cuando le asigna mesa.
 
-**`pedidos`** (puntos 12 y 13)
+**pedidos** (puntos 12, 13, 18 y 19)
 - `pedidos_lectura_autenticados` — cualquier usuario logueado puede leer
   pedidos (el mozo los lista; el cliente sigue el estado del suyo).
 - `pedidos_cliente_inserta` — solo un cliente, a su nombre
@@ -367,6 +391,12 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
 - `pedidos_mozo_confirma` — solo el mozo, y solo sobre un pedido
   `pendiente_confirmacion`, que puede pasar a `confirmado` o a
   `rechazado` (v8, punto 13). No puede revertir un pedido ya resuelto.
+- No hay policy de UPDATE para cocinero, cantinero ni cliente sobre
+  `pedidos`: `cocina_lista`, `bar_listo`, `entregado_por_mozo` y los
+  estados `'completo'` y `'entregado'` solo se modifican con las
+  funciones `marcar_sector_listo`, `marcar_entregado_mozo` y
+  `confirmar_recepcion_cliente` (v9). `pedidos_mozo_confirma` sigue
+  igual: solo cubre `pendiente_confirmacion` → `confirmado`/`rechazado`.
 
 **`pedido_items`** (punto 12)
 - `pedido_items_lectura_autenticados` — lectura para cualquier logueado.
@@ -381,20 +411,26 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
 - Estas policies también filtran Realtime: cada cliente recibe en vivo
   solo los mensajes de su mesa.
 
-## Pedidos (puntos 12 y 13)
+## Pedidos (puntos 12, 13, 18 y 19)
 
-- **`pedidos`**: un pedido por mesa, con `estado` (`estado_pedido`:
-  `pendiente_confirmacion` → `confirmado` o `rechazado`),
+- **`pedidos`**: un pedido por mesa, con `estado` (`estado_pedido`),
   `importe_total` y `tiempo_estimado_minutos` calculados por la app al
-  armarlo. El tiempo estimado es el **máximo** entre los productos, no
-  la suma, porque cocina y barra preparan en paralelo.
+  armarlo. Flujo de estados:
+  `pendiente_confirmacion` → `confirmado` → `completo` → `entregado`
+  (o `rechazado` desde `pendiente_confirmacion`). El tiempo estimado es
+  el **máximo** entre los productos, no la suma, porque cocina y barra
+  preparan en paralelo.
 - **`pedido_items`**: cada producto del pedido, con `comensal_numero`
   (para quién es, de 1 a `mesas.cantidad_comensales`), `cantidad` y
   `precio_unitario` guardado al momento de pedir (si después cambia el
   precio en la carta, el pedido no se modifica).
 - **El pedido no llega a cocina/barra hasta que el mozo lo confirma**:
-  nace en `pendiente_confirmacion` y los sectores filtran por
-  `confirmado`.
+  nace en `pendiente_confirmacion`. Cada sector lista los pedidos con
+  `estado = 'confirmado'` y **su** booleano en `false`
+  (`cocina_lista = false` para cocina, `bar_listo = false` para bar):
+  filtrar solo por `confirmado` no alcanza, porque un pedido sigue en
+  ese estado mientras el otro sector no termina, y al sector que ya
+  terminó le seguiría apareciendo.
 - **Rechazo (v8, punto 13)**: el mozo lo pasa a `rechazado`. El pedido no
   se borra; el cliente se entera por Realtime y vuelve a la pantalla de
   armado con lo que ya tenía cargado para modificarlo y reenviarlo.
@@ -405,6 +441,32 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
   la vez, y no abren un `UPDATE` general sobre `mesas` a los clientes.
   `mesas` está en la publicación `supabase_realtime` para que el resto de
   la mesa vea en vivo quién está pidiendo.
+- **Estado por sector (v9, puntos 18 y 19)**, tres funciones
+  `security definer` con `execute` para `authenticated`:
+  - `marcar_sector_listo(p_pedido_id, p_sector)`: `'cocina'` (solo
+    `cocinero`) marca `cocina_lista`; `'bar'` (solo `cantinero`) marca
+    `bar_listo`. Después chequea si el pedido quedó completo
+    `(no interviene cocina o cocina_lista) y (no interviene bar o
+    bar_listo)`) y, si sí, pasa `estado` a `'completo'`. Un pedido solo
+    de bebidas no espera a cocina, y uno solo de platos no espera al bar.
+  - `marcar_entregado_mozo(p_pedido_id)`: solo `mozo`, solo si el pedido
+    está `'completo'`; marca `entregado_por_mozo` (no cambia el estado).
+  - `confirmar_recepcion_cliente(p_pedido_id)`: solo clientes, solo el
+    creador del pedido, y solo si está `'completo'` con
+    `entregado_por_mozo = true`; pasa `estado` a `'entregado'`.
+    Desde `'entregado'` el cliente accede a juegos, encuesta y "pedir la
+    cuenta" (puntos 19 al 21).
+- **Realtime en `pedidos` (v9)**: la tabla no estaba en la publicación
+  `supabase_realtime`. Sin eso, ningún aviso de estado del pedido
+  (confirmado, rechazado, completo, entregado) dispara: la suscripción
+  conecta sin error y el callback nunca corre (mismo bug ya documentado
+  para `usuarios`). Quedó agregada de forma idempotente en v9.
+- **Limitación conocida (no bloqueante):** `marcar_sector_listo` no
+  verifica que el pedido esté en `'confirmado'` antes de marcar el
+  booleano, ni que ese sector realmente intervenga. La UI de cada sector
+  solo muestra pedidos confirmados de su sector, así que no se llega a
+  esa situación desde la app; agregar el chequeo si algún día hace falta
+  cerrarlo a nivel DB.  
 
 ## Vista `accesos_rapidos` (login)
 
@@ -430,8 +492,10 @@ cliente registrado, más al menos 5 platos, 5 bebidas y 5 mesas.
 | Cantinero | `cantinero@test.com` | `Test1234!` |
 | Cliente registrado | `cliente@test.com` | `Test1234!` |
 
-- **10 productos**: 5 platos + 5 bebidas. Faltan postres cargados en el
-  seed (el enum los contempla, pero no hay ninguno todavía).
+- **10 productos**: 5 platos + 5 bebidas. No hay postres en el seed a
+  propósito: por decisión de equipo (13/09/2026) un postre se carga
+  como `plato`. El valor `'postre'` existe en el enum `tipo_producto`
+  pero no se usa.
 - **30 fotos de producto** (10 productos × 3 fotos): son URLs genéricas de
   `picsum.photos` (servicio público de imágenes placeholder), generadas
   automáticamente. **No son fotos reales** — sirven para probar que el
@@ -588,7 +652,6 @@ en `lista_espera` para la prueba (se sacó al terminar):
     nada más.
 - Validaciones adicionales a nivel DB: largo máximo de descripción,
   nombres duplicados en la carta.
-- Postres cargados en el seed.
 - Tablas de los puntos siguientes del TFI (estadías, encuestas, pagos,
   etc.) — se agregan a medida que el equipo avance con esas partes de la
   app. `lista_espera`, `pedidos`, `pedido_items` y `mensajes_mozo` ya
@@ -617,6 +680,13 @@ en `lista_espera` para la prueba (se sacó al terminar):
 - Punto 13 (mozo rechaza el pedido): `schema.sql` v8 — valor `rechazado`
   en `estado_pedido` (confirmado en la base el 25/09/2026) y
   `pedidos_mozo_confirma` actualizada para permitir esa transición.
+- Puntos 18 y 19 (estado por sector + entrega): `schema.sql` v9 —
+  columnas `cocina_lista`, `bar_listo`, `entregado_por_mozo`, valores
+  `'completo'` y `'entregado'` en `estado_pedido`, las tres funciones de
+  arriba y `pedidos` en la publicación de Realtime, todo corrido en el
+  SQL Editor el 27/09/2026. **Falta probarlo de punta a punta** desde la
+  app una vez que estén las pantallas de cocina/bar (puntos 16/17) y del
+  mozo/cliente.
 
   ## Sistema de mail automático (puntos 7/8)
 

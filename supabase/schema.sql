@@ -965,3 +965,144 @@ for update
 to authenticated
 using ( perfil_actual() = 'mozo' and estado = 'pendiente_confirmacion' )
 with check ( perfil_actual() = 'mozo' and estado in ('confirmado', 'rechazado') );
+
+
+-- =========================================================
+-- v9 (27/09/2026): Puntos 18 y 19 — estado por sector + entrega.
+-- Corrido y confirmado en el SQL Editor.
+--
+-- Decisión de equipo (27/09, con Cicchelli, puntos 16/17): el avance
+-- de cada sector se guarda en dos booleanos de `pedidos`
+-- (cocina_lista, bar_listo), no en filas por sector. El punto 19
+-- separa "el mozo entrega" de "el cliente confirma la recepción",
+-- así que suma un tercer booleano (entregado_por_mozo): el mozo lo
+-- marca al entregar y recién ahí el cliente puede pasar el pedido
+-- a 'entregado'.
+--
+-- Nadie hace UPDATE directo sobre estas columnas ni sobre el estado:
+-- todo va por funciones SECURITY DEFINER (mismo patrón que
+-- tomar_pedido_en_curso), que validan el perfil adentro.
+--
+-- Flujo de estado: pendiente_confirmacion -> confirmado -> completo
+--                  -> entregado (y rechazado, desde v8).
+--
+-- Cocina = todo producto que no sea bebida (decisión 13/09: postre
+-- cuenta como plato; el valor 'postre' existe en el enum pero no se
+-- usa). Bar = tipo 'bebida'.
+--
+-- OJO al correr esto en el SQL Editor: cada "alter type ... add
+-- value" va solo y confirmado antes de usar el valor nuevo (mismo
+-- error de "unsafe use of new value" que en v8).
+-- =========================================================
+
+alter table pedidos add column cocina_lista boolean not null default false;
+alter table pedidos add column bar_listo boolean not null default false;
+alter table pedidos add column entregado_por_mozo boolean not null default false;
+
+alter type estado_pedido add value if not exists 'completo';
+alter type estado_pedido add value if not exists 'entregado';
+
+-- Cocinero/cantinero avisan que terminaron su parte. Si con eso todos
+-- los sectores intervinientes quedaron listos, el pedido pasa a
+-- 'completo'. Va en la misma función, sin trigger aparte.
+create or replace function marcar_sector_listo(p_pedido_id uuid, p_sector text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_interviene_cocina boolean;
+  v_interviene_bar boolean;
+  v_cocina_lista boolean;
+  v_bar_listo boolean;
+begin
+  if p_sector = 'cocina' then
+    if perfil_actual() <> 'cocinero' then
+      raise exception 'No autorizado.';
+    end if;
+    update pedidos set cocina_lista = true where id = p_pedido_id;
+  elsif p_sector = 'bar' then
+    if perfil_actual() <> 'cantinero' then
+      raise exception 'No autorizado.';
+    end if;
+    update pedidos set bar_listo = true where id = p_pedido_id;
+  else
+    raise exception 'Sector inválido: %', p_sector;
+  end if;
+
+  select exists (
+    select 1 from pedido_items pi join productos p on p.id = pi.producto_id
+    where pi.pedido_id = p_pedido_id and p.tipo <> 'bebida'
+  ) into v_interviene_cocina;
+
+  select exists (
+    select 1 from pedido_items pi join productos p on p.id = pi.producto_id
+    where pi.pedido_id = p_pedido_id and p.tipo = 'bebida'
+  ) into v_interviene_bar;
+
+  select cocina_lista, bar_listo into v_cocina_lista, v_bar_listo
+  from pedidos where id = p_pedido_id;
+
+  if (not v_interviene_cocina or v_cocina_lista)
+     and (not v_interviene_bar or v_bar_listo) then
+    update pedidos set estado = 'completo'
+    where id = p_pedido_id and estado = 'confirmado';
+  end if;
+end;
+$$;
+
+-- Punto 19, acción del mozo: solo marca que entregó físicamente.
+create or replace function marcar_entregado_mozo(p_pedido_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() <> 'mozo' then
+    raise exception 'No autorizado.';
+  end if;
+
+  update pedidos set entregado_por_mozo = true
+  where id = p_pedido_id and estado = 'completo';
+end;
+$$;
+
+-- Punto 19, acción del cliente: confirma la recepción y pasa el pedido
+-- a 'entregado'. Exige que el mozo ya haya marcado la entrega.
+create or replace function confirmar_recepcion_cliente(p_pedido_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() not in ('cliente_registrado', 'cliente_anonimo') then
+    raise exception 'No autorizado.';
+  end if;
+
+  update pedidos set estado = 'entregado'
+  where id = p_pedido_id
+    and estado = 'completo'
+    and entregado_por_mozo = true
+    and creado_por = auth.uid();
+end;
+$$;
+
+grant execute on function marcar_sector_listo(uuid, text) to authenticated;
+grant execute on function marcar_entregado_mozo(uuid) to authenticated;
+grant execute on function confirmar_recepcion_cliente(uuid) to authenticated;
+
+-- Realtime en `pedidos`: no estaba en la publicación, y sin eso los
+-- avisos de confirmado/rechazado/completo/entregado no disparan
+-- (la suscripción conecta sin error pero el callback nunca corre).
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'pedidos'
+  ) then
+    alter publication supabase_realtime add table pedidos;
+  end if;
+end $$;
