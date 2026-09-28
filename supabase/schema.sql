@@ -965,3 +965,185 @@ for update
 to authenticated
 using ( perfil_actual() = 'mozo' and estado = 'pendiente_confirmacion' )
 with check ( perfil_actual() = 'mozo' and estado in ('confirmado', 'rechazado') );
+
+
+-- =========================================================
+-- v9 (27/09/2026): Punto 20 — encuesta de satisfacción.
+--
+-- "Una por estadía": el esquema no tenía el concepto de estadía, se
+-- define como el período en que un cliente está vinculado a una mesa
+-- (mesas.cliente_actual_id, punto 10). mesas.asignada_en marca cuándo
+-- empezó; la completa un trigger (no el código del metre) así funciona
+-- sin tocar MesaService.asignarCliente(). La encuesta guarda ese mismo
+-- valor en estadia_inicio y el unique (cliente_id, estadia_inicio) es lo
+-- que impide cargar una segunda encuesta en la misma visita. En la
+-- próxima visita (nueva asignación) hay un asignada_en distinto.
+--
+-- OJO al correr esto en el SQL Editor: igual que en v8, el create type
+-- conviene correrlo solo primero si da error de transacción.
+-- =========================================================
+
+alter table mesas add column if not exists asignada_en timestamptz;
+
+create or replace function marcar_asignacion_mesa()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.cliente_actual_id is distinct from old.cliente_actual_id then
+    new.asignada_en := case when new.cliente_actual_id is null then null else now() end;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists mesas_marcar_asignacion on mesas;
+create trigger mesas_marcar_asignacion
+before update of cliente_actual_id on mesas
+for each row execute function marcar_asignacion_mesa();
+
+-- Mesas que ya estaban asignadas antes de este cambio: sin esto quedarían
+-- con asignada_en NULL y su cliente no podría completar la encuesta.
+update mesas set asignada_en = now()
+where cliente_actual_id is not null and asignada_en is null;
+
+create type atencion_mozo as enum ('excelente', 'buena', 'regular', 'mala');
+
+create table encuestas (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null references usuarios(id) on delete cascade,
+  mesa_id uuid not null references mesas(id) on delete cascade,
+  estadia_inicio timestamptz not null,
+  -- Cada pregunta se responde con un control distinto (requisito
+  -- excluyente "variedad de controles"): estrellas, opciones, deslizador,
+  -- casillas, interruptor y texto libre.
+  calificacion_general smallint not null check (calificacion_general between 1 and 5),
+  atencion_mozo atencion_mozo not null,
+  limpieza smallint not null check (limpieza between 1 and 10),
+  aspectos_destacados text[] not null check (
+    cardinality(aspectos_destacados) >= 1
+    and aspectos_destacados <@ array['comida', 'bebida', 'atencion', 'ambiente', 'precio']
+  ),
+  recomendaria boolean not null,
+  comentario text not null check (char_length(btrim(comentario)) between 10 and 300),
+  created_at timestamptz not null default now(),
+  unique (cliente_id, estadia_inicio)
+);
+
+alter table encuestas enable row level security;
+
+-- INSERT: solo el cliente vinculado ahora a esa mesa, y solo para la
+-- estadía en curso (estadia_inicio tiene que coincidir con asignada_en).
+-- Así no puede cargar una encuesta para una mesa ajena ni "inventar" otra
+-- estadía para saltearse el unique.
+create policy "encuestas_cliente_inserta"
+on encuestas
+for insert
+to authenticated
+with check (
+  auth.uid() = cliente_id
+  and perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and exists (
+    select 1 from mesas m
+    where m.id = encuestas.mesa_id
+    and m.cliente_actual_id = auth.uid()
+    and m.asignada_en = encuestas.estadia_inicio
+  )
+);
+
+-- El cliente ve las suyas (para saber si ya respondió en esta estadía).
+create policy "encuestas_cliente_ve_las_suyas"
+on encuestas
+for select
+to authenticated
+using ( auth.uid() = cliente_id );
+
+create policy "encuestas_dueño_supervisor_ven_todas"
+on encuestas
+for select
+to authenticated
+using ( perfil_actual() in ('dueño', 'supervisor') );
+
+-- Resultados para los gráficos: solo totales, nunca filas sueltas (no
+-- expone quién respondió ni los comentarios). Security definer para que
+-- la pueda llamar cualquiera, incluido el rol anon: el QR de ingreso al
+-- local muestra los resultados antes de que el cliente se registre
+-- (punto 9) y al salir, ya sin mesa (punto 22).
+create or replace function resultados_encuestas()
+returns json
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select json_build_object(
+    'total', (select count(*) from encuestas),
+    'promedio_por_dia', (
+      select coalesce(json_agg(json_build_object('dia', dia, 'promedio', promedio) order by dia), '[]'::json)
+      from (
+        select (created_at at time zone 'America/Argentina/Buenos_Aires')::date as dia,
+               round(avg(calificacion_general), 2) as promedio
+        from encuestas
+        group by 1
+      ) t
+    ),
+    'atencion_mozo', (
+      select coalesce(json_object_agg(atencion_mozo, cantidad), '{}'::json)
+      from (select atencion_mozo, count(*) as cantidad from encuestas group by 1) t
+    ),
+    'limpieza', (
+      select coalesce(json_object_agg(limpieza, cantidad), '{}'::json)
+      from (select limpieza, count(*) as cantidad from encuestas group by 1) t
+    ),
+    'aspectos_destacados', (
+      select coalesce(json_object_agg(aspecto, cantidad), '{}'::json)
+      from (select unnest(aspectos_destacados) as aspecto, count(*) as cantidad from encuestas group by 1) t
+    ),
+    'recomendaria', json_build_object(
+      'si', (select count(*) from encuestas where recomendaria),
+      'no', (select count(*) from encuestas where not recomendaria)
+    )
+  );
+$$;
+
+grant execute on function resultados_encuestas() to anon, authenticated;
+
+-- Datos simulados de cuatro semanas ("Preparación inicial": simular
+-- encuestas y estadías de al menos cuatro semanas). Tres encuestas por
+-- día a nombre del cliente de prueba, repartidas entre las 5 mesas;
+-- cada una con su propia estadia_inicio para respetar el unique. setseed
+-- para que los valores salgan iguales cada vez que se recrea la base.
+select setseed(0.2026);
+
+insert into encuestas (
+  cliente_id, mesa_id, estadia_inicio, calificacion_general, atencion_mozo,
+  limpieza, aspectos_destacados, recomendaria, comentario, created_at
+)
+select
+  '711748ed-5c4a-4d51-b765-956467fd1342',
+  (select id from mesas where numero = (s.n % 5) + 1),
+  s.momento - interval '1 hour',
+  s.calificacion,
+  (array['mala', 'regular', 'buena', 'excelente']::atencion_mozo[])[least(4, greatest(1, s.calificacion - 1))],
+  least(10, greatest(1, s.calificacion * 2 - (random() * 2)::int)),
+  (select array_agg(a) from unnest(array['comida', 'bebida', 'atencion', 'ambiente', 'precio']) a
+    where random() < 0.45 or a = (array['comida', 'ambiente', 'atencion'])[(s.n % 3) + 1]),
+  s.calificacion >= 3,
+  (array[
+    'Muy rica la comida y la atención fue excelente.',
+    'Lindo lugar, aunque la comida tardó un poco.',
+    'Volvería sin dudas, el ambiente es muy agradable.',
+    'Precios razonables para la calidad que ofrecen.',
+    'La mesa estaba un poco sucia cuando llegamos.'
+  ])[(s.n % 5) + 1],
+  s.momento
+from (
+  select row_number() over () as n,
+         date_trunc('day', now()) - (d || ' days')::interval + ((12 + h * 4) || ' hours')::interval as momento,
+         -- Calificación sesgada hacia 4 y 5, con alguna mala cada tanto.
+         -- Va en el select list (no en un join aparte) para que random()
+         -- se evalúe una vez por fila y no una sola vez para todas.
+         (array[2, 3, 4, 4, 5, 5, 5, 4, 3, 5])[1 + floor(random() * 10)::int] as calificacion
+  from generate_series(1, 28) as d
+  cross join generate_series(0, 2) as h
+) s;
