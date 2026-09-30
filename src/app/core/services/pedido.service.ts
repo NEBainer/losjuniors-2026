@@ -1,6 +1,23 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
-import { EstadoPedido, ItemCarrito, Pedido, PedidoPendiente } from '../models/pedido.model';
+import {
+  EstadoPedido,
+  EstadoSector,
+  ItemCarrito,
+  Pedido,
+  PedidoPendiente,
+  PedidoSector,
+  Sector,
+} from '../models/pedido.model';
+
+// Qué tipos de producto prepara cada sector (puntos 16/17).
+const TIPOS_POR_SECTOR: Record<Sector, string[]> = {
+  cocina: ['plato', 'postre'],
+  bar: ['bebida'],
+};
+
+const COLUMNAS_PEDIDO =
+  'id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, estado_cocina, estado_bar';
 
 @Injectable({ providedIn: 'root' })
 export class PedidoService {
@@ -9,7 +26,14 @@ export class PedidoService {
     return this.supabaseService.client;
   }
 
-  async crearPedido(mesaId: string, items: ItemCarrito[]): Promise<string> {
+  // `sectores`: qué sectores intervienen según los productos elegidos
+  // (puntos 16/17) -- el que no interviene queda en null y no aparece en
+  // su listado ni en el estado que ve el cliente.
+  async crearPedido(
+    mesaId: string,
+    items: ItemCarrito[],
+    sectores: { cocina: boolean; bar: boolean },
+  ): Promise<string> {
     if (!items.length) {
       throw new Error('El pedido no tiene productos.');
     }
@@ -32,6 +56,8 @@ export class PedidoService {
         importe_total: importeTotal,
         tiempo_estimado_minutos: tiempoEstimadoMinutos,
         creado_por: user.id,
+        estado_cocina: sectores.cocina ? 'pendiente' : null,
+        estado_bar: sectores.bar ? 'pendiente' : null,
       })
       .select('id')
       .single();
@@ -62,7 +88,7 @@ export class PedidoService {
   async obtenerPedidoActivoDeMesa(mesaId: string): Promise<Pedido | null> {
     const { data, error } = await this.client
       .from('pedidos')
-      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at')
+      .select(COLUMNAS_PEDIDO)
       .eq('mesa_id', mesaId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -75,7 +101,7 @@ export class PedidoService {
   async obtenerPedido(pedidoId: string): Promise<Pedido> {
     const { data, error } = await this.client
       .from('pedidos')
-      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at')
+      .select(COLUMNAS_PEDIDO)
       .eq('id', pedidoId)
       .single();
 
@@ -160,6 +186,52 @@ export class PedidoService {
     if (error) throw new Error('No se pudo rechazar el pedido.');
   }
 
+  // Puntos 16/17: pedidos confirmados que el sector todavía no terminó
+  // (pendientes o en preparación), con solo sus ítems. Ordenados por mesa
+  // y después por hora, así la pantalla los agrupa por mesa directo.
+  async listarParaSector(sector: Sector): Promise<PedidoSector[]> {
+    const columnaEstado = sector === 'cocina' ? 'estado_cocina' : 'estado_bar';
+    const { data, error } = await this.client
+      .from('pedidos')
+      .select(`id, created_at, ${columnaEstado}, mesas(numero), pedido_items(cantidad, productos(nombre, tipo))`)
+      .eq('estado', 'confirmado')
+      .in(columnaEstado, ['pendiente', 'en_preparacion'])
+      .order('created_at', { ascending: true });
+
+    if (error) throw new Error('No se pudieron cargar los pedidos.');
+
+    const tipos = TIPOS_POR_SECTOR[sector];
+    return (data ?? [])
+      .map((fila: any) => {
+        // Suma por producto: "2 × Milanesa" aunque sean de comensales distintos.
+        const porNombre = new Map<string, number>();
+        for (const item of fila.pedido_items ?? []) {
+          if (!tipos.includes(item.productos?.tipo)) continue;
+          const nombre = item.productos.nombre as string;
+          porNombre.set(nombre, (porNombre.get(nombre) ?? 0) + item.cantidad);
+        }
+        return {
+          id: fila.id,
+          mesaNumero: fila.mesas?.numero ?? 0,
+          creadoEn: fila.created_at,
+          estado: fila[columnaEstado] as EstadoSector,
+          items: Array.from(porNombre, ([nombre, cantidad]) => ({ nombre, cantidad })),
+        };
+      })
+      .filter((p) => p.items.length > 0)
+      .sort((a, b) => a.mesaNumero - b.mesaNumero);
+  }
+
+  // El cocinero solo puede tocar estado_cocina y el cantinero estado_bar:
+  // lo decide la función en la base según el perfil (ver schema.sql v9).
+  async cambiarEstadoSector(pedidoId: string, estado: EstadoSector): Promise<void> {
+    const { error } = await this.client.rpc('cambiar_estado_sector', {
+      p_pedido_id: pedidoId,
+      p_estado: estado,
+    });
+    if (error) throw new Error('No se pudo actualizar el estado del pedido.');
+  }
+
   private mapPedido(fila: any): Pedido {
     return {
       id: fila.id,
@@ -168,6 +240,8 @@ export class PedidoService {
       importeTotal: Number(fila.importe_total),
       tiempoEstimadoMinutos: fila.tiempo_estimado_minutos,
       creadoEn: fila.created_at,
+      estadoCocina: fila.estado_cocina ?? null,
+      estadoBar: fila.estado_bar ?? null,
     };
   }
 }

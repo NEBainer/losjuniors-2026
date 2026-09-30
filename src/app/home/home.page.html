@@ -84,9 +84,9 @@
         </div>
       }
       @if (puedeVerPedidos()) {
-        <div class="modulo-card">
+        <div class="modulo-card" (click)="irAPedidosSector()">
           <ion-icon name="list-outline"></ion-icon>
-          <h3>Lista de Pedidos</h3>
+          <h3>Pedidos</h3>
           <p>Comandas activas</p>
         </div>
       }

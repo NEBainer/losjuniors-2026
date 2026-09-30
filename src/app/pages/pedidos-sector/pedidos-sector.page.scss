@@ -1,0 +1,261 @@
+.fondo-app {
+  --background: var(--ion-background-color);
+}
+
+.contenedor-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+
+  .titulo {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ion-color-primary);
+
+    ion-icon {
+      font-size: 1.8rem;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: bold;
+      margin: 0;
+    }
+  }
+
+  .boton-icono-circular {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--ion-color-step-100);
+    border: 2px solid var(--ion-color-step-150);
+    border-radius: 10px;
+    color: var(--ion-color-primary);
+
+    ion-icon {
+      font-size: 1.4rem;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+}
+
+.mensaje {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+
+  ion-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+}
+
+.mensaje-error {
+  background-color: var(--ion-color-danger);
+  color: #FCF7EE;
+}
+
+.mensaje-ok {
+  background-color: var(--ion-color-success);
+  color: var(--ion-color-success-contrast);
+}
+
+.estado-vacio {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  opacity: 0.8;
+
+  ion-icon {
+    font-size: 3.5rem;
+    color: var(--ion-color-primary);
+  }
+
+  p {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+}
+
+.lista-mesas {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  // Aire con el borde inferior ("2 dedos", convención 4).
+  padding-bottom: 36px;
+}
+
+.bloque-mesa {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mesa-badge {
+  align-self: flex-start;
+  background-color: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  font-weight: bold;
+  font-size: 1.1rem;
+  padding: 6px 16px;
+  border-radius: 999px;
+}
+
+.pedido-card {
+  background-color: var(--ion-color-step-100);
+  border: 2px solid var(--ion-color-step-150);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &.en-preparacion {
+    border-color: var(--ion-color-warning, #c68a34);
+  }
+
+  .fecha {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    opacity: 0.85;
+
+    ion-icon {
+      font-size: 1.05rem;
+    }
+  }
+
+  .items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    li {
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cantidad {
+      min-width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background-color: var(--ion-color-primary);
+      color: var(--ion-color-primary-contrast);
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .boton-accion {
+    height: 48px;
+    border: none;
+    border-radius: 12px;
+    background-color: var(--ion-color-success, #2d7a3e);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    ion-icon {
+      font-size: 1.6rem;
+    }
+
+    &:active {
+      transform: scale(0.97);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  .chip-estado {
+    height: 48px;
+    border-radius: 12px;
+    border: 2px dashed var(--ion-color-warning, #c68a34);
+    color: var(--ion-text-color);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    ion-icon {
+      font-size: 1.4rem;
+    }
+  }
+}
+
+.overlay-cargando {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(26, 37, 44, 0.95);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--ion-background-color);
+
+  .contenedor-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+
+    .logo-spinner {
+      width: 140px;
+      height: 140px;
+      object-fit: contain;
+    }
+
+    .spinner-css {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--ion-background-color);
+      border-top-color: var(--ion-color-primary);
+      border-radius: 50%;
+      animation: girar 1s linear infinite;
+    }
+  }
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}

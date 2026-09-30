@@ -965,3 +965,54 @@ for update
 to authenticated
 using ( perfil_actual() = 'mozo' and estado = 'pendiente_confirmacion' )
 with check ( perfil_actual() = 'mozo' and estado in ('confirmado', 'rechazado') );
+
+
+-- =========================================================
+-- v9 (30/09/2026): Puntos 16/17 — cocina y bar reciben el pedido.
+--
+-- Estado por sector dentro de un pedido confirmado. null = el pedido
+-- no tiene productos de ese sector (lo decide la app al crearlo:
+-- plato/postre -> cocina, bebida -> bar). 'listo' queda para el
+-- punto 18.
+--
+-- El cambio de estado va por función SECURITY DEFINER y no por una
+-- policy de UPDATE: mismo motivo que tomar_pedido_en_curso (punto 12): el
+-- GRANT UPDATE amplio de Supabase dejaría al cocinero reescribir
+-- cualquier columna del pedido. Acá el cocinero solo toca
+-- estado_cocina y el cantinero solo estado_bar.
+--
+-- `pedidos` ya está en la publicación de Realtime (punto 12), así que
+-- el cliente ve el cambio en vivo sin configurar nada más.
+-- =========================================================
+
+create type estado_sector as enum ('pendiente', 'en_preparacion', 'listo');
+
+alter table pedidos add column if not exists estado_cocina estado_sector;
+alter table pedidos add column if not exists estado_bar estado_sector;
+
+create or replace function cambiar_estado_sector(p_pedido_id uuid, p_estado estado_sector)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_perfil perfil_usuario := perfil_actual();
+begin
+  if v_perfil = 'cocinero' then
+    update pedidos set estado_cocina = p_estado
+    where id = p_pedido_id and estado = 'confirmado' and estado_cocina is not null;
+  elsif v_perfil = 'cantinero' then
+    update pedidos set estado_bar = p_estado
+    where id = p_pedido_id and estado = 'confirmado' and estado_bar is not null;
+  else
+    raise exception 'No autorizado.';
+  end if;
+
+  if not found then
+    raise exception 'Pedido no encontrado para este sector.';
+  end if;
+end;
+$$;
+
+grant execute on function cambiar_estado_sector(uuid, estado_sector) to authenticated;

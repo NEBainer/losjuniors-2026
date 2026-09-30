@@ -32,7 +32,7 @@ import { ProductoService, ProductoCarta } from '../producto/producto.service';
 import { MesaService, Mesa } from '../../core/services/mesa.service';
 import { PedidoService } from '../../core/services/pedido.service';
 import { NotificacionesService } from '../../core/services/notificaciones.service';
-import { ItemCarrito, Pedido } from '../../core/models/pedido.model';
+import { EstadoSector, ItemCarrito, Pedido } from '../../core/models/pedido.model';
 import { CarruselFotosComponent } from '../carta/carrusel-fotos.component';
 
 type FasePedido = 'armando' | 'esperando' | 'confirmado';
@@ -169,7 +169,18 @@ type FasePedido = 'armando' | 'esperando' | 'confirmado';
     <ion-spinner *ngIf="fase() === 'esperando'" name="crescent" color="light"></ion-spinner>
     <ion-icon *ngIf="fase() === 'confirmado'" name="checkmark-circle-outline" class="icono-confirmado"></ion-icon>
     <h2>{{ fase() === 'esperando' ? 'Esperando confirmación del mozo…' : '¡Pedido confirmado!' }}</h2>
-    <p *ngIf="fase() === 'confirmado'">Ya se envió a cocina y barra.</p>
+    <!-- Puntos 16/17: estado de cada sector en vivo (Realtime). Solo
+         aparecen los sectores que intervienen en el pedido. -->
+    <div class="estado-sectores" *ngIf="fase() === 'confirmado' && pedidoActual() as p">
+      <p *ngIf="p.estadoCocina">
+        <ion-icon name="fast-food-outline"></ion-icon>
+        Cocina: <strong>{{ etiquetaSector(p.estadoCocina) }}</strong>
+      </p>
+      <p *ngIf="p.estadoBar">
+        <ion-icon name="wine-outline"></ion-icon>
+        Bar: <strong>{{ etiquetaSector(p.estadoBar) }}</strong>
+      </p>
+    </div>
     <div class="resumen-final" *ngIf="pedidoActual() as p">
       <p><ion-icon name="time-outline"></ion-icon> {{ p.tiempoEstimadoMinutos }} min estimados</p>
       <p class="total-final">{{ formatearPrecio(p.importeTotal) }}</p>
@@ -249,6 +260,21 @@ ion-header ion-toolbar {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+.estado-sectores {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(244, 234, 218, 0.12);
+  border-radius: 12px;
+  padding: 12px 18px;
+}
+.estado-sectores p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
 }
 .resumen-final p {
   margin: 0;
@@ -654,12 +680,10 @@ export class PedidoPage implements OnInit, OnDestroy {
         this.avisoRechazo.set(true);
       } else if (pedidoActivo) {
         this.pedidoActual.set(pedidoActivo);
-        if (pedidoActivo.estado === 'confirmado') {
-          this.fase.set('confirmado');
-        } else {
-          this.fase.set('esperando');
-          this.suscribirConfirmacion(pedidoActivo.id);
-        }
+        this.fase.set(pedidoActivo.estado === 'confirmado' ? 'confirmado' : 'esperando');
+        // También con el pedido ya confirmado: así el cliente ve en vivo
+        // cuando cocina/bar lo empiezan a preparar (puntos 16/17).
+        this.suscribirConfirmacion(pedidoActivo.id);
       }
     } catch (e) {
       console.error('No se pudo cargar la mesa/carta', e);
@@ -691,6 +715,10 @@ export class PedidoPage implements OnInit, OnDestroy {
       // bloqueante, sigue pudiendo pedir.
       console.error('No se pudo recuperar el pedido rechazado', e);
     }
+  }
+
+  protected etiquetaSector(estado: EstadoSector): string {
+    return { pendiente: 'pendiente', en_preparacion: 'en preparación', listo: 'listo' }[estado];
   }
 
   protected cerrarAvisoRechazo(): void {
@@ -743,11 +771,16 @@ export class PedidoPage implements OnInit, OnDestroy {
     this.canalRealtime?.unsubscribe();
     this.canalRealtime = this.pedidoService.escucharConfirmacion(pedidoId, (pedido) => {
       if (pedido.estado === 'confirmado') {
+        // Un pedido confirmado sigue recibiendo UPDATE (cocina/bar cambian
+        // su estado): la push y el aviso de "confirmado" van una sola vez.
+        const recienConfirmado = this.fase() !== 'confirmado';
         this.pedidoActual.set(pedido);
         this.fase.set('confirmado');
-        this.notificacionesService.avisarPedidoConfirmado(this.mesa()?.numero);
-        this.avisoConfirmado.set(true);
-        setTimeout(() => this.avisoConfirmado.set(false), 4000);
+        if (recienConfirmado) {
+          this.notificacionesService.avisarPedidoConfirmado(this.mesa()?.numero);
+          this.avisoConfirmado.set(true);
+          setTimeout(() => this.avisoConfirmado.set(false), 4000);
+        }
       } else if (pedido.estado === 'rechazado') {
         this.notificacionesService.avisarPedidoRechazado(this.mesa()?.numero);
         // El carrito (carritoMapa) sigue en memoria desde que se armó
@@ -774,7 +807,14 @@ export class PedidoPage implements OnInit, OnDestroy {
       const items = this.carritoItems();
       const importeTotal = this.importeAcumulado();
       const tiempoEstimadoMinutos = this.tiempoEstimado();
-      const pedidoId = await this.pedidoService.crearPedido(this.mesaId, items);
+      // Puntos 16/17: qué sectores intervienen según el tipo de producto.
+      const tipos = items.map((i) => this.carta().find((p) => p.id === i.productoId)?.tipo);
+      const sectores = {
+        // Todo lo que no es bebida va a cocina (platos y postres).
+        cocina: tipos.some((t) => t !== 'bebida'),
+        bar: tipos.some((t) => t === 'bebida'),
+      };
+      const pedidoId = await this.pedidoService.crearPedido(this.mesaId, items, sectores);
       await this.mesaService.liberarPedidoEnCurso(this.mesaId);
 
       this.pedidoActual.set({
@@ -784,6 +824,8 @@ export class PedidoPage implements OnInit, OnDestroy {
         importeTotal,
         tiempoEstimadoMinutos,
         creadoEn: new Date().toISOString(),
+        estadoCocina: sectores.cocina ? 'pendiente' : null,
+        estadoBar: sectores.bar ? 'pendiente' : null,
       });
       this.fase.set('esperando');
       this.suscribirConfirmacion(pedidoId);

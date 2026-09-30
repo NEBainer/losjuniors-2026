@@ -12,6 +12,11 @@ export class NotificacionesService {
   private canalPedidosMozo: RealtimeChannel | null = null;
   private alLlegarPendiente: (() => void) | null = null;
   private alLlegarPedido: (() => void) | null = null;
+  private canalSector: RealtimeChannel | null = null;
+  private alCambiarSector: (() => void) | null = null;
+  // Pedidos ya avisados al sector: un pedido confirmado recibe más UPDATE
+  // después (ej. el bar cambia estado_bar) y no hay que volver a avisar.
+  private pedidosAvisadosSector = new Set<string>();
   private permisosConcedidos = false;
 
   // Respuestas del mozo que el cliente todavía no vio: la carta lo muestra
@@ -215,6 +220,46 @@ export class NotificacionesService {
     if (this.canalPedidosMozo) {
       this.sb.removeChannel(this.canalPedidosMozo);
       this.canalPedidosMozo = null;
+    }
+  }
+
+  // Puntos 14/16/17: el mozo confirma -> el pedido "llega" a cocina y/o
+  // bar. La confirmación es un UPDATE (estado -> confirmado), así que se
+  // escuchan los UPDATE y se avisa una sola vez por pedido, solo si el
+  // sector interviene (su columna no es null). onCambio refresca la
+  // pantalla de pedidos del sector ante cualquier cambio.
+  iniciarEscuchaSector(sector: 'cocina' | 'bar', onCambio?: () => void) {
+    this.alCambiarSector = onCambio ?? null;
+    if (this.canalSector) return;
+    const columna = sector === 'cocina' ? 'estado_cocina' : 'estado_bar';
+    this.canalSector = this.sb
+      .channel(`sector-${sector}-pedidos`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'pedidos' },
+        (payload) => {
+          const fila = payload.new as { id: string; estado: string } & Record<string, unknown>;
+          const esNuevoParaSector =
+            fila.estado === 'confirmado' && fila[columna] === 'pendiente' && !this.pedidosAvisadosSector.has(fila.id);
+          if (esNuevoParaSector) {
+            this.pedidosAvisadosSector.add(fila.id);
+            this.notificar(
+              sector === 'cocina' ? 'Nuevo pedido para cocina' : 'Nuevo pedido para bar',
+              'El mozo confirmó un pedido.',
+            );
+          }
+          this.alCambiarSector?.();
+        },
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaSector() {
+    this.alCambiarSector = null;
+    this.pedidosAvisadosSector.clear();
+    if (this.canalSector) {
+      this.sb.removeChannel(this.canalSector);
+      this.canalSector = null;
     }
   }
 

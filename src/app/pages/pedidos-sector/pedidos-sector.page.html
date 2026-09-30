@@ -1,0 +1,90 @@
+<ion-content class="fondo-app">
+
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Cargando...</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal contenedor-app">
+
+    <div class="cabecera">
+      <button class="boton-icono-circular" (click)="volver()" title="Volver al panel">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </button>
+      <div class="titulo">
+        <ion-icon [name]="sector() === 'cocina' ? 'fast-food-outline' : 'wine-outline'"></ion-icon>
+        <h1>{{ sector() === 'cocina' ? 'Cocina' : 'Bar' }}</h1>
+      </div>
+      <button class="boton-icono-circular" (click)="cargar()" [disabled]="cargando()" title="Refrescar">
+        <ion-icon name="refresh-outline"></ion-icon>
+      </button>
+    </div>
+
+    @if (mensajeError()) {
+      <div class="mensaje mensaje-error">
+        <ion-icon name="warning"></ion-icon>
+        <span>{{ mensajeError() }}</span>
+      </div>
+    }
+    @if (mensajeOk()) {
+      <div class="mensaje mensaje-ok">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <span>{{ mensajeOk() }}</span>
+      </div>
+    }
+
+    @if (!cargando() && grupos().length === 0) {
+      <div class="estado-vacio">
+        <ion-icon [name]="sector() === 'cocina' ? 'fast-food-outline' : 'wine-outline'"></ion-icon>
+        <p>Sin pedidos pendientes</p>
+      </div>
+    }
+
+    <!-- Agrupado por número de mesa, con espacio entre pedidos (enunciado
+         puntos 16/17: "fácil manipulación"). -->
+    <div class="lista-mesas">
+      @for (grupo of grupos(); track grupo.mesaNumero) {
+        <section class="bloque-mesa">
+          <div class="mesa-badge">Mesa {{ grupo.mesaNumero }}</div>
+
+          @for (pedido of grupo.pedidos; track pedido.id) {
+            <div class="pedido-card" [class.en-preparacion]="pedido.estado === 'en_preparacion'">
+              <p class="fecha">
+                <ion-icon name="time-outline"></ion-icon>
+                {{ formatearFecha(pedido.creadoEn) }}
+              </p>
+
+              <ul class="items">
+                @for (item of pedido.items; track item.nombre) {
+                  <li><span class="cantidad">{{ item.cantidad }}</span> {{ item.nombre }}</li>
+                }
+              </ul>
+
+              @if (pedido.estado === 'pendiente') {
+                <button
+                  class="boton-accion"
+                  (click)="empezar(pedido)"
+                  [disabled]="procesandoId() === pedido.id"
+                >
+                  <ion-icon name="play-circle"></ion-icon>
+                  <span>Preparar</span>
+                </button>
+              } @else {
+                <div class="chip-estado">
+                  <ion-icon name="hourglass-outline"></ion-icon>
+                  <span>En preparación</span>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
+    </div>
+
+  </div>
+</ion-content>

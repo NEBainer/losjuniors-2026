@@ -135,4 +135,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/pedidos-mozo/pedidos-mozo.page').then(m => m.PedidosMozoPage),
     canActivate: [authGuard, guardPerfil(['mozo'])]
   },
+  {
+    // Puntos 16/17: misma pantalla para cocina y bar -- el sector sale
+    // del perfil logueado (cocinero -> cocina, cantinero -> bar).
+    path: 'sector/pedidos',
+    loadComponent: () => import('./pages/pedidos-sector/pedidos-sector.page').then(m => m.PedidosSectorPage),
+    canActivate: [authGuard, guardPerfil(['cocinero', 'cantinero'])]
+  },
 ]

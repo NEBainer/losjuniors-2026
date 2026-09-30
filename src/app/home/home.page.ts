@@ -191,6 +191,11 @@ export class HomePage {
     if (this.puedeEscanearMesa()) {
       this.notificacionesService.iniciarEscuchaRespuestasCliente();
     }
+    // Puntos 16/17: push a cocina/bar cuando el mozo confirma un pedido,
+    // aunque no tengan abierta la pantalla de pedidos.
+    if (this.puedeVerPedidos()) {
+      this.notificacionesService.iniciarEscuchaSector(this.perfil() === 'cocinero' ? 'cocina' : 'bar');
+    }
   }
 
   private async verificarMesaAsignada() {
@@ -382,6 +387,10 @@ export class HomePage {
     this.router.navigate(['/cocinero/plato-alta']);
   }
 
+  irAPedidosSector() {
+    this.router.navigate(['/sector/pedidos']);
+  }
+
   irAAltaBebida() {
     this.router.navigate(['/cantinero/bebida-alta']);
   }
@@ -476,6 +485,7 @@ export class HomePage {
       this.notificacionesService.detenerEscuchaConsultasMozo();
       this.notificacionesService.detenerEscuchaRespuestasCliente();
       this.notificacionesService.detenerEscuchaPedidosMozo();
+      this.notificacionesService.detenerEscuchaSector();
 
       // Verificar que las credenciales se borren
       // Limpiamos la caché local de Capacitor/Navegador por seguridad extra
