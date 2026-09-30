@@ -135,4 +135,9 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/pedidos-mozo/pedidos-mozo.page').then(m => m.PedidosMozoPage),
     canActivate: [authGuard, guardPerfil(['mozo'])]
   },
+  {
+    path: 'encuesta',
+    loadComponent: () => import('./pages/encuesta/encuesta.page').then( m => m.EncuestaPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
 ]
