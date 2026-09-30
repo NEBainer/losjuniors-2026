@@ -456,6 +456,16 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
     `entregado_por_mozo = true`; pasa `estado` a `'entregado'`.
     Desde `'entregado'` el cliente accede a juegos, encuesta y "pedir la
     cuenta" (puntos 19 al 21).
+- **Fallo no silencioso (v10, puntos 18/19):** `marcar_entregado_mozo` y
+  `confirmar_recepcion_cliente` ahora hacen `raise exception` si el `UPDATE`
+  no afecta ninguna fila (pedido que no está `'completo'`, mozo que
+  todavía no entregó, o cliente que no es el creador) — antes terminaban
+  sin error y el botón no daba ningún feedback. Mismo patrón que ya usa
+  `tomar_pedido_en_curso` (ahí devuelve `boolean` en vez de `raise`,
+  porque esa función necesita decirle al front si consiguió el lock o
+  no). No cambia la firma de ninguna función ni requiere tocar el front:
+  el servicio Angular ya convierte cualquier error de Postgres en un
+  mensaje visible con vibración.
 - **Realtime en `pedidos` (v9)**: la tabla no estaba en la publicación
   `supabase_realtime`. Sin eso, ningún aviso de estado del pedido
   (confirmado, rechazado, completo, entregado) dispara: la suscripción
