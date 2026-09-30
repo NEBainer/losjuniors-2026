@@ -62,7 +62,7 @@ export class PedidoService {
   async obtenerPedidoActivoDeMesa(mesaId: string): Promise<Pedido | null> {
     const { data, error } = await this.client
       .from('pedidos')
-      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at')
+      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo')
       .eq('mesa_id', mesaId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -75,7 +75,7 @@ export class PedidoService {
   async obtenerPedido(pedidoId: string): Promise<Pedido> {
     const { data, error } = await this.client
       .from('pedidos')
-      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at')
+      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo')
       .eq('id', pedidoId)
       .single();
 
@@ -126,7 +126,7 @@ export class PedidoService {
   async listarPendientes(): Promise<PedidoPendiente[]> {
     const { data, error } = await this.client
       .from('pedidos')
-      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, mesas(numero)')
+      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo, mesas(numero)')
       .eq('estado', 'pendiente_confirmacion')
       .order('created_at', { ascending: true });
 
@@ -160,6 +160,42 @@ export class PedidoService {
     if (error) throw new Error('No se pudo rechazar el pedido.');
   }
 
+  // Punto 18: pedidos que cocina y bar ya terminaron y el mozo todavía no
+  // llevó a la mesa. Filtra también por entregado_por_mozo: después de
+  // "Entregar" el pedido sigue en 'completo' hasta que el cliente
+  // confirma, y no tiene que volver a aparecer en la lista del mozo.
+  async listarListosParaEntregar(): Promise<PedidoPendiente[]> {
+    const { data, error } = await this.client
+      .from('pedidos')
+      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo, mesas(numero)')
+      .eq('estado', 'completo')
+      .eq('entregado_por_mozo', false)
+      .order('created_at', { ascending: true });
+
+    if (error) throw new Error('No se pudieron cargar los pedidos listos para entregar.');
+
+    return (data ?? []).map((fila: any) => ({
+      ...this.mapPedido(fila),
+      mesaNumero: fila.mesas?.numero ?? 0,
+    }));
+  }
+
+  // Punto 19: el mozo avisa que llevó el pedido a la mesa. La función
+  // valida el perfil y el estado (ver schema.sql v9).
+  async marcarEntregado(pedidoId: string): Promise<void> {
+    const { error } = await this.client.rpc('marcar_entregado_mozo', { p_pedido_id: pedidoId });
+
+    if (error) throw new Error('No se pudo marcar el pedido como entregado.');
+  }
+
+  // Punto 19: el cliente confirma que recibió el pedido y pasa a
+  // 'entregado'. La pantalla se entera del cambio por Realtime.
+  async confirmarRecepcion(pedidoId: string): Promise<void> {
+    const { error } = await this.client.rpc('confirmar_recepcion_cliente', { p_pedido_id: pedidoId });
+
+    if (error) throw new Error('No se pudo confirmar la recepción del pedido.');
+  }
+
   private mapPedido(fila: any): Pedido {
     return {
       id: fila.id,
@@ -168,6 +204,9 @@ export class PedidoService {
       importeTotal: Number(fila.importe_total),
       tiempoEstimadoMinutos: fila.tiempo_estimado_minutos,
       creadoEn: fila.created_at,
+      cocinaLista: fila.cocina_lista ?? false,
+      barListo: fila.bar_listo ?? false,
+      entregadoPorMozo: fila.entregado_por_mozo ?? false,
     };
   }
 }

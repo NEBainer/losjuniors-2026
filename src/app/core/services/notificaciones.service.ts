@@ -10,8 +10,10 @@ export class NotificacionesService {
   private canalConsultasMozo: RealtimeChannel | null = null;
   private canalRespuestasCliente: RealtimeChannel | null = null;
   private canalPedidosMozo: RealtimeChannel | null = null;
+  private canalPedidosCompletos: RealtimeChannel | null = null;
   private alLlegarPendiente: (() => void) | null = null;
   private alLlegarPedido: (() => void) | null = null;
+  private alCompletarPedido: (() => void) | null = null;
   private permisosConcedidos = false;
 
   // Respuestas del mozo que el cliente todavía no vio: la carta lo muestra
@@ -90,6 +92,17 @@ export class NotificacionesService {
       mesaNumero
         ? `Revisá el pedido de la mesa ${mesaNumero} y volvé a enviarlo.`
         : 'Revisá tu pedido y volvé a enviarlo.',
+    );
+  }
+
+  // Punto 18: aviso local del lado del cliente cuando cocina y bar
+  // terminaron su pedido.
+  async avisarPedidoCompleto(mesaNumero?: number): Promise<void> {
+    await this.notificar(
+      '¡Tu pedido está listo!',
+      mesaNumero
+        ? `El pedido de la mesa ${mesaNumero} ya está listo. El mozo te lo lleva a la mesa.`
+        : 'Tu pedido ya está listo. El mozo te lo lleva a la mesa.',
     );
   }
 
@@ -215,6 +228,39 @@ export class NotificacionesService {
     if (this.canalPedidosMozo) {
       this.sb.removeChannel(this.canalPedidosMozo);
       this.canalPedidosMozo = null;
+    }
+  }
+
+  // Punto 18: "cuando el pedido está completo -> push al mozo". El pase a
+  // 'completo' lo hace marcar_sector_listo (schema.sql v9) con un UPDATE.
+  // marcar_entregado_mozo también hace UPDATE sobre un pedido 'completo'
+  // (solo pone entregado_por_mozo = true), así que ese caso no vuelve a
+  // notificar -- pero sí refresca la lista, para que el pedido entregado
+  // por otro mozo desaparezca. Mismo patrón de onNuevo que
+  // iniciarEscuchaPedidosMozo().
+  iniciarEscuchaPedidosCompletos(onNuevo?: () => void) {
+    this.alCompletarPedido = onNuevo ?? null;
+    if (this.canalPedidosCompletos) return;
+    this.canalPedidosCompletos = this.sb
+      .channel('mozo-pedidos-completos')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: 'estado=eq.completo' },
+        (payload) => {
+          if (!(payload.new as { entregado_por_mozo: boolean }).entregado_por_mozo) {
+            this.notificar('Pedido listo para entregar', 'Cocina y barra terminaron un pedido.');
+          }
+          this.alCompletarPedido?.();
+        },
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaPedidosCompletos() {
+    this.alCompletarPedido = null;
+    if (this.canalPedidosCompletos) {
+      this.sb.removeChannel(this.canalPedidosCompletos);
+      this.canalPedidosCompletos = null;
     }
   }
 

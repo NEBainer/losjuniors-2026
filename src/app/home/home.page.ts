@@ -16,6 +16,7 @@ import {
   bookOutline, chatbubblesOutline, checkmarkCircleOutline, checkmarkOutline, closeOutline,
   fastFoodOutline, informationCircleOutline, listOutline, logOutOutline, peopleOutline,
   personAddOutline, qrCodeOutline, restaurantOutline, timeOutline, wineOutline, closeCircleOutline,
+  checkmarkDoneCircleOutline,
 } from 'ionicons/icons';
 
 // Fila lista para pintar en la lista embebida de pendientes: mismo patrón
@@ -117,6 +118,11 @@ export class HomePage {
   readonly mensajeErrorPedidosMozo = signal('');
   readonly mensajeOkPedidosMozo = signal('');
 
+  // Punto 18/19: pedidos 'completo' que el mozo todavía no entregó. Mismo
+  // procesandoPedidoId/mensajes que la lista de pendientes de arriba.
+  readonly pedidosListosMozo = signal<PedidoVista[]>([]);
+  readonly cargandoPedidosListosMozo = signal(false);
+
   readonly escaneandoMesa = signal(false);
   readonly mensajeErrorEscaneo = signal('');
 
@@ -154,7 +160,7 @@ export class HomePage {
       logOutOutline, restaurantOutline, listOutline, peopleOutline, personAddOutline,
       fastFoodOutline, wineOutline, bookOutline, checkmarkOutline, qrCodeOutline,
       chatbubblesOutline, informationCircleOutline, closeOutline, timeOutline, closeCircleOutline,
-      checkmarkCircleOutline,
+      checkmarkCircleOutline, checkmarkDoneCircleOutline,
     });
   }
 
@@ -167,7 +173,7 @@ export class HomePage {
       await this.cargarPendientes();
     }
     if (this.esPanelMozo()) {
-      await this.cargarPedidosPendientesMozo();
+      await Promise.all([this.cargarPedidosPendientesMozo(), this.cargarPedidosListosMozo()]);
     }
     if (this.puedeUnirseListaEspera()) {
       await this.verificarMesaAsignada();
@@ -187,6 +193,8 @@ export class HomePage {
       // Punto 12/13: push al mozo cuando entra un pedido nuevo o reenviado
       // tras un rechazo, y la lista embebida se recarga sola.
       this.notificacionesService.iniciarEscuchaPedidosMozo(() => this.cargarPedidosPendientesMozo());
+      // Punto 18: push al mozo cuando cocina y bar terminan un pedido.
+      this.notificacionesService.iniciarEscuchaPedidosCompletos(() => this.cargarPedidosListosMozo());
     }
     if (this.puedeEscanearMesa()) {
       this.notificacionesService.iniciarEscuchaRespuestasCliente();
@@ -348,6 +356,37 @@ export class HomePage {
     }
   }
 
+  // Punto 18: mismo patrón que cargarPedidosPendientesMozo(), para los
+  // pedidos que cocina y bar ya terminaron.
+  async cargarPedidosListosMozo() {
+    this.cargandoPedidosListosMozo.set(true);
+    try {
+      const filas = await this.pedidoService.listarListosParaEntregar();
+      this.pedidosListosMozo.set(filas.map((p) => ({ ...p, hace: haceCuanto(p.creadoEn) })));
+    } catch {
+      this.dispararErrorPedidosMozo('No se pudo cargar el listado de pedidos listos para entregar.');
+    } finally {
+      this.cargandoPedidosListosMozo.set(false);
+    }
+  }
+
+  // Punto 19: el mozo llevó el pedido a la mesa. El cliente ve aparecer
+  // el botón "Confirmar recepción" por Realtime (PedidoPage).
+  async entregarPedidoMozo(pedido: PedidoVista) {
+    this.procesandoPedidoId.set(pedido.id);
+    try {
+      await this.pedidoService.marcarEntregado(pedido.id);
+      this.pedidosListosMozo.update((lista) => lista.filter((p) => p.id !== pedido.id));
+      this.mensajeOkPedidosMozo.set(`Pedido de mesa ${pedido.mesaNumero} entregado.`);
+      setTimeout(() => this.mensajeOkPedidosMozo.set(''), 3000);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'No se pudo marcar el pedido como entregado.';
+      this.dispararErrorPedidosMozo(msg);
+    } finally {
+      this.procesandoPedidoId.set(null);
+    }
+  }
+
   formatearPrecioPedido(precio: number): string {
     return precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
   }
@@ -476,6 +515,7 @@ export class HomePage {
       this.notificacionesService.detenerEscuchaConsultasMozo();
       this.notificacionesService.detenerEscuchaRespuestasCliente();
       this.notificacionesService.detenerEscuchaPedidosMozo();
+      this.notificacionesService.detenerEscuchaPedidosCompletos();
 
       // Verificar que las credenciales se borren
       // Limpiamos la caché local de Capacitor/Navegador por seguridad extra
