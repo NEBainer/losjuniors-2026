@@ -132,10 +132,6 @@
   flex-direction: column;
   gap: 12px;
 
-  &.en-preparacion {
-    border-color: var(--ion-color-warning, #c68a34);
-  }
-
   .fecha {
     margin: 0;
     display: flex;
@@ -200,22 +196,6 @@
 
     &:disabled {
       opacity: 0.5;
-    }
-  }
-
-  .chip-estado {
-    height: 48px;
-    border-radius: 12px;
-    border: 2px dashed var(--ion-color-warning, #c68a34);
-    color: var(--ion-text-color);
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-
-    ion-icon {
-      font-size: 1.4rem;
     }
   }
 }

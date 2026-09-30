@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonHeader,
   IonToolbar,
@@ -26,16 +26,20 @@ import {
   warning,
   closeCircle,
   checkmarkCircle,
+  checkmarkDoneCircleOutline,
+  gameControllerOutline,
+  clipboardOutline,
+  cashOutline,
 } from 'ionicons/icons';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { ProductoService, ProductoCarta } from '../producto/producto.service';
 import { MesaService, Mesa } from '../../core/services/mesa.service';
 import { PedidoService } from '../../core/services/pedido.service';
 import { NotificacionesService } from '../../core/services/notificaciones.service';
-import { EstadoSector, ItemCarrito, Pedido } from '../../core/models/pedido.model';
+import { ItemCarrito, Pedido } from '../../core/models/pedido.model';
 import { CarruselFotosComponent } from '../carta/carrusel-fotos.component';
 
-type FasePedido = 'armando' | 'esperando' | 'confirmado';
+type FasePedido = 'armando' | 'esperando' | 'confirmado' | 'completo' | 'entregado';
 
 @Component({
   selector: 'app-pedido',
@@ -172,18 +176,82 @@ type FasePedido = 'armando' | 'esperando' | 'confirmado';
     <!-- Puntos 16/17: estado de cada sector en vivo (Realtime). Solo
          aparecen los sectores que intervienen en el pedido. -->
     <div class="estado-sectores" *ngIf="fase() === 'confirmado' && pedidoActual() as p">
-      <p *ngIf="p.estadoCocina">
+      <p *ngIf="sectoresPedido().cocina">
         <ion-icon name="fast-food-outline"></ion-icon>
-        Cocina: <strong>{{ etiquetaSector(p.estadoCocina) }}</strong>
+        Cocina: <strong>{{ p.cocinaLista ? 'listo' : 'en preparación' }}</strong>
       </p>
-      <p *ngIf="p.estadoBar">
+      <p *ngIf="sectoresPedido().bar">
         <ion-icon name="wine-outline"></ion-icon>
-        Bar: <strong>{{ etiquetaSector(p.estadoBar) }}</strong>
+        Bar: <strong>{{ p.barListo ? 'listo' : 'en preparación' }}</strong>
       </p>
     </div>
     <div class="resumen-final" *ngIf="pedidoActual() as p">
       <p><ion-icon name="time-outline"></ion-icon> {{ p.tiempoEstimadoMinutos }} min estimados</p>
       <p class="total-final">{{ formatearPrecio(p.importeTotal) }}</p>
+    </div>
+  </div>
+
+  <!-- Punto 18/19: cocina y bar terminaron. El botón aparece recién
+       cuando el mozo marca que lo entregó (entregadoPorMozo, llega por
+       Realtime sin que cambie la fase). -->
+  <div class="estado-pedido" *ngIf="fase() === 'completo'">
+    <div class="banner-error" *ngIf="mensajeError()">
+      <ion-icon name="warning"></ion-icon>
+      <span>{{ mensajeError() }}</span>
+    </div>
+
+    <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-estado" />
+    <ng-container *ngIf="!pedidoActual()?.entregadoPorMozo; else yaEntregado">
+      <ion-spinner name="crescent" color="light"></ion-spinner>
+      <h2>¡Tu pedido está listo!</h2>
+      <p>El mozo te lo está llevando a la mesa.</p>
+    </ng-container>
+    <ng-template #yaEntregado>
+      <ion-icon name="checkmark-circle-outline" class="icono-confirmado"></ion-icon>
+      <h2>El mozo te entregó el pedido</h2>
+      <p>Confirmá que lo recibiste para seguir.</p>
+    </ng-template>
+
+    <div class="resumen-final" *ngIf="pedidoActual() as p">
+      <p class="total-final">{{ formatearPrecio(p.importeTotal) }}</p>
+    </div>
+
+    <div class="acciones-estado" *ngIf="pedidoActual()?.entregadoPorMozo">
+      <ion-button
+        expand="block"
+        class="boton-estado boton-principal"
+        [disabled]="confirmandoRecepcion()"
+        (click)="confirmarRecepcion()"
+      >
+        <ion-icon name="checkmark-done-circle-outline" slot="start"></ion-icon>
+        {{ confirmandoRecepcion() ? 'Confirmando…' : 'Confirmar recepción' }}
+      </ion-button>
+    </div>
+  </div>
+
+  <!-- Punto 19: pedido recibido, se habilitan juegos, encuesta y cuenta.
+       OJO: las rutas mesa/:mesaId/juegos|encuesta|cuenta todavía no están
+       en app.routes.ts (las agrega el dueño de los puntos 15/20/21) y no
+       hay ruta wildcard, así que por ahora tocar estos botones no muestra
+       nada. -->
+  <div class="estado-pedido" *ngIf="fase() === 'entregado'">
+    <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-estado" />
+    <h2>¡Buen provecho!</h2>
+    <p>Mientras disfrutás tu pedido podés jugar, dejarnos tu opinión o pedir la cuenta.</p>
+
+    <div class="acciones-estado">
+      <ion-button expand="block" class="boton-estado" (click)="irAJuegos()">
+        <ion-icon name="game-controller-outline" slot="start"></ion-icon>
+        Juegos
+      </ion-button>
+      <ion-button expand="block" class="boton-estado" (click)="irAEncuesta()">
+        <ion-icon name="clipboard-outline" slot="start"></ion-icon>
+        Encuesta
+      </ion-button>
+      <ion-button expand="block" class="boton-estado" (click)="irACuenta()">
+        <ion-icon name="cash-outline" slot="start"></ion-icon>
+        Pedir la cuenta
+      </ion-button>
     </div>
   </div>
 
@@ -287,6 +355,28 @@ ion-header ion-toolbar {
   font-size: 1.3rem;
   font-weight: 700;
   color: var(--dorado);
+}
+
+// Puntos 18/19: botones sobre el fondo marrón de .estado-pedido. Dorado y
+// no el primary del tema (#9C3B14), que casi no contrasta con ese fondo.
+.acciones-estado {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.boton-estado {
+  --background: var(--dorado);
+  --color: var(--marron-osc);
+  min-height: 52px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.boton-principal {
+  min-height: 60px;
+  font-size: 1.2rem;
 }
 
 .estado-vacio {
@@ -586,6 +676,7 @@ ion-header ion-toolbar {
 })
 export class PedidoPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly productoService = inject(ProductoService);
   private readonly mesaService = inject(MesaService);
   private readonly pedidoService = inject(PedidoService);
@@ -612,6 +703,14 @@ export class PedidoPage implements OnInit, OnDestroy {
   // aparece en la barra de notificaciones y es fácil de no ver).
   protected readonly avisoRechazo = signal(false);
   protected readonly avisoConfirmado = signal(false);
+
+  // Punto 19: evita el doble toque en "Confirmar recepción" mientras
+  // viaja el llamado.
+  protected readonly confirmandoRecepcion = signal(false);
+
+  // Puntos 16/17: qué sectores intervienen en el pedido (para mostrar
+  // "Cocina: ..." / "Bar: ..." solo si corresponde).
+  protected readonly sectoresPedido = signal({ cocina: false, bar: false });
 
   private readonly carritoMapa = signal<Map<string, ItemCarrito>>(new Map());
   protected readonly carritoItems = computed(() => Array.from(this.carritoMapa().values()));
@@ -644,6 +743,10 @@ export class PedidoPage implements OnInit, OnDestroy {
       'people-outline': peopleOutline,
       'close-circle': closeCircle,
       'checkmark-circle': checkmarkCircle,
+      'checkmark-done-circle-outline': checkmarkDoneCircleOutline,
+      'game-controller-outline': gameControllerOutline,
+      'clipboard-outline': clipboardOutline,
+      'cash-outline': cashOutline,
       warning,
     });
   }
@@ -680,16 +783,42 @@ export class PedidoPage implements OnInit, OnDestroy {
         this.avisoRechazo.set(true);
       } else if (pedidoActivo) {
         this.pedidoActual.set(pedidoActivo);
-        this.fase.set(pedidoActivo.estado === 'confirmado' ? 'confirmado' : 'esperando');
-        // También con el pedido ya confirmado: así el cliente ve en vivo
-        // cuando cocina/bar lo empiezan a preparar (puntos 16/17).
+        if (pedidoActivo.estado === 'pendiente_confirmacion') {
+          this.fase.set('esperando');
+        } else if (
+          pedidoActivo.estado === 'confirmado' ||
+          pedidoActivo.estado === 'completo' ||
+          pedidoActivo.estado === 'entregado'
+        ) {
+          this.fase.set(pedidoActivo.estado);
+        }
+        // Puntos 18/19: se suscribe en cualquier fase, no solo esperando --
+        // 'confirmado' ya no es terminal (sigue a 'completo' y
+        // 'entregado'), y si el cliente vuelve a entrar con el pedido
+        // confirmado tiene que enterarse de esos cambios igual.
         this.suscribirConfirmacion(pedidoActivo.id);
+        this.detectarSectores(pedidoActivo.id, carta);
       }
     } catch (e) {
       console.error('No se pudo cargar la mesa/carta', e);
       this.error.set('No pudimos cargar la carta de esta mesa. Probá de nuevo en un momento.');
     } finally {
       this.cargando.set(false);
+    }
+  }
+
+  private sectoresDe(productoIds: string[], carta: ProductoCarta[]): { cocina: boolean; bar: boolean } {
+    const tipos = productoIds.map((id) => carta.find((p) => p.id === id)?.tipo);
+    // Todo lo que no es bebida va a cocina (mismo criterio que schema.sql v9).
+    return { cocina: tipos.some((t) => t !== 'bebida'), bar: tipos.some((t) => t === 'bebida') };
+  }
+
+  private async detectarSectores(pedidoId: string, carta: ProductoCarta[]): Promise<void> {
+    try {
+      const items = await this.pedidoService.obtenerItems(pedidoId);
+      this.sectoresPedido.set(this.sectoresDe(items.map((i) => i.productoId), carta));
+    } catch {
+      // Sin esto solo no se muestra el detalle por sector; no bloquea nada.
     }
   }
 
@@ -715,10 +844,6 @@ export class PedidoPage implements OnInit, OnDestroy {
       // bloqueante, sigue pudiendo pedir.
       console.error('No se pudo recuperar el pedido rechazado', e);
     }
-  }
-
-  protected etiquetaSector(estado: EstadoSector): string {
-    return { pendiente: 'pendiente', en_preparacion: 'en preparación', listo: 'listo' }[estado];
   }
 
   protected cerrarAvisoRechazo(): void {
@@ -770,17 +895,27 @@ export class PedidoPage implements OnInit, OnDestroy {
   private suscribirConfirmacion(pedidoId: string): void {
     this.canalRealtime?.unsubscribe();
     this.canalRealtime = this.pedidoService.escucharConfirmacion(pedidoId, (pedido) => {
-      if (pedido.estado === 'confirmado') {
-        // Un pedido confirmado sigue recibiendo UPDATE (cocina/bar cambian
-        // su estado): la push y el aviso de "confirmado" van una sola vez.
-        const recienConfirmado = this.fase() !== 'confirmado';
+      // Puntos 18/19: además de los cambios de estado llegan UPDATE que
+      // solo tocan banderas con el estado igual (cocina_lista/bar_listo
+      // en 'confirmado', entregado_por_mozo en 'completo'). pedidoActual
+      // se actualiza siempre -- así aparece el botón "Confirmar
+      // recepción" -- pero los avisos solo salen cuando cambia la fase,
+      // si no se repetían cada vez que terminaba un sector.
+      const faseAnterior = this.fase();
+      if (pedido.estado !== 'rechazado') {
         this.pedidoActual.set(pedido);
+      }
+
+      if (pedido.estado === 'confirmado' && faseAnterior !== 'confirmado') {
         this.fase.set('confirmado');
-        if (recienConfirmado) {
-          this.notificacionesService.avisarPedidoConfirmado(this.mesa()?.numero);
-          this.avisoConfirmado.set(true);
-          setTimeout(() => this.avisoConfirmado.set(false), 4000);
-        }
+        this.notificacionesService.avisarPedidoConfirmado(this.mesa()?.numero);
+        this.avisoConfirmado.set(true);
+        setTimeout(() => this.avisoConfirmado.set(false), 4000);
+      } else if (pedido.estado === 'completo' && faseAnterior !== 'completo') {
+        this.fase.set('completo');
+        this.notificacionesService.avisarPedidoCompleto(this.mesa()?.numero);
+      } else if (pedido.estado === 'entregado') {
+        this.fase.set('entregado');
       } else if (pedido.estado === 'rechazado') {
         this.notificacionesService.avisarPedidoRechazado(this.mesa()?.numero);
         // El carrito (carritoMapa) sigue en memoria desde que se armó
@@ -807,14 +942,8 @@ export class PedidoPage implements OnInit, OnDestroy {
       const items = this.carritoItems();
       const importeTotal = this.importeAcumulado();
       const tiempoEstimadoMinutos = this.tiempoEstimado();
-      // Puntos 16/17: qué sectores intervienen según el tipo de producto.
-      const tipos = items.map((i) => this.carta().find((p) => p.id === i.productoId)?.tipo);
-      const sectores = {
-        // Todo lo que no es bebida va a cocina (platos y postres).
-        cocina: tipos.some((t) => t !== 'bebida'),
-        bar: tipos.some((t) => t === 'bebida'),
-      };
-      const pedidoId = await this.pedidoService.crearPedido(this.mesaId, items, sectores);
+      const pedidoId = await this.pedidoService.crearPedido(this.mesaId, items);
+      this.sectoresPedido.set(this.sectoresDe(items.map((i) => i.productoId), this.carta()));
       await this.mesaService.liberarPedidoEnCurso(this.mesaId);
 
       this.pedidoActual.set({
@@ -824,8 +953,9 @@ export class PedidoPage implements OnInit, OnDestroy {
         importeTotal,
         tiempoEstimadoMinutos,
         creadoEn: new Date().toISOString(),
-        estadoCocina: sectores.cocina ? 'pendiente' : null,
-        estadoBar: sectores.bar ? 'pendiente' : null,
+        cocinaLista: false,
+        barListo: false,
+        entregadoPorMozo: false,
       });
       this.fase.set('esperando');
       this.suscribirConfirmacion(pedidoId);
@@ -835,6 +965,39 @@ export class PedidoPage implements OnInit, OnDestroy {
     } finally {
       this.enviando.set(false);
     }
+  }
+
+  // Punto 19: el cliente confirma que recibió el pedido. El pase a
+  // 'entregado' llega solo por Realtime (suscribirConfirmacion), no se
+  // setea acá.
+  protected async confirmarRecepcion(): Promise<void> {
+    const pedido = this.pedidoActual();
+    if (!pedido || this.confirmandoRecepcion()) return;
+    this.confirmandoRecepcion.set(true);
+    try {
+      await this.pedidoService.confirmarRecepcion(pedido.id);
+    } catch (e) {
+      console.error('No se pudo confirmar la recepción', e);
+      await this.dispararErrorTransitorio(
+        e instanceof Error ? e.message : 'No se pudo confirmar la recepción del pedido.',
+      );
+    } finally {
+      this.confirmandoRecepcion.set(false);
+    }
+  }
+
+  // Puntos 15/20/21: accesos que se habilitan recién con el pedido
+  // entregado. Las pantallas las arma cada dueño del punto.
+  protected irAJuegos(): void {
+    this.router.navigate(['/mesa', this.mesaId, 'juegos']);
+  }
+
+  protected irAEncuesta(): void {
+    this.router.navigate(['/mesa', this.mesaId, 'encuesta']);
+  }
+
+  protected irACuenta(): void {
+    this.router.navigate(['/mesa', this.mesaId, 'cuenta']);
   }
 
   protected formatearPrecio(precio: number): string {

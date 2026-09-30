@@ -320,7 +320,8 @@
   // Aceptar/rechazar: botones grandes y cuadrados (mínimo ~44px, tamaño
   // cómodo para el dedo) -- son la acción más frecuente del panel.
   .btn-rechazar,
-  .btn-aceptar {
+  .btn-aceptar,
+  .btn-entregar {
     width: 46px;
     height: 46px;
     padding: 0;
@@ -342,7 +343,8 @@
   .btn-rechazar {
     background: var(--ion-color-danger);
   }
-  .btn-aceptar {
+  .btn-aceptar,
+  .btn-entregar {
     background: var(--ion-color-success, #2d7a3e);
   }
   .btn-si {
@@ -352,6 +354,13 @@
   .btn-no {
     background: var(--ion-color-danger);
     color: #fff;
+  }
+
+  // Panel del mozo con dos listas (pendientes + listos para entregar,
+  // puntos 12 y 18): con el tope de 50% de cada una, entre las dos podían
+  // dejar sin lugar a la grilla de accesos de arriba.
+  &.seccion-doble {
+    max-height: 32%;
   }
 }
 

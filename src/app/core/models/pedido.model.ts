@@ -1,9 +1,6 @@
-export type EstadoPedido = 'pendiente_confirmacion' | 'confirmado' | 'rechazado';
-
-// Puntos 16/17 (y 18): estado de cada sector dentro de un pedido
-// confirmado. null = el pedido no tiene productos de ese sector.
-export type EstadoSector = 'pendiente' | 'en_preparacion' | 'listo';
-export type Sector = 'cocina' | 'bar';
+// Puntos 18/19 (schema.sql v9): confirmado -> completo (cocina y bar
+// terminaron) -> entregado (el cliente confirmó la recepción).
+export type EstadoPedido = 'pendiente_confirmacion' | 'confirmado' | 'rechazado' | 'completo' | 'entregado';
 export interface ItemCarrito {
   productoId: string;
   nombre: string;
@@ -20,20 +17,26 @@ export interface Pedido {
   importeTotal: number;
   tiempoEstimadoMinutos: number;
   creadoEn: string;
-  estadoCocina: EstadoSector | null;
-  estadoBar: EstadoSector | null;
+  cocinaLista: boolean;
+  barListo: boolean;
+  // Punto 19: el mozo marcó que lo entregó. No cambia `estado` (sigue en
+  // 'completo') -- recién el cliente lo pasa a 'entregado'.
+  entregadoPorMozo: boolean;
 }
 
 export interface PedidoPendiente extends Pedido {
   mesaNumero: number;
 }
 
-// Puntos 16/17: un pedido tal como lo ve cocina o bar -- solo los ítems
-// de ese sector, sumados por producto (sin separar por comensal).
+// Puntos 16/17: cocina prepara todo lo que no es bebida (decisión de
+// equipo 13/09: postre cuenta como plato) y bar las bebidas.
+export type Sector = 'cocina' | 'bar';
+
+// Un pedido tal como lo ve cocina o bar: solo los ítems de ese sector,
+// sumados por producto (sin separar por comensal).
 export interface PedidoSector {
   id: string;
   mesaNumero: number;
   creadoEn: string;
-  estado: EstadoSector;
   items: { nombre: string; cantidad: number }[];
 }

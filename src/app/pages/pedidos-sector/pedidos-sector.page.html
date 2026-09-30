@@ -53,7 +53,7 @@
           <div class="mesa-badge">Mesa {{ grupo.mesaNumero }}</div>
 
           @for (pedido of grupo.pedidos; track pedido.id) {
-            <div class="pedido-card" [class.en-preparacion]="pedido.estado === 'en_preparacion'">
+            <div class="pedido-card">
               <p class="fecha">
                 <ion-icon name="time-outline"></ion-icon>
                 {{ formatearFecha(pedido.creadoEn) }}
@@ -65,21 +65,14 @@
                 }
               </ul>
 
-              @if (pedido.estado === 'pendiente') {
-                <button
-                  class="boton-accion"
-                  (click)="empezar(pedido)"
-                  [disabled]="procesandoId() === pedido.id"
-                >
-                  <ion-icon name="play-circle"></ion-icon>
-                  <span>Preparar</span>
-                </button>
-              } @else {
-                <div class="chip-estado">
-                  <ion-icon name="hourglass-outline"></ion-icon>
-                  <span>En preparación</span>
-                </div>
-              }
+              <button
+                class="boton-accion"
+                (click)="marcarListo(pedido)"
+                [disabled]="procesandoId() === pedido.id"
+              >
+                <ion-icon name="checkmark-done-circle"></ion-icon>
+                <span>Listo</span>
+              </button>
             </div>
           }
         </section>

@@ -10,8 +10,7 @@ import {
   fastFoodOutline,
   wineOutline,
   timeOutline,
-  playCircle,
-  hourglassOutline,
+  checkmarkDoneCircle,
 } from 'ionicons/icons';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { PedidoService } from '../../core/services/pedido.service';
@@ -62,7 +61,7 @@ export class PedidosSectorPage {
   ) {
     addIcons({
       arrowBackOutline, refreshOutline, warning, checkmarkCircleOutline, fastFoodOutline,
-      wineOutline, timeOutline, playCircle, hourglassOutline,
+      wineOutline, timeOutline, checkmarkDoneCircle,
     });
   }
 
@@ -96,16 +95,16 @@ export class PedidosSectorPage {
     }
   }
 
-  // Punto 16/17: "el cliente verifica el cambio de estado en su pedido".
-  // El cliente lo ve en vivo en su pantalla de pedido (Realtime).
-  async empezar(pedido: PedidoSector) {
+  // El sector terminó su parte (marcar_sector_listo, schema.sql v9). El
+  // cliente ve el cambio de estado en vivo en su pantalla de pedido, y si
+  // ya terminaron todos los sectores el pedido pasa a 'completo' y le
+  // llega al mozo para entregar (punto 18).
+  async marcarListo(pedido: PedidoSector) {
     this.procesandoId.set(pedido.id);
     try {
-      await this.pedidoService.cambiarEstadoSector(pedido.id, 'en_preparacion');
-      this.pedidos.update((lista) =>
-        lista.map((p) => (p.id === pedido.id ? { ...p, estado: 'en_preparacion' } : p)),
-      );
-      this.mensajeOk.set(`Mesa ${pedido.mesaNumero} en preparación.`);
+      await this.pedidoService.marcarSectorListo(pedido.id, this.sector());
+      this.pedidos.update((lista) => lista.filter((p) => p.id !== pedido.id));
+      this.mensajeOk.set(`Mesa ${pedido.mesaNumero} lista.`);
       setTimeout(() => this.mensajeOk.set(''), 3000);
     } catch (e: unknown) {
       this.dispararError(e instanceof Error ? e.message : 'No se pudo actualizar el pedido.');
