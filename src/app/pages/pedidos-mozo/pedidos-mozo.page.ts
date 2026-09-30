@@ -11,6 +11,7 @@ import {
   closeCircle,
   restaurantOutline,
   timeOutline,
+  checkmarkDoneCircle,
 } from 'ionicons/icons';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { PedidoService } from '../../core/services/pedido.service';
@@ -32,6 +33,9 @@ function haceCuanto(fechaIso: string): string {
 })
 export class PedidosMozoPage {
   readonly pendientes = signal<(PedidoPendiente & { hace: string })[]>([]);
+  // Punto 18: pedidos 'completo' (cocina y bar terminaron) que el mozo
+  // todavía no llevó a la mesa.
+  readonly listos = signal<(PedidoPendiente & { hace: string })[]>([]);
   readonly cargando = signal(false);
   readonly procesandoId = signal<string | null>(null);
 
@@ -39,7 +43,7 @@ export class PedidosMozoPage {
   readonly mensajeOk = signal('');
 
   constructor(private pedidos: PedidoService, private router: Router) {
-    addIcons({ arrowBackOutline, refreshOutline, warning, checkmarkCircleOutline, checkmarkCircle, closeCircle, restaurantOutline, timeOutline });
+    addIcons({ arrowBackOutline, refreshOutline, warning, checkmarkCircleOutline, checkmarkCircle, closeCircle, restaurantOutline, timeOutline, checkmarkDoneCircle });
   }
 
   volver() {
@@ -54,8 +58,12 @@ export class PedidosMozoPage {
     this.cargando.set(true);
     this.mensajeError.set('');
     try {
-      const filas = await this.pedidos.listarPendientes();
+      const [filas, filasListos] = await Promise.all([
+        this.pedidos.listarPendientes(),
+        this.pedidos.listarListosParaEntregar(),
+      ]);
       this.pendientes.set(filas.map((p) => ({ ...p, hace: haceCuanto(p.creadoEn) })));
+      this.listos.set(filasListos.map((p) => ({ ...p, hace: haceCuanto(p.creadoEn) })));
     } catch {
       this.dispararError('No se pudo cargar el listado. Reintentá con el botón de refrescar.');
     } finally {
@@ -87,6 +95,23 @@ export class PedidosMozoPage {
       setTimeout(() => this.mensajeOk.set(''), 3000);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'No se pudo rechazar el pedido.';
+      this.dispararError(msg);
+    } finally {
+      this.procesandoId.set(null);
+    }
+  }
+
+  // Punto 19: el mozo llevó el pedido a la mesa. El cliente ve aparecer
+  // el botón "Confirmar recepción" por Realtime (PedidoPage).
+  async entregar(pedido: PedidoPendiente) {
+    this.procesandoId.set(pedido.id);
+    try {
+      await this.pedidos.marcarEntregado(pedido.id);
+      this.listos.update((lista) => lista.filter((p) => p.id !== pedido.id));
+      this.mensajeOk.set(`Pedido de mesa ${pedido.mesaNumero} entregado.`);
+      setTimeout(() => this.mensajeOk.set(''), 3000);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'No se pudo marcar el pedido como entregado.';
       this.dispararError(msg);
     } finally {
       this.procesandoId.set(null);

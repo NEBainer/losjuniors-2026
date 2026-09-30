@@ -82,5 +82,47 @@
       }
     </div>
 
+    <!-- Punto 18/19: pedidos que cocina y bar terminaron. Una sola acción
+         (no hay aceptar/rechazar acá): el mozo lo lleva a la mesa y toca
+         el ícono, el cliente después confirma la recepción. -->
+    <h2 class="subtitulo-seccion">Listos para entregar</h2>
+
+    @if (!cargando() && listos().length === 0) {
+      <div class="estado-vacio">
+        <ion-icon name="restaurant-outline"></ion-icon>
+        <p>No hay pedidos listos para llevar a la mesa.</p>
+      </div>
+    }
+
+    <div class="lista-pendientes">
+      @for (pedido of listos(); track pedido.id) {
+        <div class="pedido-card">
+
+          <div class="mesa-badge">
+            Mesa<br />{{ pedido.mesaNumero }}
+          </div>
+
+          <div class="datos">
+            <h3>{{ formatearPrecio(pedido.importeTotal) }}</h3>
+            <p class="detalle">
+              <ion-icon name="time-outline"></ion-icon>
+              Pedido {{ pedido.hace }}
+            </p>
+          </div>
+
+          <div class="acciones">
+            <ion-icon
+              name="checkmark-done-circle"
+              color="success"
+              class="icono-accion"
+              [class.deshabilitado]="procesandoId() === pedido.id"
+              (click)="entregar(pedido)"
+            ></ion-icon>
+          </div>
+
+        </div>
+      }
+    </div>
+
   </div>
 </ion-content>

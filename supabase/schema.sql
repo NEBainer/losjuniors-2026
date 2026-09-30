@@ -1106,3 +1106,71 @@ begin
     alter publication supabase_realtime add table pedidos;
   end if;
 end $$;
+
+
+-- =========================================================
+-- v10 (30/09/2026): puntos 18/19 — marcar_entregado_mozo y
+-- confirmar_recepcion_cliente fallaban en silencio cuando el UPDATE no
+-- afectaba ninguna fila (perfil correcto pero condición no cumplida:
+-- pedido que no está 'completo', mozo que todavía no entregó, o cliente
+-- que no es el creador). El front no se enteraba -- el botón "no hacía
+-- nada", sin mensaje ni vibración, contra la regla de diseno-visual.md
+-- de que toda acción da feedback.
+--
+-- Se agrega `if not found then raise exception` después de cada UPDATE.
+-- No cambia la firma (sigue devolviendo void): alcanza con
+-- create or replace, sin drop function ni volver a correr los grant
+-- execute. El servicio Angular ya convierte cualquier error de la
+-- función en un mensaje visible (con vibración), así que no hace falta
+-- tocar el front. Corrida y confirmada en el SQL Editor (30/09/2026).
+--
+-- OJO doble toque en marcar_entregado_mozo: la condición sigue siendo
+-- solo `estado = 'completo'`, no `entregado_por_mozo = false` -- marcar
+-- "entregado" dos veces no tira error a propósito (poner el booleano en
+-- true de nuevo es inofensivo). El raise cubre los tres casos reales de
+-- "no se pudo": pedido que no está completo, cliente que no es el
+-- creador, o cliente que confirma antes de que el mozo entregue.
+-- =========================================================
+
+create or replace function marcar_entregado_mozo(p_pedido_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() <> 'mozo' then
+    raise exception 'No autorizado.';
+  end if;
+
+  update pedidos set entregado_por_mozo = true
+  where id = p_pedido_id and estado = 'completo';
+
+  if not found then
+    raise exception 'El pedido no está listo para entregar.';
+  end if;
+end;
+$$;
+
+create or replace function confirmar_recepcion_cliente(p_pedido_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() not in ('cliente_registrado', 'cliente_anonimo') then
+    raise exception 'No autorizado.';
+  end if;
+
+  update pedidos set estado = 'entregado'
+  where id = p_pedido_id
+    and estado = 'completo'
+    and entregado_por_mozo = true
+    and creado_por = auth.uid();
+
+  if not found then
+    raise exception 'Todavía no se puede confirmar la recepción de este pedido.';
+  end if;
+end;
+$$;
