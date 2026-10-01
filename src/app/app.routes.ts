@@ -148,4 +148,11 @@ export const routes: Routes = [
     path: 'encuestas/resultados',
     loadComponent: () => import('./pages/encuestas-resultados/encuestas-resultados.page').then( m => m.EncuestasResultadosPage)
   },
+  {
+    // Puntos 16/17: misma pantalla para cocina y bar -- el sector sale
+    // del perfil logueado (cocinero -> cocina, cantinero -> bar).
+    path: 'sector/pedidos',
+    loadComponent: () => import('./pages/pedidos-sector/pedidos-sector.page').then(m => m.PedidosSectorPage),
+    canActivate: [authGuard, guardPerfil(['cocinero', 'cantinero'])]
+  },
 ]

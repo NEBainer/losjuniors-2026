@@ -53,6 +53,14 @@
   }
 }
 
+// Punto 18: separa la sección "Listos para entregar" de la de pendientes.
+.subtitulo-seccion {
+  margin: 8px 0 0;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--ion-color-primary);
+}
+
 .mensaje {
   display: flex;
   align-items: center;

@@ -2,6 +2,8 @@ import { Injectable, signal } from '@angular/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
+import { PedidoService } from './pedido.service';
+import { Sector } from '../models/pedido.model';
 
 @Injectable({ providedIn: 'root' })
 export class NotificacionesService {
@@ -10,8 +12,15 @@ export class NotificacionesService {
   private canalConsultasMozo: RealtimeChannel | null = null;
   private canalRespuestasCliente: RealtimeChannel | null = null;
   private canalPedidosMozo: RealtimeChannel | null = null;
+  private canalPedidosCompletos: RealtimeChannel | null = null;
   private alLlegarPendiente: (() => void) | null = null;
   private alLlegarPedido: (() => void) | null = null;
+  private alCompletarPedido: (() => void) | null = null;
+  private canalSector: RealtimeChannel | null = null;
+  private alCambiarSector: (() => void) | null = null;
+  // Pedidos ya avisados al sector: un pedido confirmado recibe más UPDATE
+  // después (el otro sector marca listo, etc.) y no hay que repetir.
+  private pedidosAvisadosSector = new Set<string>();
   private permisosConcedidos = false;
 
   // Respuestas del mozo que el cliente todavía no vio: la carta lo muestra
@@ -19,7 +28,10 @@ export class NotificacionesService {
   // consulta (consulta-mozo.page.ts).
   readonly respuestasSinLeer = signal(0);
 
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(
+    private supabaseService: SupabaseService,
+    private pedidoService: PedidoService,
+  ) {}
 
   private get sb() {
     return this.supabaseService.client;
@@ -90,6 +102,17 @@ export class NotificacionesService {
       mesaNumero
         ? `Revisá el pedido de la mesa ${mesaNumero} y volvé a enviarlo.`
         : 'Revisá tu pedido y volvé a enviarlo.',
+    );
+  }
+
+  // Punto 18: aviso local del lado del cliente cuando cocina y bar
+  // terminaron su pedido.
+  async avisarPedidoCompleto(mesaNumero?: number): Promise<void> {
+    await this.notificar(
+      '¡Tu pedido está listo!',
+      mesaNumero
+        ? `El pedido de la mesa ${mesaNumero} ya está listo. El mozo te lo lleva a la mesa.`
+        : 'Tu pedido ya está listo. El mozo te lo lleva a la mesa.',
     );
   }
 
@@ -215,6 +238,78 @@ export class NotificacionesService {
     if (this.canalPedidosMozo) {
       this.sb.removeChannel(this.canalPedidosMozo);
       this.canalPedidosMozo = null;
+    }
+  }
+
+  // Punto 18: "cuando el pedido está completo -> push al mozo". El pase a
+  // 'completo' lo hace marcar_sector_listo (schema.sql v9) con un UPDATE.
+  // marcar_entregado_mozo también hace UPDATE sobre un pedido 'completo'
+  // (solo pone entregado_por_mozo = true), así que ese caso no vuelve a
+  // notificar -- pero sí refresca la lista, para que el pedido entregado
+  // por otro mozo desaparezca. Mismo patrón de onNuevo que
+  // iniciarEscuchaPedidosMozo().
+  iniciarEscuchaPedidosCompletos(onNuevo?: () => void) {
+    this.alCompletarPedido = onNuevo ?? null;
+    if (this.canalPedidosCompletos) return;
+    this.canalPedidosCompletos = this.sb
+      .channel('mozo-pedidos-completos')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: 'estado=eq.completo' },
+        (payload) => {
+          if (!(payload.new as { entregado_por_mozo: boolean }).entregado_por_mozo) {
+            this.notificar('Pedido listo para entregar', 'Cocina y barra terminaron un pedido.');
+          }
+          this.alCompletarPedido?.();
+        },
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaPedidosCompletos() {
+    this.alCompletarPedido = null;
+    if (this.canalPedidosCompletos) {
+      this.sb.removeChannel(this.canalPedidosCompletos);
+      this.canalPedidosCompletos = null;
+    }
+  }
+
+  // Puntos 14/16/17: el mozo confirma -> el pedido "llega" a cocina y/o
+  // bar. La confirmación es un UPDATE (estado -> confirmado): se avisa una
+  // sola vez por pedido y solo si tiene productos de ese sector.
+  // onCambio refresca la pantalla de pedidos del sector ante cualquier
+  // cambio en `pedidos` (mismo patrón que iniciarEscuchaPedidosMozo).
+  iniciarEscuchaSector(sector: Sector, onCambio?: () => void) {
+    this.alCambiarSector = onCambio ?? null;
+    if (this.canalSector) return;
+    this.canalSector = this.sb
+      .channel(`sector-${sector}-pedidos`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: 'estado=eq.confirmado' },
+        async (payload) => {
+          const id = (payload.new as { id: string }).id;
+          if (!this.pedidosAvisadosSector.has(id)) {
+            this.pedidosAvisadosSector.add(id);
+            if (await this.pedidoService.tieneItemsDelSector(id, sector)) {
+              this.notificar(
+                sector === 'cocina' ? 'Nuevo pedido para cocina' : 'Nuevo pedido para bar',
+                'El mozo confirmó un pedido.',
+              );
+            }
+          }
+          this.alCambiarSector?.();
+        },
+      )
+      .subscribe();
+  }
+
+  detenerEscuchaSector() {
+    this.alCambiarSector = null;
+    this.pedidosAvisadosSector.clear();
+    if (this.canalSector) {
+      this.sb.removeChannel(this.canalSector);
+      this.canalSector = null;
     }
   }
 
