@@ -140,4 +140,12 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/encuesta/encuesta.page').then( m => m.EncuestaPage),
     canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
   },
+  {
+    path: 'encuestas-resultados',
+    loadComponent: () => import('./pages/encuestas-resultados/encuestas-resultados.page').then( m => m.EncuestasResultadosPage)
+  },
+  {
+    path: 'encuestas/resultados',
+    loadComponent: () => import('./pages/encuestas-resultados/encuestas-resultados.page').then( m => m.EncuestasResultadosPage)
+  },
 ]
