@@ -142,4 +142,27 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/pedidos-sector/pedidos-sector.page').then(m => m.PedidosSectorPage),
     canActivate: [authGuard, guardPerfil(['cocinero', 'cantinero'])]
   },
+  {
+    // Puntos 14/15: menú de juegos. Se entra desde la pantalla del
+    // pedido (confirmado, completo o entregado). El anónimo juega libre;
+    // el descuento es solo para cliente_registrado (schema.sql v11).
+    path: 'mesa/:mesaId/juegos',
+    loadComponent: () => import('./pages/juegos/juegos.page').then(m => m.JuegosPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'mesa/:mesaId/juegos/ahorcado',
+    loadComponent: () => import('./pages/juegos/ahorcado/ahorcado.page').then(m => m.AhorcadoPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'mesa/:mesaId/juegos/memotest',
+    loadComponent: () => import('./pages/juegos/memotest/memotest.page').then(m => m.MemotestPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'mesa/:mesaId/juegos/trivia',
+    loadComponent: () => import('./pages/juegos/trivia/trivia.page').then(m => m.TriviaPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
 ]

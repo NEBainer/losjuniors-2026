@@ -1,0 +1,48 @@
+<ion-content class="fondo-app" [scrollY]="false">
+
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Cargando juegos…</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal contenedor-app">
+    <div class="cabecera">
+      <button class="boton-icono-circular" (click)="volver()" title="Volver al pedido">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </button>
+      <h1>Juegos</h1>
+    </div>
+
+    @if (mensajeError()) {
+      <div class="mensaje-error">
+        <ion-icon name="warning"></ion-icon>
+        <span>{{ mensajeError() }}</span>
+      </div>
+    }
+
+    @if (contexto()) {
+      <div class="banner-descuento">
+        <ion-icon name="pricetag-outline"></ion-icon>
+        <span>{{ banner() }}</span>
+      </div>
+
+      <div class="lista-juegos">
+        @for (t of tarjetas; track t.juego) {
+          <button class="tarjeta-juego" (click)="jugar(t.juego)">
+            <ion-icon [name]="t.icono" class="icono-juego"></ion-icon>
+            <div class="texto">
+              <h2>{{ t.titulo }}</h2>
+              <p>{{ t.descripcion }}</p>
+              <span class="estado">{{ estado(t.juego) }}</span>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  </div>
+</ion-content>

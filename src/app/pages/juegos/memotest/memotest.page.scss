@@ -1,0 +1,82 @@
+.fondo-app { --background: var(--ion-background-color); }
+
+.contenedor-principal {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 24px;
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  h1 { margin: 0; flex: 1; font-size: 1.6rem; font-weight: bold; color: var(--ion-color-primary); }
+
+  .chip {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background-color: var(--ion-color-primary);
+    color: var(--ion-color-primary-contrast);
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .boton-icono-circular {
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    background-color: var(--ion-color-step-100);
+    border: 2px solid var(--ion-color-step-150);
+    border-radius: 10px;
+    color: var(--ion-color-primary);
+    ion-icon { font-size: 1.4rem; }
+  }
+}
+
+.mensaje-error {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; border-radius: 8px;
+  background-color: var(--ion-color-danger); color: #FCF7EE;
+}
+
+.movimientos { margin: 0; text-align: center; font-size: 1.1rem; font-weight: 600; }
+
+// Grilla de 3 columnas que ocupa todo el alto restante, sin scroll
+// (hasta 12 cartas = 4 filas).
+.grilla {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 10px;
+}
+
+.carta {
+  min-height: 0;
+  border-radius: 12px;
+  border: 2px solid var(--ion-color-step-150);
+  background-color: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 4px;
+  transition: transform 0.15s;
+
+  ion-icon { font-size: 2.4rem; }
+
+  &.visible { background-color: var(--ion-color-step-100); }
+  &.emparejada { border-color: var(--ion-color-success); border-width: 3px; }
+  &:active { transform: scale(0.96); }
+
+  // Foto completa, sin recortes (correcciones del profesor sobre fotos).
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}

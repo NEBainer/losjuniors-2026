@@ -1,0 +1,74 @@
+<ion-content class="fondo-app" [scrollY]="false">
+
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Preparando el juego…</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal contenedor-app">
+    <div class="cabecera">
+      <button class="boton-icono-circular" (click)="volverAJuegos()" title="Volver a juegos">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </button>
+      <h1>Ahorcado</h1>
+      <span class="chip">{{ esPrimerIntento() ? 'Primer intento: ' + porcentaje + '%' : 'Juego libre' }}</span>
+    </div>
+
+    @if (mensajeError()) {
+      <div class="mensaje-error">
+        <ion-icon name="warning"></ion-icon>
+        <span>{{ mensajeError() }}</span>
+      </div>
+    } @else if (!cargando()) {
+      <!-- Dibujo: cada error muestra una parte más (cabeza, cuerpo, brazos, piernas). -->
+      <svg class="dibujo" viewBox="0 0 200 200" aria-label="Dibujo del ahorcado">
+        <line x1="20" y1="190" x2="120" y2="190" />
+        <line x1="50" y1="190" x2="50" y2="20" />
+        <line x1="50" y1="20" x2="140" y2="20" />
+        <line x1="140" y1="20" x2="140" y2="45" />
+        @if (estado().errores >= 1) { <circle cx="140" cy="62" r="17" /> }
+        @if (estado().errores >= 2) { <line x1="140" y1="79" x2="140" y2="130" /> }
+        @if (estado().errores >= 3) { <line x1="140" y1="92" x2="118" y2="112" /> }
+        @if (estado().errores >= 4) { <line x1="140" y1="92" x2="162" y2="112" /> }
+        @if (estado().errores >= 5) { <line x1="140" y1="130" x2="120" y2="160" /> }
+        @if (estado().errores >= 6) { <line x1="140" y1="130" x2="160" y2="160" /> }
+      </svg>
+
+      <p class="errores">Errores: {{ estado().errores }} de {{ maxErrores }}</p>
+
+      <div class="palabra">
+        @for (letra of visible(); track $index) {
+          <span class="casilla">{{ letra === '_' ? '' : letra }}</span>
+        }
+      </div>
+
+      <div class="teclado">
+        @for (letra of letras; track letra) {
+          <button
+            class="tecla"
+            [class.acierto]="acertada(letra)"
+            [class.fallo]="probada(letra) && !acertada(letra)"
+            [disabled]="probada(letra) || terminado()"
+            (click)="tocar(letra)"
+          >{{ letra }}</button>
+        }
+      </div>
+    }
+  </div>
+
+  @if (terminado() && !cargando()) {
+    <app-resultado-juego
+      [resultado]="resultado()"
+      [guardando]="guardando()"
+      [errorGuardado]="errorGuardado()"
+      (jugarDeNuevo)="reiniciar()"
+      (volver)="volverAJuegos()"
+      (reintentar)="guardarResultado()"
+    />
+  }
+</ion-content>

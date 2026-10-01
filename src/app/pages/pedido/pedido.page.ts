@@ -189,6 +189,13 @@ type FasePedido = 'armando' | 'esperando' | 'confirmado' | 'completo' | 'entrega
       <p><ion-icon name="time-outline"></ion-icon> {{ p.tiempoEstimadoMinutos }} min estimados</p>
       <p class="total-final">{{ formatearPrecio(p.importeTotal) }}</p>
     </div>
+    <!-- Punto 14: con el pedido confirmado el cliente ya accede a juegos. -->
+    <div class="acciones-estado" *ngIf="fase() === 'confirmado'">
+      <ion-button expand="block" class="boton-estado" (click)="irAJuegos()">
+        <ion-icon name="game-controller-outline" slot="start"></ion-icon>
+        Juegos
+      </ion-button>
+    </div>
   </div>
 
   <!-- Punto 18/19: cocina y bar terminaron. El botón aparece recién
@@ -216,8 +223,9 @@ type FasePedido = 'armando' | 'esperando' | 'confirmado' | 'completo' | 'entrega
       <p class="total-final">{{ formatearPrecio(p.importeTotal) }}</p>
     </div>
 
-    <div class="acciones-estado" *ngIf="pedidoActual()?.entregadoPorMozo">
+    <div class="acciones-estado">
       <ion-button
+        *ngIf="pedidoActual()?.entregadoPorMozo"
         expand="block"
         class="boton-estado boton-principal"
         [disabled]="confirmandoRecepcion()"
@@ -226,14 +234,16 @@ type FasePedido = 'armando' | 'esperando' | 'confirmado' | 'completo' | 'entrega
         <ion-icon name="checkmark-done-circle-outline" slot="start"></ion-icon>
         {{ confirmandoRecepcion() ? 'Confirmando…' : 'Confirmar recepción' }}
       </ion-button>
+      <ion-button expand="block" class="boton-estado" (click)="irAJuegos()">
+        <ion-icon name="game-controller-outline" slot="start"></ion-icon>
+        Juegos
+      </ion-button>
     </div>
   </div>
 
   <!-- Punto 19: pedido recibido, se habilitan juegos, encuesta y cuenta.
-       OJO: las rutas mesa/:mesaId/juegos|encuesta|cuenta todavía no están
-       en app.routes.ts (las agrega el dueño de los puntos 15/20/21) y no
-       hay ruta wildcard, así que por ahora tocar estos botones no muestra
-       nada. -->
+       La ruta mesa/:mesaId/juegos ya existe (puntos 14/15); encuesta y
+       cuenta las agregan los dueños de los puntos 20/21. -->
   <div class="estado-pedido" *ngIf="fase() === 'entregado'">
     <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-estado" />
     <h2>¡Buen provecho!</h2>
