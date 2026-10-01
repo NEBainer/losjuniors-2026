@@ -1174,3 +1174,308 @@ begin
   end if;
 end;
 $$;
+
+
+-- =========================================================
+-- v11 (30/09/2026): Puntos 14 y 15 — juegos con descuento.
+-- Corrido y confirmado en el SQL Editor (30/09/2026).
+--
+-- Estadía = pedido confirmado (confirmado/completo/entregado): un
+-- pedido rechazado nunca llega a esos estados, así que el reenvío del
+-- punto 13 no afecta. Solo se guarda el PRIMER intento de cada juego;
+-- las partidas libres no dejan fila.
+--
+-- El primer intento cuenta desde que arranca la partida
+-- (iniciar_intento_juego deja gano = null). Si el cliente abandona,
+-- queda en null = perdido. registrar_resultado_juego lo cierra.
+--
+-- No acumulativo: el porcentaje se otorga solo si ningún otro juego de
+-- ese pedido ya dio descuento. Porcentajes fijos: ahorcado 10,
+-- memotest 15, trivia 20. Solo cliente_registrado (el anónimo juega
+-- libre, sin llamar a estas funciones).
+--
+-- Nadie hace INSERT/UPDATE directo sobre juegos_intentos: todo va por
+-- funciones SECURITY DEFINER (mismo patrón que marcar_sector_listo).
+--
+-- Caso borde: si en una misma estadía hubiera un segundo pedido, los
+-- juegos arrancarían de cero (hoy la app no permite pedir de nuevo
+-- después del entregado).
+--
+-- Punto 21 (cuenta): leer el descuento con descuento_juegos(pedido_id).
+-- =========================================================
+
+create table juegos_intentos (
+  id uuid primary key default gen_random_uuid(),
+  pedido_id uuid not null references pedidos(id) on delete cascade,
+  cliente_id uuid not null references usuarios(id),
+  juego text not null check (juego in ('ahorcado', 'memotest', 'trivia')),
+  -- null = primer intento en curso o abandonado (cuenta como perdido).
+  gano boolean,
+  porcentaje_obtenido int not null default 0 check (porcentaje_obtenido in (0, 10, 15, 20)),
+  created_at timestamptz not null default now(),
+  unique (pedido_id, juego)
+);
+
+alter table juegos_intentos enable row level security;
+
+create policy "juegos_intentos_cliente_ve_los_suyos"
+on juegos_intentos for select
+to authenticated
+using ( cliente_id = auth.uid() );
+
+create policy "juegos_intentos_dueno_supervisor_ven_todos"
+on juegos_intentos for select
+to authenticated
+using ( perfil_actual() in ('dueño', 'supervisor') );
+
+-- Validación compartida por iniciar_intento_juego y
+-- registrar_resultado_juego. No se expone a la app.
+create or replace function validar_pedido_para_juego(p_pedido_id uuid, p_juego text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() <> 'cliente_registrado' then
+    raise exception 'Solo los clientes registrados pueden ganar descuentos.';
+  end if;
+
+  if p_juego not in ('ahorcado', 'memotest', 'trivia') then
+    raise exception 'Juego inválido: %', p_juego;
+  end if;
+
+  if not exists (
+    select 1 from pedidos
+    where id = p_pedido_id
+      and creado_por = auth.uid()
+      and estado in ('confirmado', 'completo', 'entregado')
+  ) then
+    raise exception 'Los juegos se habilitan cuando el mozo confirma tu pedido.';
+  end if;
+end;
+$$;
+
+-- Al arrancar la partida. true = es el primer intento (cuenta para el
+-- descuento); false = ya se jugó antes en esta estadía (juego libre).
+create or replace function iniciar_intento_juego(p_pedido_id uuid, p_juego text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform validar_pedido_para_juego(p_pedido_id, p_juego);
+
+  insert into juegos_intentos (pedido_id, cliente_id, juego)
+  values (p_pedido_id, auth.uid(), p_juego)
+  on conflict (pedido_id, juego) do nothing;
+
+  return found;
+end;
+$$;
+
+-- Al terminar el primer intento. Devuelve el porcentaje obtenido
+-- (0 si perdió o si ya tenía un descuento de otro juego). Si ganó
+-- pero ya tenía descuento, la fila queda con gano = true y 0%, para
+-- que el menú pueda mostrar "Jugado: ganaste".
+create or replace function registrar_resultado_juego(p_pedido_id uuid, p_juego text, p_gano boolean)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_porcentaje int := 0;
+begin
+  perform validar_pedido_para_juego(p_pedido_id, p_juego);
+
+  if p_gano and not exists (
+    select 1 from juegos_intentos
+    where pedido_id = p_pedido_id and porcentaje_obtenido > 0
+  ) then
+    v_porcentaje := case p_juego
+      when 'ahorcado' then 10
+      when 'memotest' then 15
+      when 'trivia' then 20
+    end;
+  end if;
+
+  update juegos_intentos
+  set gano = p_gano, porcentaje_obtenido = v_porcentaje
+  where pedido_id = p_pedido_id
+    and juego = p_juego
+    and cliente_id = auth.uid()
+    and gano is null;
+
+  if not found then
+    raise exception 'No hay un primer intento en curso para este juego.';
+  end if;
+
+  return v_porcentaje;
+end;
+$$;
+
+-- Punto 21: descuento ganado en la estadía (0 si no hay). Lo puede
+-- consultar el creador del pedido, el mozo, el dueño y el supervisor.
+create or replace function descuento_juegos(p_pedido_id uuid)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() not in ('mozo', 'dueño', 'supervisor')
+     and not exists (select 1 from pedidos where id = p_pedido_id and creado_por = auth.uid()) then
+    raise exception 'No autorizado.';
+  end if;
+
+  return coalesce(
+    (select max(porcentaje_obtenido) from juegos_intentos where pedido_id = p_pedido_id),
+    0
+  );
+end;
+$$;
+
+revoke execute on function validar_pedido_para_juego(uuid, text) from public;
+grant execute on function iniciar_intento_juego(uuid, text) to authenticated;
+grant execute on function registrar_resultado_juego(uuid, text, boolean) to authenticated;
+grant execute on function descuento_juegos(uuid) to authenticated;
+
+
+-- =========================================================
+-- v12 (30/09/2026): puntos 14/15 — arreglos de la revisión final sobre
+-- los juegos con descuento (v11).
+-- Corrido y confirmado en el SQL Editor (30/09/2026).
+--
+-- 1) registrar_resultado_juego idempotente. Si el UPDATE se confirmaba
+--    pero la respuesta no llegaba al celular (wifi inestable), el
+--    reintento del front encontraba gano <> null y la función tiraba
+--    "No hay un primer intento en curso": el cliente quedaba viendo un
+--    error aunque el descuento sí se había guardado. Ahora, si el primer
+--    intento ya está cerrado, devuelve el porcentaje que quedó guardado.
+--
+-- 2) No acumulativo también con dos juegos cerrando a la vez (dos
+--    pestañas): con READ COMMITTED las dos llamadas podían pasar el
+--    "not exists" y quedar las dos con porcentaje. Ahora se bloquea la
+--    fila del pedido (select ... for update) antes de chequear, así la
+--    segunda espera a la primera y ve su porcentaje.
+--
+-- 3) Sesión nula y permisos. Sin sesión, perfil_actual() es NULL y
+--    "NULL in (...)" no es ni true ni false: en descuento_juegos el if
+--    no entraba y cualquiera con la clave pública y un id de pedido
+--    podía leer su descuento. Los chequeos de perfil ahora usan
+--    "is distinct from" / "is not true", que tratan el NULL como "no
+--    autorizado". Además Supabase da EXECUTE por defecto a anon y
+--    authenticated en funciones nuevas de public, y "revoke ... from
+--    public" no saca esos permisos: se revocan explícitamente.
+--    validar_pedido_para_juego queda sin execute para la app (la llaman
+--    las otras funciones, que corren como dueño).
+--
+-- No cambia ninguna firma: alcanza con create or replace, y los grant
+-- a authenticated de v11 siguen valiendo para las tres funciones
+-- públicas.
+-- =========================================================
+
+create or replace function validar_pedido_para_juego(p_pedido_id uuid, p_juego text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() is distinct from 'cliente_registrado' then
+    raise exception 'Solo los clientes registrados pueden ganar descuentos.';
+  end if;
+
+  if p_juego not in ('ahorcado', 'memotest', 'trivia') then
+    raise exception 'Juego inválido: %', p_juego;
+  end if;
+
+  if not exists (
+    select 1 from pedidos
+    where id = p_pedido_id
+      and creado_por = auth.uid()
+      and estado in ('confirmado', 'completo', 'entregado')
+  ) then
+    raise exception 'Los juegos se habilitan cuando el mozo confirma tu pedido.';
+  end if;
+end;
+$$;
+
+create or replace function registrar_resultado_juego(p_pedido_id uuid, p_juego text, p_gano boolean)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_porcentaje int := 0;
+  v_ya_guardado int;
+begin
+  perform validar_pedido_para_juego(p_pedido_id, p_juego);
+
+  -- Un solo cierre de juego a la vez por pedido (regla no acumulativa).
+  perform 1 from pedidos where id = p_pedido_id for update;
+
+  -- Reintento de un cierre que ya se guardó: devuelve lo guardado.
+  select porcentaje_obtenido into v_ya_guardado
+  from juegos_intentos
+  where pedido_id = p_pedido_id
+    and juego = p_juego
+    and cliente_id = auth.uid()
+    and gano is not null;
+
+  if found then
+    return v_ya_guardado;
+  end if;
+
+  if p_gano and not exists (
+    select 1 from juegos_intentos
+    where pedido_id = p_pedido_id and porcentaje_obtenido > 0
+  ) then
+    v_porcentaje := case p_juego
+      when 'ahorcado' then 10
+      when 'memotest' then 15
+      when 'trivia' then 20
+    end;
+  end if;
+
+  update juegos_intentos
+  set gano = p_gano, porcentaje_obtenido = v_porcentaje
+  where pedido_id = p_pedido_id
+    and juego = p_juego
+    and cliente_id = auth.uid()
+    and gano is null;
+
+  if not found then
+    raise exception 'No hay un primer intento en curso para este juego.';
+  end if;
+
+  return v_porcentaje;
+end;
+$$;
+
+create or replace function descuento_juegos(p_pedido_id uuid)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (perfil_actual() in ('mozo', 'dueño', 'supervisor')) is not true
+     and not exists (select 1 from pedidos where id = p_pedido_id and creado_por = auth.uid()) then
+    raise exception 'No autorizado.';
+  end if;
+
+  return coalesce(
+    (select max(porcentaje_obtenido) from juegos_intentos where pedido_id = p_pedido_id),
+    0
+  );
+end;
+$$;
+
+revoke execute on function validar_pedido_para_juego(uuid, text) from public, anon, authenticated;
+revoke execute on function iniciar_intento_juego(uuid, text) from public, anon;
+revoke execute on function registrar_resultado_juego(uuid, text, boolean) from public, anon;
+revoke execute on function descuento_juegos(uuid) from public, anon;

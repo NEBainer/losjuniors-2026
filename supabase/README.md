@@ -230,6 +230,7 @@ reciba el evento de su propia fila — no hizo falta ninguna policy nueva.
 - `pedidos`
 - `pedido_items`
 - `mensajes_mozo`
+- `juegos_intentos`
 
 ## Políticas RLS creadas
 
@@ -411,6 +412,14 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
 - Estas policies también filtran Realtime: cada cliente recibe en vivo
   solo los mensajes de su mesa.
 
+**`juegos_intentos`** (puntos 14 y 15)
+- `juegos_intentos_cliente_ve_los_suyos` — el cliente lee solo sus
+  intentos (para mostrar el estado de cada juego en el menú).
+- `juegos_intentos_dueno_supervisor_ven_todos` — lectura completa para
+  dueño y supervisor.
+- No hay policies de INSERT/UPDATE/DELETE: los intentos solo se crean y
+  cierran con `iniciar_intento_juego` y `registrar_resultado_juego` (v11).
+
 ## Pedidos (puntos 12, 13, 18 y 19)
 
 - **`pedidos`**: un pedido por mesa, con `estado` (`estado_pedido`),
@@ -477,6 +486,56 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
   solo muestra pedidos confirmados de su sector, así que no se llega a
   esa situación desde la app; agregar el chequeo si algún día hace falta
   cerrarlo a nivel DB.  
+
+## Juegos con descuento (puntos 14 y 15)
+
+- **`juegos_intentos` (v11)**: una fila por juego (`ahorcado`, `memotest`,
+  `trivia`) por estadía, con `gano` y `porcentaje_obtenido`. Solo se
+  guarda el **primer intento**; las partidas libres no dejan fila.
+  `unique (pedido_id, juego)` garantiza un solo primer intento por juego.
+- **Estadía = pedido confirmado**: se usa el `pedido_id` del pedido de la
+  mesa en `confirmado`, `completo` o `entregado`. Un pedido rechazado
+  nunca llega a esos estados, así que el reenvío del punto 13 no afecta.
+  No depende de `mesas.asignada_en` (punto 20).
+- **El primer intento cuenta desde que arranca la partida**: si el
+  cliente abandona, la fila queda con `gano = null` y cuenta como
+  perdido. Así no se puede salir y volver a entrar para reintentar.
+- Funciones `security definer` con `execute` para `authenticated`:
+  - `iniciar_intento_juego(p_pedido_id, p_juego)`: solo
+    `cliente_registrado`, creador del pedido, pedido ya confirmado.
+    Devuelve `true` si es el primer intento o `false` si ya se había
+    jugado (juego libre).
+  - `registrar_resultado_juego(p_pedido_id, p_juego, p_gano)`: cierra el
+    primer intento abierto. Otorga el porcentaje del juego (10/15/20)
+    solo si ganó y ningún otro juego del pedido ya dio descuento (no
+    acumulativo). Devuelve el porcentaje obtenido.
+  - `descuento_juegos(p_pedido_id)`: devuelve el descuento ganado (0 si
+    no hay). Lo pueden llamar el creador del pedido, mozo, dueño y
+    supervisor. **Es lo que usa el punto 21 para armar la cuenta.**
+  - `validar_pedido_para_juego` es auxiliar de las dos primeras, sin
+    `execute` para la app.
+- **Cliente anónimo**: juega libremente sin llamar a estas funciones (el
+  descuento es solo para registrados, punto 14). Si las llamara, la
+  función lo rechaza igual.
+- **Reintento seguro (v12):** `registrar_resultado_juego` es idempotente:
+  si el primer intento ya estaba cerrado (el guardado se confirmó pero la
+  respuesta no llegó al celular), devuelve el porcentaje ya guardado en vez
+  de tirar error. Así "Reintentar guardar" siempre termina bien.
+- **No acumulativo con juegos simultáneos (v12):** `registrar_resultado_juego`
+  bloquea la fila del pedido (`select ... for update`) antes de chequear si ya
+  hay descuento, así dos juegos que terminan a la vez (dos pestañas) no pueden
+  quedar los dos con porcentaje.
+- **Sesión nula y permisos (v12):** sin sesión `perfil_actual()` es `NULL`, y
+  `NULL in (...)` no es `true` ni `false`; los chequeos de perfil usan
+  `is distinct from` / `is not true` para tratarlo como "no autorizado".
+  Además Supabase da `EXECUTE` por defecto a `anon` y `authenticated` en
+  funciones nuevas, y `revoke ... from public` no lo saca: v12 revoca `anon`
+  en las cuatro funciones y también `authenticated` en
+  `validar_pedido_para_juego`.
+- **Limitación conocida (no bloqueante):** el resultado de la partida lo
+  informa el celular (los juegos corren en el cliente), así que alguien
+  que modifique la app podría reportar que ganó. Aceptable para el
+  alcance del TP.
 
 ## Vista `accesos_rapidos` (login)
 
@@ -697,6 +756,13 @@ en `lista_espera` para la prueba (se sacó al terminar):
   SQL Editor el 27/09/2026. **Falta probarlo de punta a punta** desde la
   app una vez que estén las pantallas de cocina/bar (puntos 16/17) y del
   mozo/cliente.
+- Puntos 14 y 15 (juegos con descuento): `schema.sql` v11 — tabla
+  `juegos_intentos` + policies de lectura y las funciones
+  `iniciar_intento_juego`, `registrar_resultado_juego` y
+  `descuento_juegos`. Corrido y confirmado en el SQL Editor el 30/09/2026.
+- Puntos 14/15, `schema.sql` v12: `registrar_resultado_juego` idempotente y
+  con bloqueo del pedido, chequeos de perfil seguros ante sesión nula y
+  `revoke` a `anon`. Corrido y confirmado en el SQL Editor el 30/09/2026.
 
   ## Sistema de mail automático (puntos 7/8)
 
