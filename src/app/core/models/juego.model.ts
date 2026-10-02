@@ -1,4 +1,4 @@
-// Puntos 14/15: juegos con descuento (schema.sql v11).
+// Puntos 14/15: juegos con descuento (schema.sql v12).
 export type Juego = 'ahorcado' | 'memotest' | 'trivia';
 
 // Mismo valor que usa registrar_resultado_juego en la base; acá solo se

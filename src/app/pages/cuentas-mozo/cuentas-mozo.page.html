@@ -1,0 +1,88 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="volver()" aria-label="Volver al panel">
+        <ion-icon name="arrow-back-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Cuentas</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="fondo-app">
+
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Cargando cuentas…</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-cuentas">
+
+    @if (mensajeError()) {
+      <div class="mensaje mensaje-error">
+        <ion-icon name="warning-outline"></ion-icon>
+        <span>{{ mensajeError() }}</span>
+      </div>
+    }
+    @if (mensajeOk()) {
+      <div class="mensaje mensaje-ok">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <span>{{ mensajeOk() }}</span>
+      </div>
+    }
+
+    @if (!cargando()) {
+      <section>
+        <h2>Por confirmar</h2>
+        @for (cuenta of porConfirmar(); track cuenta.id) {
+          <article class="tarjeta-cuenta destacada">
+            <div class="fila-principal">
+              <span class="mesa">Mesa {{ cuenta.mesaNumero }}</span>
+              <span class="total">{{ formatear(cuenta.total) }}</span>
+            </div>
+            <p class="detalle">{{ cuenta.detalle }}</p>
+
+            @if (confirmandoId() === cuenta.id) {
+              <p class="pregunta">¿Recibiste el pago de {{ formatear(cuenta.total) }}? La mesa va a quedar libre.</p>
+              <div class="acciones">
+                <button type="button" class="boton boton-no" [disabled]="procesandoId() === cuenta.id" (click)="cancelarConfirmacion()">No</button>
+                <button type="button" class="boton boton-si" [disabled]="procesandoId() === cuenta.id" (click)="confirmarPago(cuenta)">
+                  {{ procesandoId() === cuenta.id ? 'Confirmando…' : 'Sí, confirmar' }}
+                </button>
+              </div>
+            } @else {
+              <button type="button" class="boton boton-si" (click)="pedirConfirmacion(cuenta)">Confirmar pago</button>
+            }
+          </article>
+        } @empty {
+          <p class="vacio">No hay pagos esperando confirmación.</p>
+        }
+      </section>
+
+      <section>
+        <h2>Pidieron la cuenta</h2>
+        @for (cuenta of enCurso(); track cuenta.id) {
+          <article class="tarjeta-cuenta">
+            <div class="fila-principal">
+              <span class="mesa">Mesa {{ cuenta.mesaNumero }}</span>
+              <span class="hace">{{ cuenta.hace }}</span>
+            </div>
+            <p class="detalle">{{ cuenta.detalle }}</p>
+            <button type="button" class="boton boton-qr" (click)="mostrarQrPropina()">
+              <ion-icon name="qr-code-outline"></ion-icon>
+              Mostrar QR de propina
+            </button>
+          </article>
+        } @empty {
+          <p class="vacio">Ninguna mesa pidió la cuenta.</p>
+        }
+      </section>
+    }
+
+  </div>
+</ion-content>

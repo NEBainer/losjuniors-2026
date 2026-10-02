@@ -136,6 +136,15 @@ export const routes: Routes = [
     canActivate: [authGuard, guardPerfil(['mozo'])]
   },
   {
+    path: 'mesa/:mesaId/encuesta',
+    loadComponent: () => import('./pages/encuesta/encuesta.page').then( m => m.EncuestaPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'encuestas/resultados',
+    loadComponent: () => import('./pages/encuestas-resultados/encuestas-resultados.page').then( m => m.EncuestasResultadosPage)
+  },
+  {
     // Puntos 16/17: misma pantalla para cocina y bar -- el sector sale
     // del perfil logueado (cocinero -> cocina, cantinero -> bar).
     path: 'sector/pedidos',
@@ -145,7 +154,7 @@ export const routes: Routes = [
   {
     // Puntos 14/15: menú de juegos. Se entra desde la pantalla del
     // pedido (confirmado, completo o entregado). El anónimo juega libre;
-    // el descuento es solo para cliente_registrado (schema.sql v11).
+    // el descuento es solo para cliente_registrado (schema.sql v12).
     path: 'mesa/:mesaId/juegos',
     loadComponent: () => import('./pages/juegos/juegos.page').then(m => m.JuegosPage),
     canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
@@ -165,4 +174,19 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/juegos/trivia/trivia.page').then(m => m.TriviaPage),
     canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
   },
+  {
+    path: 'mesa/:mesaId/cuenta',
+    loadComponent: () => import('./pages/cuenta/cuenta.page').then(m => m.CuentaPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'qr-propina',
+    loadComponent: () => import('./pages/qr-propina/qr-propina.page').then(m => m.QrPropinaPage),
+    canActivate: [authGuard, guardPerfil(['mozo', 'dueño', 'supervisor'])]
+  },
+  {
+    path: 'mozo/cuentas',
+    loadComponent: () => import('./pages/cuentas-mozo/cuentas-mozo.page').then(m => m.CuentasMozoPage),
+    canActivate: [authGuard, guardPerfil(['mozo'])]
+  }
 ]

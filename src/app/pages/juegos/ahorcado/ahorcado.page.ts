@@ -47,7 +47,7 @@ export class AhorcadoPage {
     this.cargando.set(true);
     try {
       this.contexto = await this.juegosService.resolverContexto(this.mesaId);
-      // El primer intento queda registrado desde acá (schema.sql v11):
+      // El primer intento queda registrado desde acá (schema.sql v12):
       // si el cliente sale a mitad de partida, ya lo usó.
       this.esPrimerIntento.set(await this.juegosService.iniciarPartida(this.contexto, 'ahorcado'));
       this.reiniciar();

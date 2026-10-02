@@ -1,0 +1,99 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="volver()" aria-label="Volver">
+        <ion-icon name="arrow-back-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>
+      <span class="titulo">Resultados</span>
+      @if (hayDatos()) {
+        <span class="subtitulo">{{ resultados()!.total }} encuestas</span>
+      }
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="fondo-app" [scrollY]="false">
+
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Cargando resultados…</p>
+      </div>
+    </div>
+  }
+
+  @if (!cargando()) {
+    <div class="contenedor-resultados">
+
+      @if (error()) {
+        <div class="tarjeta-estado">
+          <ion-icon name="warning-outline" class="icono-estado error"></ion-icon>
+          <h2>No pudimos cargar los resultados</h2>
+          <p>{{ error() }}</p>
+          <ion-button expand="block" class="boton-principal" (click)="cargar()">
+            <ion-icon name="refresh-outline" slot="start"></ion-icon>
+            Reintentar
+          </ion-button>
+        </div>
+      } @else if (!hayDatos()) {
+        <div class="tarjeta-estado">
+          <ion-icon name="bar-chart-outline" class="icono-estado"></ion-icon>
+          <h2>Todavía no hay encuestas</h2>
+          <p>Cuando los clientes completen la encuesta, vas a ver los resultados acá.</p>
+        </div>
+      } @else {
+        <section
+          class="diapositiva"
+          (touchstart)="alEmpezarToque($event)"
+          (touchend)="alTerminarToque($event)">
+          <p class="contador">Gráfico {{ indice() + 1 }} de {{ diapositivas.length }}</p>
+          <h2>{{ diapositivaActual().titulo }}</h2>
+          <p class="descripcion">{{ diapositivaActual().descripcion }}</p>
+          <p class="destacado">{{ destacado() }}</p>
+          <div class="contenedor-grafico">
+            <canvas #lienzo role="img" [attr.aria-label]="diapositivaActual().titulo"></canvas>
+          </div>
+        </section>
+
+        <nav class="navegacion" aria-label="Cambiar de gráfico">
+          <button
+            type="button"
+            class="boton-icono-circular destacado"
+            aria-label="Gráfico anterior"
+            [disabled]="indice() === 0"
+            (click)="anterior()">
+            <ion-icon name="chevron-back-outline"></ion-icon>
+          </button>
+
+          <div class="puntos">
+            @for (diapositiva of diapositivas; track diapositiva.titulo; let i = $index) {
+              <button
+                type="button"
+                class="punto"
+                [class.activo]="i === indice()"
+                [attr.aria-label]="'Ver ' + diapositiva.titulo"
+                [attr.aria-current]="i === indice()"
+                (click)="irA(i)">
+              </button>
+            }
+          </div>
+
+          <button
+            type="button"
+            class="boton-icono-circular destacado"
+            aria-label="Gráfico siguiente"
+            [disabled]="indice() === diapositivas.length - 1"
+            (click)="siguiente()">
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </button>
+        </nav>
+      }
+
+    </div>
+  }
+
+</ion-content>

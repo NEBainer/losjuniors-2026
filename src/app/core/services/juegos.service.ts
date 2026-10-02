@@ -10,7 +10,7 @@ import { armarResultado } from '../../pages/juegos/juegos.logica';
 const ESTADOS_CON_JUEGOS: EstadoPedido[] = ['confirmado', 'completo', 'entregado'];
 
 // Puntos 14/15. La regla del descuento (primer intento, no acumulativo,
-// solo registrados) la aplica la base en las funciones de schema.sql v11;
+// solo registrados) la aplica la base en las funciones de schema.sql v12;
 // este service solo las llama y traduce los errores a mensajes.
 @Injectable({ providedIn: 'root' })
 export class JuegosService {
@@ -24,7 +24,7 @@ export class JuegosService {
     return this.supabaseService.client;
   }
 
-  // Estadía = pedido confirmado de la mesa (ver schema.sql v11).
+  // Estadía = pedido confirmado de la mesa (ver schema.sql v12).
   async resolverContexto(mesaId: string): Promise<ContextoJuego> {
     const [pedido, perfil] = await Promise.all([
       this.pedidoService.obtenerPedidoActivoDeMesa(mesaId),

@@ -1,0 +1,373 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  color-scheme: only light;
+}
+
+ion-header ion-toolbar {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+}
+
+.fondo-app {
+  --background: var(--ion-background-color);
+}
+
+.banner-error {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--ion-color-danger);
+  color: var(--ion-background-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.contenedor-cuenta {
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: var(--app-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--ion-text-color);
+}
+
+// Mismo esquema que el comprobante de Mercado Pago: el monto es lo
+// primero y lo más grande de la pantalla ("el TOTAL, grande y claro").
+.resumen-total {
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  border-radius: 20px;
+  padding: 20px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .etiqueta {
+    font-size: 0.95rem;
+    opacity: 0.9;
+  }
+
+  .monto-total {
+    font-size: 2.6rem;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+}
+
+.tarjeta {
+  background: var(--ion-color-step-100);
+  border: 2px solid transparent;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &.con-error {
+    border-color: var(--ion-color-danger);
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+}
+
+.lineas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.linea {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.linea-texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  .nombre {
+    font-weight: 600;
+  }
+}
+
+.secundario {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.importe {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.separador {
+  height: 1px;
+  background: var(--ion-color-step-150);
+}
+
+.fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.95rem;
+
+  span:last-child {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  &.descuento span:last-child {
+    color: var(--ion-color-success);
+  }
+}
+
+.fila-total {
+  color: var(--ion-color-primary);
+  font-size: 1.35rem;
+  font-weight: 800;
+
+  span:last-child {
+    font-weight: 800;
+  }
+}
+
+.enlace-cambiar {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: var(--ion-color-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.metodos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.metodo {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid var(--ion-color-step-150);
+  border-radius: 12px;
+  background: var(--ion-background-color);
+  color: var(--ion-text-color);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+
+  ion-icon {
+    font-size: 1.5rem;
+    color: var(--ion-color-primary);
+  }
+
+  span {
+    flex: 1;
+  }
+
+  .marca {
+    font-size: 1.3rem;
+  }
+
+  &.elegido {
+    border-color: var(--ion-color-primary);
+  }
+}
+
+.error-campo {
+  margin: 0;
+  color: var(--ion-color-danger);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.aviso-simulado {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.barra-pago {
+  --background: var(--ion-background-color);
+  --padding-start: var(--app-padding);
+  --padding-end: var(--app-padding);
+  --padding-top: 8px;
+  --padding-bottom: calc(8px + var(--safe-bottom));
+}
+
+.boton-pagar {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+  --border-radius: 14px;
+  min-height: 54px;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.tarjeta-estado {
+  margin: auto 0;
+  background: var(--ion-color-step-100);
+  border-radius: 20px;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+
+  h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    opacity: 0.85;
+  }
+
+  .icono-estado {
+    font-size: 56px;
+    color: var(--ion-color-primary);
+
+    &.ok { color: var(--ion-color-success); }
+    &.error { color: var(--ion-color-danger); }
+  }
+
+  .ayuda {
+    font-size: 0.85rem;
+  }
+}
+
+.niveles {
+  list-style: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--ion-background-color);
+  }
+
+  strong {
+    color: var(--ion-color-primary);
+  }
+}
+
+.monto-pagado {
+  color: var(--ion-color-primary);
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+
+.esperando {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.punto-pulso {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ion-color-primary);
+  animation: pulso 1.2s ease-in-out infinite;
+}
+
+@keyframes pulso {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.75); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .punto-pulso {
+    animation: none;
+  }
+}
+
+.boton-principal,
+.boton-secundario {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 8px;
+  --border-radius: 14px;
+  font-weight: 700;
+}
+
+.boton-principal {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+}
+
+.boton-secundario {
+  --color: var(--ion-color-primary);
+  --border-color: var(--ion-color-primary);
+}
+
+.resultado-mesa {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--ion-color-danger);
+  color: var(--ion-background-color);
+  font-weight: 700;
+
+  &.libre {
+    background: var(--ion-color-success);
+  }
+
+  ion-icon {
+    font-size: 1.4rem;
+  }
+}
+
+.boton-texto {
+  --color: var(--ion-color-primary);
+  font-weight: 700;
+}

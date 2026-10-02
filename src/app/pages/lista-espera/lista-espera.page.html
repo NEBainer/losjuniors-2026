@@ -22,6 +22,10 @@
         <ion-icon name="time-outline"></ion-icon>
         <h2>Estás en la lista de espera</h2>
         <p>El metre te va a asignar una mesa en breve.</p>
+        <ion-button expand="block" class="boton-resultados" (click)="verResultados()">
+          <ion-icon name="bar-chart-outline" slot="start"></ion-icon>
+          Ver resultados de las encuestas
+        </ion-button>
         <ion-button fill="outline" (click)="salir()">Salir de la lista</ion-button>
       </div>
     }

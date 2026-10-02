@@ -24,8 +24,11 @@
     min-height: 0;
 
     .cabecera-dashboard {
-      flex-shrink: 0;
-      margin-bottom: 10px;
+      .mascota-cabecera {
+        width: 52px;
+        height: 52px;
+        border-width: 2px;
+      }
 
       h1 {
         font-size: 1.5rem;
@@ -91,19 +94,37 @@
 }
 
 .cabecera-dashboard {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;    
   margin-bottom: 20px;
+
+  .mascota-cabecera {
+    width: 72px;      
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 3px solid var(--ion-color-primary); 
+  }
+
+  .textos-cabecera {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
   
   h1 {
-    font-size: 2rem;
+    font-size: 1.7rem;
     font-weight: bold;
     color: var(--ion-color-primary);
-    margin-bottom: 5px;
+    margin: 0;
   }
   
   p {
-    font-size: 1.1rem;
-    margin: 0;
+    font-size: 1rem;
+    margin: 2px 0 0;
   }
 }
 

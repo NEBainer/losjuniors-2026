@@ -41,8 +41,11 @@
   <div class="contenedor-principal contenedor-app" [class.panel-compacto]="esPanelDueno() || esPanelMozo()">
 
     <div class="cabecera-dashboard">
-      <h1>Panel de Control</h1>
-      <p>Seleccione un módulo para operar</p>
+      <img [src]="'assets/mascota/' + mascotaActual()" alt="Mascota La Mesa" class="mascota-cabecera" />
+      <div class="textos-cabecera">
+        <h1>Panel de Control</h1>
+        <p>Seleccione un módulo para operar</p>
+      </div>
     </div>
 
     @if (mensajeErrorEscaneo()) {
@@ -116,6 +119,21 @@
           <ion-icon name="time-outline"></ion-icon>
           <h3>Lista de Espera</h3>
           <p>Asignar mesa a clientes</p>
+        </div>
+      }
+      @if (puedeVerQrPropina()) {
+        <div class="modulo-card" (click)="irAQrPropina()">
+          <ion-icon name="qr-code-outline"></ion-icon>
+          <h3>QR de Propina</h3>
+          <p>Mostrar al pedir la cuenta</p>
+        </div>
+      }
+
+      @if (esPanelMozo()) {
+        <div class="modulo-card" (click)="irACuentasMozo()">
+          <ion-icon name="receipt-outline"></ion-icon>
+          <h3>Cuentas</h3>
+          <p>Confirmar pagos y liberar mesas</p>
         </div>
       }
       <!-- Punto 10: cliente_registrado se anota a la lista de espera, o ve

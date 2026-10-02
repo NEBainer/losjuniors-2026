@@ -396,7 +396,7 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
   `pedidos`: `cocina_lista`, `bar_listo`, `entregado_por_mozo` y los
   estados `'completo'` y `'entregado'` solo se modifican con las
   funciones `marcar_sector_listo`, `marcar_entregado_mozo` y
-  `confirmar_recepcion_cliente` (v9). `pedidos_mozo_confirma` sigue
+  `confirmar_recepcion_cliente` (v10). `pedidos_mozo_confirma` sigue
   igual: solo cubre `pendiente_confirmacion` → `confirmado`/`rechazado`.
 
 **`pedido_items`** (punto 12)
@@ -418,7 +418,7 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
 - `juegos_intentos_dueno_supervisor_ven_todos` — lectura completa para
   dueño y supervisor.
 - No hay policies de INSERT/UPDATE/DELETE: los intentos solo se crean y
-  cierran con `iniciar_intento_juego` y `registrar_resultado_juego` (v11).
+  cierran con `iniciar_intento_juego` y `registrar_resultado_juego` (v12).
 
 ## Pedidos (puntos 12, 13, 18 y 19)
 
@@ -450,7 +450,7 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
   la vez, y no abren un `UPDATE` general sobre `mesas` a los clientes.
   `mesas` está en la publicación `supabase_realtime` para que el resto de
   la mesa vea en vivo quién está pidiendo.
-- **Estado por sector (v9, puntos 18 y 19)**, tres funciones
+- **Estado por sector (v10, puntos 18 y 19)**, tres funciones
   `security definer` con `execute` para `authenticated`:
   - `marcar_sector_listo(p_pedido_id, p_sector)`: `'cocina'` (solo
     `cocinero`) marca `cocina_lista`; `'bar'` (solo `cantinero`) marca
@@ -465,7 +465,7 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
     `entregado_por_mozo = true`; pasa `estado` a `'entregado'`.
     Desde `'entregado'` el cliente accede a juegos, encuesta y "pedir la
     cuenta" (puntos 19 al 21).
-- **Fallo no silencioso (v10, puntos 18/19):** `marcar_entregado_mozo` y
+- **Fallo no silencioso (v11, puntos 18/19):** `marcar_entregado_mozo` y
   `confirmar_recepcion_cliente` ahora hacen `raise exception` si el `UPDATE`
   no afecta ninguna fila (pedido que no está `'completo'`, mozo que
   todavía no entregó, o cliente que no es el creador) — antes terminaban
@@ -475,11 +475,11 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
   no). No cambia la firma de ninguna función ni requiere tocar el front:
   el servicio Angular ya convierte cualquier error de Postgres en un
   mensaje visible con vibración.
-- **Realtime en `pedidos` (v9)**: la tabla no estaba en la publicación
+- **Realtime en `pedidos` (v10)**: la tabla no estaba en la publicación
   `supabase_realtime`. Sin eso, ningún aviso de estado del pedido
   (confirmado, rechazado, completo, entregado) dispara: la suscripción
   conecta sin error y el callback nunca corre (mismo bug ya documentado
-  para `usuarios`). Quedó agregada de forma idempotente en v9.
+  para `usuarios`). Quedó agregada de forma idempotente en v10.
 - **Limitación conocida (no bloqueante):** `marcar_sector_listo` no
   verifica que el pedido esté en `'confirmado'` antes de marcar el
   booleano, ni que ese sector realmente intervenga. La UI de cada sector
@@ -489,7 +489,7 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
 
 ## Juegos con descuento (puntos 14 y 15)
 
-- **`juegos_intentos` (v11)**: una fila por juego (`ahorcado`, `memotest`,
+- **`juegos_intentos` (v12)**: una fila por juego (`ahorcado`, `memotest`,
   `trivia`) por estadía, con `gano` y `porcentaje_obtenido`. Solo se
   guarda el **primer intento**; las partidas libres no dejan fila.
   `unique (pedido_id, juego)` garantiza un solo primer intento por juego.
@@ -517,19 +517,19 @@ lo referencia. Cerrar esto del todo requeriría meter el tipo en el path
 - **Cliente anónimo**: juega libremente sin llamar a estas funciones (el
   descuento es solo para registrados, punto 14). Si las llamara, la
   función lo rechaza igual.
-- **Reintento seguro (v12):** `registrar_resultado_juego` es idempotente:
+- **Reintento seguro (v13):** `registrar_resultado_juego` es idempotente:
   si el primer intento ya estaba cerrado (el guardado se confirmó pero la
   respuesta no llegó al celular), devuelve el porcentaje ya guardado en vez
   de tirar error. Así "Reintentar guardar" siempre termina bien.
-- **No acumulativo con juegos simultáneos (v12):** `registrar_resultado_juego`
+- **No acumulativo con juegos simultáneos (v13):** `registrar_resultado_juego`
   bloquea la fila del pedido (`select ... for update`) antes de chequear si ya
   hay descuento, así dos juegos que terminan a la vez (dos pestañas) no pueden
   quedar los dos con porcentaje.
-- **Sesión nula y permisos (v12):** sin sesión `perfil_actual()` es `NULL`, y
+- **Sesión nula y permisos (v13):** sin sesión `perfil_actual()` es `NULL`, y
   `NULL in (...)` no es `true` ni `false`; los chequeos de perfil usan
   `is distinct from` / `is not true` para tratarlo como "no autorizado".
   Además Supabase da `EXECUTE` por defecto a `anon` y `authenticated` en
-  funciones nuevas, y `revoke ... from public` no lo saca: v12 revoca `anon`
+  funciones nuevas, y `revoke ... from public` no lo saca: v13 revoca `anon`
   en las cuatro funciones y también `authenticated` en
   `validar_pedido_para_juego`.
 - **Limitación conocida (no bloqueante):** el resultado de la partida lo
@@ -749,18 +749,18 @@ en `lista_espera` para la prueba (se sacó al terminar):
 - Punto 13 (mozo rechaza el pedido): `schema.sql` v8 — valor `rechazado`
   en `estado_pedido` (confirmado en la base el 25/09/2026) y
   `pedidos_mozo_confirma` actualizada para permitir esa transición.
-- Puntos 18 y 19 (estado por sector + entrega): `schema.sql` v9 —
+- Puntos 18 y 19 (estado por sector + entrega): `schema.sql` v10 —
   columnas `cocina_lista`, `bar_listo`, `entregado_por_mozo`, valores
   `'completo'` y `'entregado'` en `estado_pedido`, las tres funciones de
   arriba y `pedidos` en la publicación de Realtime, todo corrido en el
   SQL Editor el 27/09/2026. **Falta probarlo de punta a punta** desde la
   app una vez que estén las pantallas de cocina/bar (puntos 16/17) y del
   mozo/cliente.
-- Puntos 14 y 15 (juegos con descuento): `schema.sql` v11 — tabla
+- Puntos 14 y 15 (juegos con descuento): `schema.sql` v12 — tabla
   `juegos_intentos` + policies de lectura y las funciones
   `iniciar_intento_juego`, `registrar_resultado_juego` y
   `descuento_juegos`. Corrido y confirmado en el SQL Editor el 30/09/2026.
-- Puntos 14/15, `schema.sql` v12: `registrar_resultado_juego` idempotente y
+- Puntos 14/15, `schema.sql` v13: `registrar_resultado_juego` idempotente y
   con bloqueo del pedido, chequeos de perfil seguros ante sesión nula y
   `revoke` a `anon`. Corrido y confirmado en el SQL Editor el 30/09/2026.
 
