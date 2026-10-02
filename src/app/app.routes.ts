@@ -160,5 +160,10 @@ export const routes: Routes = [
     path: 'qr-propina',
     loadComponent: () => import('./pages/qr-propina/qr-propina.page').then(m => m.QrPropinaPage),
     canActivate: [authGuard, guardPerfil(['mozo', 'dueño', 'supervisor'])]
+  },
+  {
+    path: 'mozo/cuentas',
+    loadComponent: () => import('./pages/cuentas-mozo/cuentas-mozo.page').then(m => m.CuentasMozoPage),
+    canActivate: [authGuard, guardPerfil(['mozo'])]
   }
 ]

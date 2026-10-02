@@ -128,6 +128,14 @@
           <p>Mostrar al pedir la cuenta</p>
         </div>
       }
+
+      @if (esPanelMozo()) {
+        <div class="modulo-card" (click)="irACuentasMozo()">
+          <ion-icon name="receipt-outline"></ion-icon>
+          <h3>Cuentas</h3>
+          <p>Confirmar pagos y liberar mesas</p>
+        </div>
+      }
       <!-- Punto 10: cliente_registrado se anota a la lista de espera, o ve
            que ya tiene una mesa asignada si el metre ya se la dio. Va
            adentro de .grilla-modulos (no en una sección aparte) para

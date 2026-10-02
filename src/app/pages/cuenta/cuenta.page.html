@@ -151,7 +151,27 @@
             <div class="tarjeta-estado">
               <ion-icon name="happy-outline" class="icono-estado ok"></ion-icon>
               <h2>¡Pago confirmado!</h2>
-              <p>Gracias por tu visita. ¡Te esperamos pronto!</p>
+              <p>El mozo confirmó tu pago y la mesa quedó libre. ¡Gracias por tu visita!</p>
+
+              @if (mesaVerificada(); as mesa) {
+                <div class="resultado-mesa" [class.libre]="mesa.libre">
+                  <ion-icon [name]="mesa.libre ? 'checkmark-circle' : 'alert-circle-outline'"></ion-icon>
+                  <span>{{ mesa.libre ? 'La mesa ' + mesa.numero + ' está libre.' : 'La mesa ' + mesa.numero + ' figura ocupada.' }}</span>
+                </div>
+              }
+
+               <ion-button expand="block" class="boton-principal" [disabled]="escaneando()" (click)="verificarMesa()">
+                <ion-icon name="qr-code-outline" slot="start"></ion-icon>
+                Escanear QR de la mesa
+              </ion-button>
+
+              <ion-button expand="block" fill="outline" class="boton-secundario" [disabled]="escaneando()" (click)="escanearIngreso()">
+                <ion-icon name="bar-chart-outline" slot="start"></ion-icon>
+                Escanear QR de ingreso
+              </ion-button>
+              <p class="ayuda">Con el código QR de ingreso al local podés ver los resultados de las encuestas.</p>
+
+              <ion-button expand="block" fill="clear" class="boton-texto" (click)="irAlInicio()">Volver al inicio</ion-button>
             </div>
           }
 

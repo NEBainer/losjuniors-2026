@@ -37,3 +37,8 @@ export interface ItemCuenta {
   precioUnitario: number;
   importe: number;
 }
+
+export interface CuentaAbierta extends Cuenta {
+  mesaNumero: number;
+  solicitadaEn: string;
+}

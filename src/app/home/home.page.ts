@@ -17,6 +17,7 @@ import {
   fastFoodOutline, informationCircleOutline, listOutline, logOutOutline, peopleOutline,
   personAddOutline, qrCodeOutline, restaurantOutline, timeOutline, wineOutline, closeCircleOutline,
   checkmarkDoneCircleOutline,
+  receiptOutline,
 } from 'ionicons/icons';
 
 // Fila lista para pintar en la lista embebida de pendientes: mismo patrón
@@ -178,7 +179,7 @@ export class HomePage {
       logOutOutline, restaurantOutline, listOutline, peopleOutline, personAddOutline,
       fastFoodOutline, wineOutline, bookOutline, checkmarkOutline, qrCodeOutline,
       chatbubblesOutline, informationCircleOutline, closeOutline, timeOutline, closeCircleOutline,
-      checkmarkCircleOutline, checkmarkDoneCircleOutline,
+      checkmarkCircleOutline, checkmarkDoneCircleOutline, receiptOutline
     });
   }
 
@@ -192,6 +193,9 @@ export class HomePage {
     }
     if (this.esPanelMozo()) {
       await Promise.all([this.cargarPedidosPendientesMozo(), this.cargarPedidosListosMozo()]);
+    }
+     if (this.esPanelMozo() || this.esPanelDueno()) {
+      this.notificacionesService.iniciarEscuchaCuentas(this.esPanelMozo());
     }
     if (this.puedeUnirseListaEspera()) {
       await this.verificarMesaAsignada();
@@ -266,6 +270,10 @@ export class HomePage {
 
   irAListaEsperaMetre() {
     this.router.navigate(['/metre/lista-espera']);
+  }
+
+  irACuentasMozo() {
+    this.router.navigate(['/mozo/cuentas']);
   }
 
   async cargarPendientes() {
@@ -548,6 +556,7 @@ export class HomePage {
       this.notificacionesService.detenerEscuchaPedidosMozo();
       this.notificacionesService.detenerEscuchaSector();
       this.notificacionesService.detenerEscuchaPedidosCompletos();
+      this.notificacionesService.detenerEscuchaCuentas();
 
       // Verificar que las credenciales se borren
       // Limpiamos la caché local de Capacitor/Navegador por seguridad extra

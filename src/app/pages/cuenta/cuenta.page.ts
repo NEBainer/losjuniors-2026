@@ -1,14 +1,14 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { IonButton, IonButtons, IonContent, IonFooter, IonHeader, IonIcon, IonTitle, IonToolbar } from '@ionic/angular';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CuentaService } from '../../core/services/cuenta.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Cuenta, ETIQUETAS_METODO_PAGO, ItemCuenta, MetodoPago, NIVELES_PROPINA } from '../../core/models/cuenta.model';
 import { addIcons } from 'ionicons';
-import { alertCircleOutline, arrowBackOutline, card, cardOutline, checkmarkCircle, happyOutline, notificationsOutline, qrCodeOutline, radioButtonOff, radioButtonOn, walletOutline, warningOutline } from 'ionicons/icons';
+import { alertCircleOutline, arrowBackOutline, barChartOutline, card, cardOutline, checkmarkCircle, happyOutline, notificationsOutline, qrCodeOutline, radioButtonOff, radioButtonOn, walletOutline, warningOutline } from 'ionicons/icons';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { MesaService } from '../../core/services/mesa.service';
+import { QrAppService } from '../../core/services/qr-app.service';
 
 
 type Fase = 'propina' | 'detalle' | 'pagada' | 'confirmada';
@@ -27,6 +27,8 @@ export class CuentaPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cuentaService = inject(CuentaService);
+  private readonly mesaService = inject(MesaService);
+  private readonly qrAppService = inject(QrAppService);
 
   private mesaId = '';
   private canal: RealtimeChannel | null = null;
@@ -46,6 +48,8 @@ export class CuentaPage implements OnInit, OnDestroy {
   readonly items = signal<ItemCuenta[]>([]);
   readonly metodoElegido = signal<MetodoPago | null>(null);
   readonly errorMetodo = signal(false);
+  readonly escaneando = signal(false);
+  readonly mesaVerificada = signal<{ numero: number; libre: boolean } | null>(null);
 
   readonly fase = computed<Fase | null>(() => {
     const cuenta = this.cuenta();
@@ -86,6 +90,7 @@ export class CuentaPage implements OnInit, OnDestroy {
       radioButtonOn,
       walletOutline,
       warningOutline,
+      barChartOutline
     })
   }
 
@@ -149,6 +154,48 @@ export class CuentaPage implements OnInit, OnDestroy {
     } finally {
       this.procesando.set('');
     }
+  }
+
+  async verificarMesa(): Promise<void> {
+    if (this.escaneando()) return;
+    this.escaneando.set(true);
+    try {
+      const datos = await this.qrAppService.escanear();
+      if (!datos) return; // el usuario canceló el escaneo
+      if (datos.tipo !== 'mesa') {
+        throw new Error('Ese código no es el de una mesa.');
+      }
+      const mesa = await this.mesaService.buscarPorNumero(datos.numero);
+      if (!mesa) {
+        throw new Error(`No encontramos la mesa ${datos.numero}.`);
+      }
+      this.mesaVerificada.set({ numero: mesa.numero, libre: mesa.disponibilidad === 'vacia' });
+    } catch (e) {
+      await this.dispararError(e instanceof Error ? e.message : 'No se pudo leer el código.');
+    } finally {
+      this.escaneando.set(false);
+    }
+  }
+
+  async escanearIngreso(): Promise<void> {
+    if (this.escaneando()) return;
+    this.escaneando.set(true);
+    try {
+      const datos = await this.qrAppService.escanear();
+      if (!datos) return; // el usuario canceló el escaneo
+      if (datos.tipo !== 'ingreso_local') {
+        throw new Error('Ese código no es el de ingreso al local.');
+      }
+      this.router.navigate(['/encuestas/resultados']);
+    } catch (e) {
+      await this.dispararError(e instanceof Error ? e.message : 'No se pudo leer el código.');
+    } finally {
+      this.escaneando.set(false);
+    }
+  }
+
+  irAlInicio(): void {
+    this.router.navigate(['/home'], { replaceUrl: true });
   }
 
   formatear(importe: number | null): string {

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase.service';
 import { QrAppService } from './qr-app.service';
-import { Cuenta, ItemCuenta, MetodoPago, NIVELES_PROPINA, PorcentajePropina } from '../models/cuenta.model';
+import { Cuenta, ItemCuenta, MetodoPago, NIVELES_PROPINA, PorcentajePropina, CuentaAbierta } from '../models/cuenta.model';
 
 const ESTADOS_FACTURABLES = ['confirmado', 'completo', 'entregado'];
 
@@ -21,6 +21,28 @@ export class CuentaService {
 
   async pagar(metodo: MetodoPago): Promise<Cuenta> {
     return this.llamar('pagar_cuenta', { p_metodo: metodo }, 'No se pudo realizar el pago. Intentá de nuevo.');
+  }
+
+  async listarAbiertas(): Promise<CuentaAbierta[]> {
+    const { data, error } = await this.supabase
+      .from('cuentas')
+      .select('*, mesas(numero)')
+      .in('estado', ['solicitada', 'pagada'])
+      .order('solicitada_en', { ascending: true });
+
+    if (error) {
+      throw new Error('No se pudieron cargar las cuentas.');
+    }
+
+    return (data ?? []).map((fila: any) => ({
+      ...this.mapCuenta(fila),
+      mesaNumero: fila.mesas?.numero ?? 0,
+      solicitadaEn: fila.solicitada_en,
+    }));
+  }
+
+  async confirmarPago(cuentaId: string): Promise<Cuenta> {
+    return this.llamar('confirmar_pago', { p_cuenta_id: cuentaId }, 'No se pudo confirmar el pago.');
   }
 
   async escanearPropina(): Promise<PorcentajePropina | null> {
