@@ -83,6 +83,11 @@ export class HomePage {
   readonly puedeVerConsultas = computed(() =>
     this.esUnoDe(this.perfil(), ['mozo']),
   );
+  // Punto 21: los cinco QR de propina. El mozo se los muestra al cliente
+  // cuando pide la cuenta; dueño y supervisor también los tienen a mano.
+  readonly puedeVerQrPropina = computed(() =>
+    this.esUnoDe(this.perfil(), ['mozo', 'dueño', 'supervisor']),
+  );
   // Requisito excluyente "QR de mesa" (no es un punto numerado propio):
   // el personal de sala escanea el mismo QR que el cliente, pero en vez
   // de entrar al menú solo ve los datos de la mesa (número, capacidad,
@@ -453,6 +458,10 @@ export class HomePage {
   // escaneando el QR de la mesa.
   irALaCarta() {
     this.router.navigate(['/carta']);
+  }
+
+  irAQrPropina() {
+    this.router.navigate(['/qr-propina']);
   }
 
   // Punto 11: escanea el QR de la mesa ({"tipo":"mesa","numero":N}, ver

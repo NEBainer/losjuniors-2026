@@ -136,13 +136,9 @@ export const routes: Routes = [
     canActivate: [authGuard, guardPerfil(['mozo'])]
   },
   {
-    path: 'encuesta',
+    path: 'mesa/:mesaId/encuesta',
     loadComponent: () => import('./pages/encuesta/encuesta.page').then( m => m.EncuestaPage),
     canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
-  },
-  {
-    path: 'encuestas-resultados',
-    loadComponent: () => import('./pages/encuestas-resultados/encuestas-resultados.page').then( m => m.EncuestasResultadosPage)
   },
   {
     path: 'encuestas/resultados',
@@ -155,4 +151,14 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/pedidos-sector/pedidos-sector.page').then(m => m.PedidosSectorPage),
     canActivate: [authGuard, guardPerfil(['cocinero', 'cantinero'])]
   },
+  {
+     path: 'mesa/:mesaId/cuenta',
+    loadComponent: () => import('./pages/cuenta/cuenta.page').then(m => m.CuentaPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'qr-propina',
+    loadComponent: () => import('./pages/qr-propina/qr-propina.page').then(m => m.QrPropinaPage),
+    canActivate: [authGuard, guardPerfil(['mozo', 'dueño', 'supervisor'])]
+  }
 ]

@@ -12,7 +12,6 @@ import {
   IonRadio,
   IonRadioGroup,
   IonRange,
-  IonSpinner,
   IonTextarea,
   IonTitle,
   IonToggle,
@@ -66,7 +65,7 @@ const TEXTOS_CALIFICACION = ['Tocá una estrella', 'Muy mala', 'Mala', 'Buena', 
   selector: 'app-encuesta',
   templateUrl: './encuesta.page.html',
   styleUrls: ['./encuesta.page.scss'],
-  imports: [IonButton, IonButtons, IonCheckbox, IonContent, IonHeader, IonIcon,IonRadio, IonRadioGroup, IonRange, IonSpinner, IonTextarea, IonTitle,IonToggle, IonToolbar, CommonModule, ReactiveFormsModule,]
+  imports: [IonButton, IonButtons, IonCheckbox, IonContent, IonHeader, IonIcon,IonRadio, IonRadioGroup, IonRange, IonTextarea, IonTitle,IonToggle, IonToolbar, CommonModule, ReactiveFormsModule,]
 })
 export class EncuestaPage implements OnInit {
   private readonly fb = inject(FormBuilder);
@@ -114,19 +113,11 @@ export class EncuestaPage implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    const numero = Number(this.route.snapshot.paramMap.get('numero'));
-    this.numeroMesa.set(Number.isFinite(numero) ? numero : null);
-
     try {
       const estadia = await this.encuestaService.obtenerEstadiaActual();
       if (!estadia) {
         this.errorCarga.set('No tenés una mesa asignada. La encuesta se completa durante tu estadía en el local.');
         await this.vibrar();
-        return;
-      }
-      if (estadia.yaRespondio) {
-        this.estadia.set(estadia); // para que el numeroMesa quede resuelto igual
-        this.numeroMesa.set(estadia.mesaNumero);
         return;
       }
       this.estadia.set(estadia);
@@ -207,9 +198,9 @@ export class EncuestaPage implements OnInit {
   }
 
   volver(): void {
-    const numero = this.numeroMesa();
-    if (numero !== null) {
-      this.router.navigate(['/mesa', numero, 'carta']);
+    const mesaId = this.route.snapshot.paramMap.get('mesaId') ?? this.estadia()?.mesaId;
+    if (mesaId) {
+      this.router.navigate(['/mesa', mesaId, 'pedido']);
     } else {
       this.router.navigate(['/home']);
     }

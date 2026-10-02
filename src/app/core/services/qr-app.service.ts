@@ -4,7 +4,8 @@ import { asegurarModuloEscaner } from './escaner.util';
 
 export type QrAppPayload =
   | { tipo: 'ingreso_local' }
-  | { tipo: 'mesa'; numero: number };
+  | { tipo: 'mesa'; numero: number }
+  | { tipo: 'propina'; porcentaje: number };
 
 @Injectable({ providedIn: 'root' })
 export class QrAppService {
@@ -33,6 +34,9 @@ export class QrAppService {
     return this.interpretar(raw);
   }
 
+  generarContenido(payload: QrAppPayload): string {
+    return JSON.stringify(payload);
+  }
   // Las mesas creadas desde la app antes del 16/09 guardaron el QR en
   // texto plano (`MESA-{numero}`), no en el JSON actual -- se aceptan los
   // dos formatos para que esas mesas (y sus QR ya impresos) sigan andando.

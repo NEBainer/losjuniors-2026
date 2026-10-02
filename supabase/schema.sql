@@ -1354,3 +1354,261 @@ begin
   end if;
 end;
 $$;
+
+
+
+-- =========================================================
+-- v14 (02/10/2026): Punto 21 — la cuenta: propina por QR, detalle y
+-- pago simulado.
+--
+-- Una cuenta por estadía, con la misma definición que la encuesta (v13):
+-- la asignación actual del cliente a la mesa (mesas.asignada_en).
+--
+-- Nadie hace INSERT/UPDATE directo sobre `cuentas`: todo va por
+-- funciones SECURITY DEFINER (mismo patrón que los juegos, v11), y los
+-- importes los calcula la base a partir de pedido_items -- el celular
+-- nunca manda un total.
+--
+-- Pedidos que entran: los de la mesa desde asignada_en en estado
+-- confirmado, completo o entregado (mismo criterio que
+-- validar_pedido_para_juego, v11). Rechazados y pendientes no.
+--
+-- Cálculo: subtotal - descuento de juegos = base; la propina es un
+-- porcentaje de esa  a la cuenta final");
+-- total = base + pro
+--
+-- Descuento: se lee  descuento_juegos():
+-- esa función solo ado, y en una mesa el
+-- pedido lo puede ha() sobre los pedidos
+de
+-- la estadía mantieno".
+--
+-- OJO al correr estoe type conviene
+-- correrlos solos pr).
+-- =============================
+
+create type estado_cu'pagada',
+'confirmada');
+create type metodo_paa', 'debito',
+'credito');
+
+create table cuentas
+  id uuid primary key
+  mesa_id uuid not nuelete cascade,
+  cliente_id uuid not) on delete cascade,
+  estadia_inicio time
+  estado estado_cuentda',
+  -- Todo lo de abajocliente escanea el QRde
+  -- propina: "no se antes seleccionar el
+  -- porcentaje de pr
+  propina_porcentaje entaje in (0, 5, 10,
+15, 20)),
+  subtotal numeric(10
+  descuento_porcentajporcentaje in (0, 10,
+15, 20)),
+  descuento_importe no_importe >= 0),
+  propina_importe numporte >= 0),
+  total numeric(10,2)
+  metodo_pago metodo_pago,
+  solicitada_en times),
+  pagada_en timestamptz,
+  confirmada_en times
+  unique (mesa_id, es
+);
+
+alter table cuentas e
+
+create policy "cuentas_cliente_ve_la_suya"
+on cuentas for select
+to authenticated
+using ( cliente_id =
+
+-- El mozo la necesitunto 22); dueño y
+-- supervisor reciben el aviso de pago. También habilita que les
+lleguen
+-- los eventos de Reas policies).
+create policy "cuenta
+on cuentas for select
+to authenticated
+using ( perfil_actual() in ('mozo', 'dueño', 'supervisor') );
+
+-- Punto 21: "el cliente solicita la cuenta al mozo". Se habilita
+recién
+-- con un pedido entre: si ya la había
+pedido
+-- en esta estadía, d
+create or replace fun
+returns cuentas
+language plpgsql
+security definer
+set search_path = pub
+as $$
+declare
+  v_mesa mesas;
+  v_cuenta cuentas;
+begin
+  -- coalesce: sin se, y "NULL not in
+(...)"
+  -- no es true -- el
+  if coalesce(perfil_'cliente_registrado',
+'cliente_anonimo') th
+    raise exception 'uede pedir la
+cuenta.';
+  end if;
+
+  select * into v_mesctual_id = auth.uid();
+  if not found or v_mesa.asignada_en is null then
+    raise exception ';
+  end if;
+
+  if not exists (
+    select 1 from ped
+    where mesa_id = v
+      and created_at
+      and estado = 'e
+  ) then
+    raise exception 'cuando hayas recibido
+tu pedido.';
+  end if;
+
+  insert into cuentasia_inicio)
+  values (v_mesa.id, en)
+  on conflict (mesa_ig;
+
+  select * into v_cue
+  from cuentas
+  where mesa_id = v_mesa.id and estadia_inicio = v_mesa.asignada_en;
+
+  return v_cuenta;
+end;
+$$;
+
+-- Al escanear el QR s importes. Se puede
+-- volver a escanear s no se haya pagado.
+create or replace function aplicar_propina(p_porcentaje int)
+returns cuentas
+language plpgsql
+security definer
+set search_path = pub
+as $$
+declare
+  v_cuenta cuentas;
+  v_subtotal numeric(10,2);
+  v_descuento int;
+  v_descuento_importe numeric(10,2);
+  v_propina_importe n
+begin
+  if p_porcentaje is (0, 5, 10, 15, 20)
+then
+    raise exception 'un porcentaje depropina válido.';
+  end if;
+
+  select c.* into v_c
+  from cuentas c
+  join mesas m on m.i_en = c.estadia_inicio
+  where m.cliente_act
+  for update of c;
+
+  if not found then
+    raise exception 'Primero tenés que pedir la cuenta.';
+  end if;
+  if v_cuenta.estado
+    raise exception '
+  end if;
+
+  select coalesce(sum(pi.cantidad * pi.precio_unitario), 0) into
+v_subtotal
+  from pedido_items pi
+  join pedidos p on p
+  where p.mesa_id = v
+    and p.created_at
+    and p.estado in (ntregado');
+
+  select coalesce(max(ji.porcentaje_obtenido), 0) into v_descuento
+  from juegos_intento
+  join pedidos p on p
+  where p.mesa_id = v
+    and p.created_at
+
+  v_descuento_importe := round(v_subtotal * v_descuento / 100.0, 2);
+  v_propina_importe :uento_importe) *p_porcentaje / 100.0, 2);
+
+  update cuentas
+  set propina_porcent
+      subtotal = v_su
+      descuento_porce
+      descuento_impor
+      propina_importe
+      total = v_subtov_propina_importe
+  where id = v_cuenta
+  returning * into v_
+
+  return v_cuenta;
+end;
+$$;
+
+-- Pago simulado. Desirmación del mozo
+-- (punto 22). p_metodo como text y no como el enum: así el mensaje de
+-- error de un valor inválido es el nuestro, en español.
+create or replace funtext)
+returns cuentas
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_cuenta cuentas;
+begin
+  if p_metodo is null_en_cuenta', 'debito',
+'credito') then
+    raise exception 'o.';
+  end if;
+
+  select c.* into v_cuenta
+  from cuentas c
+  join mesas m on m.i_en = c.estadia_inicio
+  where m.cliente_act
+  for update of c;
+
+  if not found then
+    raise exception 'uenta.';
+  end if;
+  if v_cuenta.estado
+    raise exception 'La cuenta ya fue pagada.';
+  end if;
+  if v_cuenta.propina
+    raise exception 'ina antes de pagar.';
+  end if;
+
+  update cuentas
+  set estado = 'pagad
+      metodo_pago = p
+      pagada_en = now
+  where id = v_cuenta.id
+  returning * into v_
+
+  return v_cuenta;
+end;
+$$;
+
+-- Supabase da EXECUTiones nuevas, y
+-- "revoke from publio que en v12).
+revoke execute on funm public, anon;
+revoke execute on funrom public, anon;
+revoke execute on function pagar_cuenta(text) from public, anon;
+grant execute on funcuthenticated;
+grant execute on function aplicar_propina(int) to authenticated;
+grant execute on funcuthenticated;
+
+-- Realtime: aviso alzo/dueño/supervisor
+-- (cuenta pagada). I con `mesas`.
+do $$
+begin
+  if not exists (
+    select 1 from pg_
+    where pubname = 'aname = 'public' and
+tablename = 'cuentas'
+  ) then
+    alter publication cuentas;
+  end if;
+end $$;

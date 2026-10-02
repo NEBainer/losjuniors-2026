@@ -1,0 +1,91 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="volver()" aria-label="Volver al panel">
+        <ion-icon name="arrow-back-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>QR de propina</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="fondo-app">
+
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Generando códigos QR…</p>
+      </div>
+    </div>
+  }
+
+  @if (!cargando()) {
+    <div class="contenedor-qr">
+      @if (error()) {
+        <div class="tarjeta-estado">
+          <ion-icon name="alert-circle-outline" class="icono-estado"></ion-icon>
+          <h2>No pudimos generar los códigos</h2>
+          <p>{{ error() }}</p>
+          <ion-button expand="block" class="boton-principal" (click)="generar()">
+            <ion-icon name="refresh-outline" slot="start"></ion-icon>
+            Reintentar
+          </ion-button>
+        </div>
+      } @else {
+        <p class="introduccion">
+          Cuando un cliente pide la cuenta, mostrale el código del nivel de satisfacción que elija.
+          Tocá uno para verlo en grande.
+        </p>
+
+        <div class="grilla-qr">
+          @for (codigo of codigos(); track codigo.porcentaje; let i = $index) {
+            <button
+              type="button"
+              class="tarjeta-qr"
+              [attr.aria-label]="'Ver en grande el código ' + codigo.nivel"
+              (click)="ampliar(i)">
+              <img [src]="codigo.imagen" [alt]="'Código QR de propina ' + codigo.nivel" />
+              <span class="nivel">{{ codigo.nivel }}</span>
+              <span class="porcentaje">{{ codigo.porcentaje }}%</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (ampliado(); as codigo) {
+    <div class="overlay-ampliado" role="dialog" aria-modal="true" [attr.aria-label]="'Código QR de propina ' + codigo.nivel">
+      <button type="button" class="boton-icono-circular boton-cerrar" aria-label="Cerrar" (click)="cerrar()">
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+
+      <span class="nivel-grande">{{ codigo.nivel }}</span>
+      <span class="porcentaje-grande">{{ codigo.porcentaje }}% de propina</span>
+      <img [src]="codigo.imagen" [alt]="'Código QR de propina ' + codigo.nivel" class="qr-grande" />
+
+      <nav class="navegacion" aria-label="Cambiar de nivel">
+        <button
+          type="button"
+          class="boton-icono-circular destacado"
+          aria-label="Nivel anterior"
+          [disabled]="indiceAmpliado() === 0"
+          (click)="anterior()">
+          <ion-icon name="chevron-back-outline"></ion-icon>
+        </button>
+        <span>{{ (indiceAmpliado() ?? 0) + 1 }} de {{ codigos().length }}</span>
+        <button
+          type="button"
+          class="boton-icono-circular destacado"
+          aria-label="Nivel siguiente"
+          [disabled]="indiceAmpliado() === codigos().length - 1"
+          (click)="siguiente()">
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </button>
+      </nav>
+    </div>
+  }
+
+</ion-content>

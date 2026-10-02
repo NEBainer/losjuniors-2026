@@ -121,6 +121,13 @@
           <p>Asignar mesa a clientes</p>
         </div>
       }
+      @if (puedeVerQrPropina()) {
+        <div class="modulo-card" (click)="irAQrPropina()">
+          <ion-icon name="qr-code-outline"></ion-icon>
+          <h3>QR de Propina</h3>
+          <p>Mostrar al pedir la cuenta</p>
+        </div>
+      }
       <!-- Punto 10: cliente_registrado se anota a la lista de espera, o ve
            que ya tiene una mesa asignada si el metre ya se la dio. Va
            adentro de .grilla-modulos (no en una sección aparte) para
