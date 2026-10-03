@@ -1,0 +1,63 @@
+<ion-content class="fondo-app" [scrollY]="false">
+
+  @if (cargando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>Preparando el juego…</p>
+      </div>
+    </div>
+  }
+
+  <div class="contenedor-principal contenedor-app">
+    <div class="cabecera">
+      <button class="boton-icono-circular" (click)="volverAJuegos()" title="Volver a juegos">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </button>
+      <h1>Trivia</h1>
+      <span class="chip">{{ esPrimerIntento() ? 'Primer intento: ' + porcentaje + '%' : 'Juego libre' }}</span>
+    </div>
+
+    @if (mensajeError()) {
+      <div class="mensaje-error">
+        <ion-icon name="warning"></ion-icon>
+        <span>{{ mensajeError() }}</span>
+      </div>
+    } @else if (!cargando()) {
+      <p class="progreso">
+        Pregunta {{ estado().indice + 1 }} de {{ estado().preguntas.length }} · Correctas: {{ estado().correctas }}
+      </p>
+
+      <div class="pregunta">
+        <h2>{{ pregunta().texto }}</h2>
+      </div>
+
+      <div class="opciones">
+        @for (opcion of pregunta().opciones; track $index) {
+          <button
+            [class]="'opcion ' + claseOpcion($index)"
+            [disabled]="estado().respuestaElegida !== null"
+            (click)="elegir($index)"
+          >{{ opcion }}</button>
+        }
+      </div>
+
+      <button class="boton-siguiente" [disabled]="estado().respuestaElegida === null" (click)="avanzar()">
+        {{ terminada() ? 'Ver resultado' : 'Siguiente pregunta' }}
+        <ion-icon name="arrow-forward-outline"></ion-icon>
+      </button>
+    }
+  </div>
+
+  @if (mostrandoResultado()) {
+    <app-resultado-juego
+      [resultado]="resultado()"
+      [guardando]="guardando()"
+      [errorGuardado]="errorGuardado()"
+      (jugarDeNuevo)="reiniciar()"
+      (volver)="volverAJuegos()"
+      (reintentar)="guardarResultado()"
+    />
+  }
+</ion-content>

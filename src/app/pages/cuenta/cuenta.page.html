@@ -1,0 +1,194 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="volver()" aria-label="Volver al pedido">
+        <ion-icon name="arrow-back-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Tu cuenta</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="fondo-app">
+
+  @if (cargando() || procesando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="Logo de La Mesa" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>{{ textoEspera() }}</p>
+      </div>
+    </div>
+  }
+
+  @if (mensajeError()) {
+    <div class="banner-error">
+      <ion-icon name="warning-outline"></ion-icon>
+      <span>{{ mensajeError() }}</span>
+    </div>
+  }
+
+  @if (!cargando()) {
+    <div class="contenedor-cuenta">
+
+      @if (errorCarga()) {
+        <div class="tarjeta-estado">
+          <ion-icon name="alert-circle-outline" class="icono-estado error"></ion-icon>
+          <h2>No pudimos abrir tu cuenta</h2>
+          <p>{{ errorCarga() }}</p>
+          <ion-button expand="block" class="boton-principal" (click)="volver()">Volver a mi pedido</ion-button>
+        </div>
+      } @else if (cuenta(); as c) {
+        @switch (fase()) {
+
+          @case ('propina') {
+            <div class="tarjeta-estado">
+              <ion-icon name="notifications-outline" class="icono-estado"></ion-icon>
+              <h2>Le avisamos al mozo</h2>
+              <p>Para generar tu cuenta, escaneá el código QR de propina que mejor describa cómo te atendimos.</p>
+              <ul class="niveles">
+                @for (nivel of niveles; track nivel.porcentaje) {
+                  <li><span>{{ nivel.nivel }}</span><strong>{{ nivel.porcentaje }}%</strong></li>
+                }
+              </ul>
+              <ion-button expand="block" class="boton-principal" (click)="escanearPropina()">
+                <ion-icon name="qr-code-outline" slot="start"></ion-icon>
+                Escanear código QR de propina
+              </ion-button>
+              <p class="ayuda">El mozo te muestra los códigos desde su celular.</p>
+            </div>
+          }
+
+          @case ('detalle') {
+            <section class="resumen-total">
+              <span class="etiqueta">Total a pagar</span>
+              <span class="monto-total">{{ formatear(c.total) }}</span>
+            </section>
+
+            <section class="tarjeta">
+              <h3>Detalle de tu consumo</h3>
+              <ul class="lineas">
+                @for (item of items(); track item.nombre + item.precioUnitario) {
+                  <li class="linea">
+                    <div class="linea-texto">
+                      <span class="nombre">{{ item.nombre }}</span>
+                      <span class="secundario">{{ item.cantidad }} × {{ formatear(item.precioUnitario) }}</span>
+                    </div>
+                    <span class="importe">{{ formatear(item.importe) }}</span>
+                  </li>
+                }
+              </ul>
+
+              <div class="separador"></div>
+
+              <div class="fila">
+                <span>Subtotal</span>
+                <span>{{ formatear(c.subtotal) }}</span>
+              </div>
+              <div class="fila" [class.descuento]="(c.descuentoImporte ?? 0) > 0">
+                <span>Descuento por juegos{{ c.descuentoPorcentaje ? ' (' + c.descuentoPorcentaje + '%)' : '' }}</span>
+                <span>{{ (c.descuentoImporte ?? 0) > 0 ? '− ' + formatear(c.descuentoImporte) : 'Sin descuento' }}</span>
+              </div>
+              <div class="fila">
+                <span>Propina: {{ nivelPropina() }} ({{ c.propinaPorcentaje }}%)</span>
+                <span>{{ formatear(c.propinaImporte) }}</span>
+              </div>
+              <button type="button" class="enlace-cambiar" (click)="escanearPropina()">
+                <ion-icon name="qr-code-outline"></ion-icon>
+                Cambiar la propina
+              </button>
+
+              <div class="separador"></div>
+
+              <div class="fila fila-total">
+                <span>TOTAL</span>
+                <span>{{ formatear(c.total) }}</span>
+              </div>
+            </section>
+
+            <section class="tarjeta" [class.con-error]="errorMetodo()">
+              <h3>Elegí cómo pagar</h3>
+              <div class="metodos" role="radiogroup" aria-label="Medio de pago">
+                @for (metodo of metodos; track metodo.valor) {
+                  <button
+                    type="button"
+                    class="metodo"
+                    role="radio"
+                    [class.elegido]="metodoElegido() === metodo.valor"
+                    [attr.aria-checked]="metodoElegido() === metodo.valor"
+                    (click)="elegirMetodo(metodo.valor)">
+                    <ion-icon [name]="metodo.icono"></ion-icon>
+                    <span>{{ metodo.etiqueta }}</span>
+                    <ion-icon class="marca" [name]="metodoElegido() === metodo.valor ? 'radio-button-on' : 'radio-button-off'"></ion-icon>
+                  </button>
+                }
+              </div>
+              @if (errorMetodo()) {
+                <p class="error-campo">Elegí un medio de pago para continuar.</p>
+              }
+            </section>
+
+            <p class="aviso-simulado">Pago simulado: no se realiza ningún cobro real.</p>
+          }
+
+          @case ('pagada') {
+            <div class="tarjeta-estado">
+              <ion-icon name="checkmark-circle" class="icono-estado ok"></ion-icon>
+              <h2>¡Pago enviado!</h2>
+              <span class="monto-pagado">{{ formatear(c.total) }}</span>
+              <p>Pagaste con {{ etiquetaMetodo() }}.</p>
+              <div class="esperando">
+                <span class="punto-pulso"></span>
+                Esperando que el mozo confirme el pago.
+              </div>
+              <ion-button expand="block" fill="outline" class="boton-secundario" (click)="volver()">
+                Volver a mi pedido
+              </ion-button>
+            </div>
+          }
+
+          @case ('confirmada') {
+            <div class="tarjeta-estado">
+              <ion-icon name="happy-outline" class="icono-estado ok"></ion-icon>
+              <h2>¡Pago confirmado!</h2>
+              <p>El mozo confirmó tu pago y la mesa quedó libre. ¡Gracias por tu visita!</p>
+
+              @if (mesaVerificada(); as mesa) {
+                <div class="resultado-mesa" [class.libre]="mesa.libre">
+                  <ion-icon [name]="mesa.libre ? 'checkmark-circle' : 'alert-circle-outline'"></ion-icon>
+                  <span>{{ mesa.libre ? 'La mesa ' + mesa.numero + ' está libre.' : 'La mesa ' + mesa.numero + ' figura ocupada.' }}</span>
+                </div>
+              }
+
+               <ion-button expand="block" class="boton-principal" [disabled]="escaneando()" (click)="verificarMesa()">
+                <ion-icon name="qr-code-outline" slot="start"></ion-icon>
+                Escanear QR de la mesa
+              </ion-button>
+
+              <ion-button expand="block" fill="outline" class="boton-secundario" [disabled]="escaneando()" (click)="escanearIngreso()">
+                <ion-icon name="bar-chart-outline" slot="start"></ion-icon>
+                Escanear QR de ingreso
+              </ion-button>
+              <p class="ayuda">Con el código QR de ingreso al local podés ver los resultados de las encuestas.</p>
+
+              <ion-button expand="block" fill="clear" class="boton-texto" (click)="irAlInicio()">Volver al inicio</ion-button>
+            </div>
+          }
+
+        }
+      }
+
+    </div>
+  }
+
+</ion-content>
+
+@if (!cargando() && fase() === 'detalle') {
+  <ion-footer>
+    <ion-toolbar class="barra-pago">
+      <ion-button expand="block" class="boton-pagar" [disabled]="!!procesando()" (click)="pagar()">
+        Pagar {{ formatear(cuenta()?.total ?? 0) }}
+      </ion-button>
+    </ion-toolbar>
+  </ion-footer>
+}

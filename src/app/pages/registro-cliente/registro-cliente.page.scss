@@ -193,6 +193,28 @@
         font-size: 1.2rem;
       }
     }
+
+    .boton-ojo {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 2;
+
+      ion-icon {
+        font-size: 1.2rem;
+        color: var(--ion-text-color);
+        opacity: 0.6;
+      }
+    }
   }
 
   .error-campo {

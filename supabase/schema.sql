@@ -965,3 +965,1001 @@ for update
 to authenticated
 using ( perfil_actual() = 'mozo' and estado = 'pendiente_confirmacion' )
 with check ( perfil_actual() = 'mozo' and estado in ('confirmado', 'rechazado') );
+
+
+-- =========================================================
+-- v9 (27/09/2026): Punto 20 — encuesta de satisfacción.
+--
+-- "Una por estadía": el esquema no tenía el concepto de estadía, se
+-- define como el período en que un cliente está vinculado a una mesa
+-- (mesas.cliente_actual_id, punto 10). mesas.asignada_en marca cuándo
+-- empezó; la completa un trigger (no el código del metre) así funciona
+-- sin tocar MesaService.asignarCliente(). La encuesta guarda ese mismo
+-- valor en estadia_inicio y el unique (cliente_id, estadia_inicio) es lo
+-- que impide cargar una segunda encuesta en la misma visita. En la
+-- próxima visita (nueva asignación) hay un asignada_en distinto.
+--
+-- OJO al correr esto en el SQL Editor: igual que en v8, el create type
+-- conviene correrlo solo primero si da error de transacción.
+-- =========================================================
+
+alter table mesas add column if not exists asignada_en timestamptz;
+
+create or replace function marcar_asignacion_mesa()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.cliente_actual_id is distinct from old.cliente_actual_id then
+    new.asignada_en := case when new.cliente_actual_id is null then null else now() end;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists mesas_marcar_asignacion on mesas;
+create trigger mesas_marcar_asignacion
+before update of cliente_actual_id on mesas
+for each row execute function marcar_asignacion_mesa();
+
+-- Mesas que ya estaban asignadas antes de este cambio: sin esto quedarían
+-- con asignada_en NULL y su cliente no podría completar la encuesta.
+update mesas set asignada_en = now()
+where cliente_actual_id is not null and asignada_en is null;
+
+create type atencion_mozo as enum ('excelente', 'buena', 'regular', 'mala');
+
+create table encuestas (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid not null references usuarios(id) on delete cascade,
+  mesa_id uuid not null references mesas(id) on delete cascade,
+  estadia_inicio timestamptz not null,
+  -- Cada pregunta se responde con un control distinto (requisito
+  -- excluyente "variedad de controles"): estrellas, opciones, deslizador,
+  -- casillas, interruptor y texto libre.
+  calificacion_general smallint not null check (calificacion_general between 1 and 5),
+  atencion_mozo atencion_mozo not null,
+  limpieza smallint not null check (limpieza between 1 and 10),
+  aspectos_destacados text[] not null check (
+    cardinality(aspectos_destacados) >= 1
+    and aspectos_destacados <@ array['comida', 'bebida', 'atencion', 'ambiente', 'precio']
+  ),
+  recomendaria boolean not null,
+  comentario text not null check (char_length(btrim(comentario)) between 10 and 300),
+  created_at timestamptz not null default now(),
+  unique (cliente_id, estadia_inicio)
+);
+
+alter table encuestas enable row level security;
+
+-- INSERT: solo el cliente vinculado ahora a esa mesa, y solo para la
+-- estadía en curso (estadia_inicio tiene que coincidir con asignada_en).
+-- Así no puede cargar una encuesta para una mesa ajena ni "inventar" otra
+-- estadía para saltearse el unique.
+create policy "encuestas_cliente_inserta"
+on encuestas
+for insert
+to authenticated
+with check (
+  auth.uid() = cliente_id
+  and perfil_actual() in ('cliente_registrado', 'cliente_anonimo')
+  and exists (
+    select 1 from mesas m
+    where m.id = encuestas.mesa_id
+    and m.cliente_actual_id = auth.uid()
+    and m.asignada_en = encuestas.estadia_inicio
+  )
+);
+
+-- El cliente ve las suyas (para saber si ya respondió en esta estadía).
+create policy "encuestas_cliente_ve_las_suyas"
+on encuestas
+for select
+to authenticated
+using ( auth.uid() = cliente_id );
+
+create policy "encuestas_dueño_supervisor_ven_todas"
+on encuestas
+for select
+to authenticated
+using ( perfil_actual() in ('dueño', 'supervisor') );
+
+-- Resultados para los gráficos: solo totales, nunca filas sueltas (no
+-- expone quién respondió ni los comentarios). Security definer para que
+-- la pueda llamar cualquiera, incluido el rol anon: el QR de ingreso al
+-- local muestra los resultados antes de que el cliente se registre
+-- (punto 9) y al salir, ya sin mesa (punto 22).
+create or replace function resultados_encuestas()
+returns json
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select json_build_object(
+    'total', (select count(*) from encuestas),
+    'promedio_por_dia', (
+      select coalesce(json_agg(json_build_object('dia', dia, 'promedio', promedio) order by dia), '[]'::json)
+      from (
+        select (created_at at time zone 'America/Argentina/Buenos_Aires')::date as dia,
+               round(avg(calificacion_general), 2) as promedio
+        from encuestas
+        group by 1
+      ) t
+    ),
+    'atencion_mozo', (
+      select coalesce(json_object_agg(atencion_mozo, cantidad), '{}'::json)
+      from (select atencion_mozo, count(*) as cantidad from encuestas group by 1) t
+    ),
+    'limpieza', (
+      select coalesce(json_object_agg(limpieza, cantidad), '{}'::json)
+      from (select limpieza, count(*) as cantidad from encuestas group by 1) t
+    ),
+    'aspectos_destacados', (
+      select coalesce(json_object_agg(aspecto, cantidad), '{}'::json)
+      from (select unnest(aspectos_destacados) as aspecto, count(*) as cantidad from encuestas group by 1) t
+    ),
+    'recomendaria', json_build_object(
+      'si', (select count(*) from encuestas where recomendaria),
+      'no', (select count(*) from encuestas where not recomendaria)
+    )
+  );
+$$;
+
+grant execute on function resultados_encuestas() to anon, authenticated;
+
+-- Datos simulados de cuatro semanas ("Preparación inicial": simular
+-- encuestas y estadías de al menos cuatro semanas). Tres encuestas por
+-- día a nombre del cliente de prueba, repartidas entre las 5 mesas;
+-- cada una con su propia estadia_inicio para respetar el unique. setseed
+-- para que los valores salgan iguales cada vez que se recrea la base.
+select setseed(0.2026);
+
+insert into encuestas (
+  cliente_id, mesa_id, estadia_inicio, calificacion_general, atencion_mozo,
+  limpieza, aspectos_destacados, recomendaria, comentario, created_at
+)
+select
+  '711748ed-5c4a-4d51-b765-956467fd1342',
+  (select id from mesas where numero = (s.n % 5) + 1),
+  s.momento - interval '1 hour',
+  s.calificacion,
+  (array['mala', 'regular', 'buena', 'excelente']::atencion_mozo[])[least(4, greatest(1, s.calificacion - 1))],
+  least(10, greatest(1, s.calificacion * 2 - (random() * 2)::int)),
+  (select array_agg(a) from unnest(array['comida', 'bebida', 'atencion', 'ambiente', 'precio']) a
+    where random() < 0.45 or a = (array['comida', 'ambiente', 'atencion'])[(s.n % 3) + 1]),
+  s.calificacion >= 3,
+  (array[
+    'Muy rica la comida y la atención fue excelente.',
+    'Lindo lugar, aunque la comida tardó un poco.',
+    'Volvería sin dudas, el ambiente es muy agradable.',
+    'Precios razonables para la calidad que ofrecen.',
+    'La mesa estaba un poco sucia cuando llegamos.'
+  ])[(s.n % 5) + 1],
+  s.momento
+from (
+  select row_number() over () as n,
+         date_trunc('day', now()) - (d || ' days')::interval + ((12 + h * 4) || ' hours')::interval as momento,
+         -- Calificación sesgada hacia 4 y 5, con alguna mala cada tanto.
+         -- Va en el select list (no en un join aparte) para que random()
+         -- se evalúe una vez por fila y no una sola vez para todas.
+         (array[2, 3, 4, 4, 5, 5, 5, 4, 3, 5])[1 + floor(random() * 10)::int] as calificacion
+  from generate_series(1, 28) as d
+  cross join generate_series(0, 2) as h
+) s;
+
+-- v10 (27/09/2026): Puntos 18 y 19 — estado por sector + entrega.
+-- Corrido y confirmado en el SQL Editor.
+--
+-- Decisión de equipo (27/09, con Cicchelli, puntos 16/17): el avance
+-- de cada sector se guarda en dos booleanos de `pedidos`
+-- (cocina_lista, bar_listo), no en filas por sector. El punto 19
+-- separa "el mozo entrega" de "el cliente confirma la recepción",
+-- así que suma un tercer booleano (entregado_por_mozo): el mozo lo
+-- marca al entregar y recién ahí el cliente puede pasar el pedido
+-- a 'entregado'.
+--
+-- Nadie hace UPDATE directo sobre estas columnas ni sobre el estado:
+-- todo va por funciones SECURITY DEFINER (mismo patrón que
+-- tomar_pedido_en_curso), que validan el perfil adentro.
+--
+-- Flujo de estado: pendiente_confirmacion -> confirmado -> completo
+--                  -> entregado (y rechazado, desde v8).
+--
+-- Cocina = todo producto que no sea bebida (decisión 13/09: postre
+-- cuenta como plato; el valor 'postre' existe en el enum pero no se
+-- usa). Bar = tipo 'bebida'.
+--
+-- OJO al correr esto en el SQL Editor: cada "alter type ... add
+-- value" va solo y confirmado antes de usar el valor nuevo (mismo
+-- error de "unsafe use of new value" que en v8).
+-- =========================================================
+
+alter table pedidos add column cocina_lista boolean not null default false;
+alter table pedidos add column bar_listo boolean not null default false;
+alter table pedidos add column entregado_por_mozo boolean not null default false;
+
+alter type estado_pedido add value if not exists 'completo';
+alter type estado_pedido add value if not exists 'entregado';
+
+-- Cocinero/cantinero avisan que terminaron su parte. Si con eso todos
+-- los sectores intervinientes quedaron listos, el pedido pasa a
+-- 'completo'. Va en la misma función, sin trigger aparte.
+create or replace function marcar_sector_listo(p_pedido_id uuid, p_sector text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_interviene_cocina boolean;
+  v_interviene_bar boolean;
+  v_cocina_lista boolean;
+  v_bar_listo boolean;
+begin
+  if p_sector = 'cocina' then
+    if perfil_actual() <> 'cocinero' then
+      raise exception 'No autorizado.';
+    end if;
+    update pedidos set cocina_lista = true where id = p_pedido_id;
+  elsif p_sector = 'bar' then
+    if perfil_actual() <> 'cantinero' then
+      raise exception 'No autorizado.';
+    end if;
+    update pedidos set bar_listo = true where id = p_pedido_id;
+  else
+    raise exception 'Sector inválido: %', p_sector;
+  end if;
+
+  select exists (
+    select 1 from pedido_items pi join productos p on p.id = pi.producto_id
+    where pi.pedido_id = p_pedido_id and p.tipo <> 'bebida'
+  ) into v_interviene_cocina;
+
+  select exists (
+    select 1 from pedido_items pi join productos p on p.id = pi.producto_id
+    where pi.pedido_id = p_pedido_id and p.tipo = 'bebida'
+  ) into v_interviene_bar;
+
+  select cocina_lista, bar_listo into v_cocina_lista, v_bar_listo
+  from pedidos where id = p_pedido_id;
+
+  if (not v_interviene_cocina or v_cocina_lista)
+     and (not v_interviene_bar or v_bar_listo) then
+    update pedidos set estado = 'completo'
+    where id = p_pedido_id and estado = 'confirmado';
+  end if;
+end;
+$$;
+
+-- Punto 19, acción del mozo: solo marca que entregó físicamente.
+create or replace function marcar_entregado_mozo(p_pedido_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() <> 'mozo' then
+    raise exception 'No autorizado.';
+  end if;
+
+  update pedidos set entregado_por_mozo = true
+  where id = p_pedido_id and estado = 'completo';
+end;
+$$;
+
+-- Punto 19, acción del cliente: confirma la recepción y pasa el pedido
+-- a 'entregado'. Exige que el mozo ya haya marcado la entrega.
+create or replace function confirmar_recepcion_cliente(p_pedido_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() not in ('cliente_registrado', 'cliente_anonimo') then
+    raise exception 'No autorizado.';
+  end if;
+
+  update pedidos set estado = 'entregado'
+  where id = p_pedido_id
+    and estado = 'completo'
+    and entregado_por_mozo = true
+    and creado_por = auth.uid();
+end;
+$$;
+
+grant execute on function marcar_sector_listo(uuid, text) to authenticated;
+grant execute on function marcar_entregado_mozo(uuid) to authenticated;
+grant execute on function confirmar_recepcion_cliente(uuid) to authenticated;
+
+-- Realtime en `pedidos`: no estaba en la publicación, y sin eso los
+-- avisos de confirmado/rechazado/completo/entregado no disparan
+-- (la suscripción conecta sin error pero el callback nunca corre).
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'pedidos'
+  ) then
+    alter publication supabase_realtime add table pedidos;
+  end if;
+end $$;
+
+
+-- =========================================================
+-- v11 (30/09/2026): puntos 18/19 — marcar_entregado_mozo y
+-- confirmar_recepcion_cliente fallaban en silencio cuando el UPDATE no
+-- afectaba ninguna fila (perfil correcto pero condición no cumplida:
+-- pedido que no está 'completo', mozo que todavía no entregó, o cliente
+-- que no es el creador). El front no se enteraba -- el botón "no hacía
+-- nada", sin mensaje ni vibración, contra la regla de diseno-visual.md
+-- de que toda acción da feedback.
+--
+-- Se agrega `if not found then raise exception` después de cada UPDATE.
+-- No cambia la firma (sigue devolviendo void): alcanza con
+-- create or replace, sin drop function ni volver a correr los grant
+-- execute. El servicio Angular ya convierte cualquier error de la
+-- función en un mensaje visible (con vibración), así que no hace falta
+-- tocar el front. Corrida y confirmada en el SQL Editor (30/09/2026).
+--
+-- OJO doble toque en marcar_entregado_mozo: la condición sigue siendo
+-- solo `estado = 'completo'`, no `entregado_por_mozo = false` -- marcar
+-- "entregado" dos veces no tira error a propósito (poner el booleano en
+-- true de nuevo es inofensivo). El raise cubre los tres casos reales de
+-- "no se pudo": pedido que no está completo, cliente que no es el
+-- creador, o cliente que confirma antes de que el mozo entregue.
+-- =========================================================
+
+create or replace function marcar_entregado_mozo(p_pedido_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() <> 'mozo' then
+    raise exception 'No autorizado.';
+  end if;
+
+  update pedidos set entregado_por_mozo = true
+  where id = p_pedido_id and estado = 'completo';
+
+  if not found then
+    raise exception 'El pedido no está listo para entregar.';
+  end if;
+end;
+$$;
+
+create or replace function confirmar_recepcion_cliente(p_pedido_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() not in ('cliente_registrado', 'cliente_anonimo') then
+    raise exception 'No autorizado.';
+  end if;
+
+  update pedidos set estado = 'entregado'
+  where id = p_pedido_id
+    and estado = 'completo'
+    and entregado_por_mozo = true
+    and creado_por = auth.uid();
+
+  if not found then
+    raise exception 'Todavía no se puede confirmar la recepción de este pedido.';
+  end if;
+end;
+$$;
+
+-- =========================================================
+-- v12 (30/09/2026): Puntos 14 y 15 — juegos con descuento.
+-- Corrido y confirmado en el SQL Editor (30/09/2026).
+--
+-- Estadía = pedido confirmado (confirmado/completo/entregado): un
+-- pedido rechazado nunca llega a esos estados, así que el reenvío del
+-- punto 13 no afecta. Solo se guarda el PRIMER intento de cada juego;
+-- las partidas libres no dejan fila.
+--
+-- El primer intento cuenta desde que arranca la partida
+-- (iniciar_intento_juego deja gano = null). Si el cliente abandona,
+-- queda en null = perdido. registrar_resultado_juego lo cierra.
+--
+-- No acumulativo: el porcentaje se otorga solo si ningún otro juego de
+-- ese pedido ya dio descuento. Porcentajes fijos: ahorcado 10,
+-- memotest 15, trivia 20. Solo cliente_registrado (el anónimo juega
+-- libre, sin llamar a estas funciones).
+--
+-- Nadie hace INSERT/UPDATE directo sobre juegos_intentos: todo va por
+-- funciones SECURITY DEFINER (mismo patrón que marcar_sector_listo).
+--
+-- Caso borde: si en una misma estadía hubiera un segundo pedido, los
+-- juegos arrancarían de cero (hoy la app no permite pedir de nuevo
+-- después del entregado).
+--
+-- Punto 21 (cuenta): leer el descuento con descuento_juegos(pedido_id).
+-- =========================================================
+
+create table juegos_intentos (
+  id uuid primary key default gen_random_uuid(),
+  pedido_id uuid not null references pedidos(id) on delete cascade,
+  cliente_id uuid not null references usuarios(id),
+  juego text not null check (juego in ('ahorcado', 'memotest', 'trivia')),
+  -- null = primer intento en curso o abandonado (cuenta como perdido).
+  gano boolean,
+  porcentaje_obtenido int not null default 0 check (porcentaje_obtenido in (0, 10, 15, 20)),
+  created_at timestamptz not null default now(),
+  unique (pedido_id, juego)
+);
+
+alter table juegos_intentos enable row level security;
+
+create policy "juegos_intentos_cliente_ve_los_suyos"
+on juegos_intentos for select
+to authenticated
+using ( cliente_id = auth.uid() );
+
+create policy "juegos_intentos_dueno_supervisor_ven_todos"
+on juegos_intentos for select
+to authenticated
+using ( perfil_actual() in ('dueño', 'supervisor') );
+
+-- Validación compartida por iniciar_intento_juego y
+-- registrar_resultado_juego. No se expone a la app.
+create or replace function validar_pedido_para_juego(p_pedido_id uuid, p_juego text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() <> 'cliente_registrado' then
+    raise exception 'Solo los clientes registrados pueden ganar descuentos.';
+  end if;
+
+  if p_juego not in ('ahorcado', 'memotest', 'trivia') then
+    raise exception 'Juego inválido: %', p_juego;
+  end if;
+
+  if not exists (
+    select 1 from pedidos
+    where id = p_pedido_id
+      and creado_por = auth.uid()
+      and estado in ('confirmado', 'completo', 'entregado')
+  ) then
+    raise exception 'Los juegos se habilitan cuando el mozo confirma tu pedido.';
+  end if;
+end;
+$$;
+
+-- Al arrancar la partida. true = es el primer intento (cuenta para el
+-- descuento); false = ya se jugó antes en esta estadía (juego libre).
+create or replace function iniciar_intento_juego(p_pedido_id uuid, p_juego text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform validar_pedido_para_juego(p_pedido_id, p_juego);
+
+  insert into juegos_intentos (pedido_id, cliente_id, juego)
+  values (p_pedido_id, auth.uid(), p_juego)
+  on conflict (pedido_id, juego) do nothing;
+
+  return found;
+end;
+$$;
+
+-- Al terminar el primer intento. Devuelve el porcentaje obtenido
+-- (0 si perdió o si ya tenía un descuento de otro juego). Si ganó
+-- pero ya tenía descuento, la fila queda con gano = true y 0%, para
+-- que el menú pueda mostrar "Jugado: ganaste".
+create or replace function registrar_resultado_juego(p_pedido_id uuid, p_juego text, p_gano boolean)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_porcentaje int := 0;
+begin
+  perform validar_pedido_para_juego(p_pedido_id, p_juego);
+
+  if p_gano and not exists (
+    select 1 from juegos_intentos
+    where pedido_id = p_pedido_id and porcentaje_obtenido > 0
+  ) then
+    v_porcentaje := case p_juego
+      when 'ahorcado' then 10
+      when 'memotest' then 15
+      when 'trivia' then 20
+    end;
+  end if;
+
+  update juegos_intentos
+  set gano = p_gano, porcentaje_obtenido = v_porcentaje
+  where pedido_id = p_pedido_id
+    and juego = p_juego
+    and cliente_id = auth.uid()
+    and gano is null;
+
+  if not found then
+    raise exception 'No hay un primer intento en curso para este juego.';
+  end if;
+
+  return v_porcentaje;
+end;
+$$;
+
+-- Punto 21: descuento ganado en la estadía (0 si no hay). Lo puede
+-- consultar el creador del pedido, el mozo, el dueño y el supervisor.
+create or replace function descuento_juegos(p_pedido_id uuid)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() not in ('mozo', 'dueño', 'supervisor')
+     and not exists (select 1 from pedidos where id = p_pedido_id and creado_por = auth.uid()) then
+    raise exception 'No autorizado.';
+  end if;
+
+  return coalesce(
+    (select max(porcentaje_obtenido) from juegos_intentos where pedido_id = p_pedido_id),
+    0
+  );
+end;
+$$;
+
+revoke execute on function validar_pedido_para_juego(uuid, text) from public;
+grant execute on function iniciar_intento_juego(uuid, text) to authenticated;
+grant execute on function registrar_resultado_juego(uuid, text, boolean) to authenticated;
+grant execute on function descuento_juegos(uuid) to authenticated;
+
+
+-- =========================================================
+-- v13 (30/09/2026): puntos 14/15 — arreglos de la revisión final sobre
+-- los juegos con descuento (v12).
+-- Corrido y confirmado en el SQL Editor (30/09/2026).
+--
+-- 1) registrar_resultado_juego idempotente. Si el UPDATE se confirmaba
+--    pero la respuesta no llegaba al celular (wifi inestable), el
+--    reintento del front encontraba gano <> null y la función tiraba
+--    "No hay un primer intento en curso": el cliente quedaba viendo un
+--    error aunque el descuento sí se había guardado. Ahora, si el primer
+--    intento ya está cerrado, devuelve el porcentaje que quedó guardado.
+--
+-- 2) No acumulativo también con dos juegos cerrando a la vez (dos
+--    pestañas): con READ COMMITTED las dos llamadas podían pasar el
+--    "not exists" y quedar las dos con porcentaje. Ahora se bloquea la
+--    fila del pedido (select ... for update) antes de chequear, así la
+--    segunda espera a la primera y ve su porcentaje.
+--
+-- 3) Sesión nula y permisos. Sin sesión, perfil_actual() es NULL y
+--    "NULL in (...)" no es ni true ni false: en descuento_juegos el if
+--    no entraba y cualquiera con la clave pública y un id de pedido
+--    podía leer su descuento. Los chequeos de perfil ahora usan
+--    "is distinct from" / "is not true", que tratan el NULL como "no
+--    autorizado". Además Supabase da EXECUTE por defecto a anon y
+--    authenticated en funciones nuevas de public, y "revoke ... from
+--    public" no saca esos permisos: se revocan explícitamente.
+--    validar_pedido_para_juego queda sin execute para la app (la llaman
+--    las otras funciones, que corren como dueño).
+--
+-- No cambia ninguna firma: alcanza con create or replace, y los grant
+-- a authenticated de v12 siguen valiendo para las tres funciones
+-- públicas.
+-- =========================================================
+
+create or replace function validar_pedido_para_juego(p_pedido_id uuid, p_juego text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if perfil_actual() is distinct from 'cliente_registrado' then
+    raise exception 'Solo los clientes registrados pueden ganar descuentos.';
+  end if;
+
+  if p_juego not in ('ahorcado', 'memotest', 'trivia') then
+    raise exception 'Juego inválido: %', p_juego;
+  end if;
+
+  if not exists (
+    select 1 from pedidos
+    where id = p_pedido_id
+      and creado_por = auth.uid()
+      and estado in ('confirmado', 'completo', 'entregado')
+  ) then
+    raise exception 'Los juegos se habilitan cuando el mozo confirma tu pedido.';
+  end if;
+end;
+$$;
+
+create or replace function registrar_resultado_juego(p_pedido_id uuid, p_juego text, p_gano boolean)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_porcentaje int := 0;
+  v_ya_guardado int;
+begin
+  perform validar_pedido_para_juego(p_pedido_id, p_juego);
+
+  -- Un solo cierre de juego a la vez por pedido (regla no acumulativa).
+  perform 1 from pedidos where id = p_pedido_id for update;
+
+  -- Reintento de un cierre que ya se guardó: devuelve lo guardado.
+  select porcentaje_obtenido into v_ya_guardado
+  from juegos_intentos
+  where pedido_id = p_pedido_id
+    and juego = p_juego
+    and cliente_id = auth.uid()
+    and gano is not null;
+
+  if found then
+    return v_ya_guardado;
+  end if;
+
+  if p_gano and not exists (
+    select 1 from juegos_intentos
+    where pedido_id = p_pedido_id and porcentaje_obtenido > 0
+  ) then
+    v_porcentaje := case p_juego
+      when 'ahorcado' then 10
+      when 'memotest' then 15
+      when 'trivia' then 20
+    end;
+  end if;
+
+  update juegos_intentos
+  set gano = p_gano, porcentaje_obtenido = v_porcentaje
+  where pedido_id = p_pedido_id
+    and juego = p_juego
+    and cliente_id = auth.uid()
+    and gano is null;
+
+  if not found then
+    raise exception 'No hay un primer intento en curso para este juego.';
+  end if;
+
+  return v_porcentaje;
+end;
+$$;
+
+create or replace function descuento_juegos(p_pedido_id uuid)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (perfil_actual() in ('mozo', 'dueño', 'supervisor')) is not true
+     and not exists (select 1 from pedidos where id = p_pedido_id and creado_por = auth.uid()) then
+    raise exception 'No autorizado.';
+  end if;
+
+  return coalesce(
+    (select max(porcentaje_obtenido) from juegos_intentos where pedido_id = p_pedido_id),
+    0
+  );
+end;
+$$;
+
+revoke execute on function validar_pedido_para_juego(uuid, text) from public, anon, authenticated;
+revoke execute on function iniciar_intento_juego(uuid, text) from public, anon;
+revoke execute on function registrar_resultado_juego(uuid, text, boolean) from public, anon;
+revoke execute on function descuento_juegos(uuid) from public, anon;
+
+-- =========================================================
+-- v14 (02/10/2026): Punto 21 — la cuenta: propina por QR, detalle y
+-- pago simulado.
+--
+-- Una cuenta por estadía, con la misma definición que la encuesta (v9):
+-- la asignación actual del cliente a la mesa (mesas.asignada_en).
+--
+-- Nadie hace INSERT/UPDATE directo sobre `cuentas`: todo va por
+-- funciones SECURITY DEFINER (mismo patrón que los juegos, puntos 14/15), y los
+-- importes los calcula la base a partir de pedido_items -- el celular
+-- nunca manda un total.
+--
+-- Pedidos que entran: los de la mesa desde asignada_en en estado
+-- confirmado, completo o entregado (mismo criterio que
+-- validar_pedido_para_juego, juegos de los puntos 14/15). Rechazados y pendientes no.
+--
+-- Cálculo: subtotal - descuento de juegos = base; la propina es un
+-- porcentaje de esa base ("porcentaje de propina a la cuenta final");
+-- total = base + propina.
+--
+-- Descuento: se lee juegos_intentos directo y no descuento_juegos():
+-- esa función solo autoriza a quien creó el pedido, y en una mesa el
+-- pedido lo puede haber hecho otro comensal. max() sobre los pedidos de
+-- la estadía mantiene la regla de "no acumulativo".
+--
+-- OJO al correr esto en el SQL Editor: los create type conviene
+-- correrlos solos primero (mismo aviso que en v8).
+-- =========================================================
+
+create type estado_cuenta as enum ('solicitada', 'pagada', 'confirmada');
+create type metodo_pago as enum ('dinero_en_cuenta', 'debito', 'credito');
+
+create table cuentas (
+  id uuid primary key default gen_random_uuid(),
+  mesa_id uuid not null references mesas(id) on delete cascade,
+  cliente_id uuid not null references usuarios(id) on delete cascade,
+  estadia_inicio timestamptz not null,
+  estado estado_cuenta not null default 'solicitada',
+  -- Todo lo de abajo queda en NULL hasta que el cliente escanea el QR de
+  -- propina: "no se podrá generar la cuenta sin antes seleccionar el
+  -- porcentaje de propina".
+  propina_porcentaje smallint check (propina_porcentaje in (0, 5, 10, 15, 20)),
+  subtotal numeric(10,2) check (subtotal >= 0),
+  descuento_porcentaje smallint check (descuento_porcentaje in (0, 10, 15, 20)),
+  descuento_importe numeric(10,2) check (descuento_importe >= 0),
+  propina_importe numeric(10,2) check (propina_importe >= 0),
+  total numeric(10,2) check (total >= 0),
+  metodo_pago metodo_pago,
+  solicitada_en timestamptz not null default now(),
+  pagada_en timestamptz,
+  confirmada_en timestamptz,
+  unique (mesa_id, estadia_inicio)
+);
+
+alter table cuentas enable row level security;
+
+create policy "cuentas_cliente_ve_la_suya"
+on cuentas for select
+to authenticated
+using ( cliente_id = auth.uid() );
+
+-- El mozo la necesita para cobrar y confirmar (punto 22); dueño y
+-- supervisor reciben el aviso de pago. También habilita que les lleguen
+-- los eventos de Realtime (Realtime respeta estas policies).
+create policy "cuentas_personal_ve_todas"
+on cuentas for select
+to authenticated
+using ( perfil_actual() in ('mozo', 'dueño', 'supervisor') );
+
+-- Punto 21: "el cliente solicita la cuenta al mozo". Se habilita recién
+-- con un pedido entregado (punto 19). Idempotente: si ya la había pedido
+-- en esta estadía, devuelve la misma.
+create or replace function solicitar_cuenta()
+returns cuentas
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_mesa mesas;
+  v_cuenta cuentas;
+begin
+  -- coalesce: sin sesión perfil_actual() es NULL, y "NULL not in (...)"
+  -- no es true -- el if no entraría (mismo arreglo que en los juegos).
+  if coalesce(perfil_actual()::text, '') not in ('cliente_registrado', 'cliente_anonimo') then
+    raise exception 'Solo el cliente de la mesa puede pedir la cuenta.';
+  end if;
+
+  select * into v_mesa from mesas where cliente_actual_id = auth.uid();
+  if not found or v_mesa.asignada_en is null then
+    raise exception 'No tenés una mesa asignada.';
+  end if;
+
+  if not exists (
+    select 1 from pedidos
+    where mesa_id = v_mesa.id
+      and created_at >= v_mesa.asignada_en
+      and estado = 'entregado'
+  ) then
+    raise exception 'Vas a poder pedir la cuenta cuando hayas recibido tu pedido.';
+  end if;
+
+  insert into cuentas (mesa_id, cliente_id, estadia_inicio)
+  values (v_mesa.id, auth.uid(), v_mesa.asignada_en)
+  on conflict (mesa_id, estadia_inicio) do nothing;
+
+  select * into v_cuenta
+  from cuentas
+  where mesa_id = v_mesa.id and estadia_inicio = v_mesa.asignada_en;
+
+  return v_cuenta;
+end;
+$$;
+
+-- Al escanear el QR de propina. Calcula todos los importes. Se puede
+-- volver a escanear (cambiar la propina) mientras no se haya pagado.
+create or replace function aplicar_propina(p_porcentaje int)
+returns cuentas
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_cuenta cuentas;
+  v_subtotal numeric(10,2);
+  v_descuento int;
+  v_descuento_importe numeric(10,2);
+  v_propina_importe numeric(10,2);
+begin
+  if p_porcentaje is null or p_porcentaje not in (0, 5, 10, 15, 20) then
+    raise exception 'Ese código no corresponde a un porcentaje de propina válido.';
+  end if;
+
+  select c.* into v_cuenta
+  from cuentas c
+  join mesas m on m.id = c.mesa_id and m.asignada_en = c.estadia_inicio
+  where m.cliente_actual_id = auth.uid()
+  for update of c;
+
+  if not found then
+    raise exception 'Primero tenés que pedir la cuenta.';
+  end if;
+  if v_cuenta.estado <> 'solicitada' then
+    raise exception 'La cuenta ya fue pagada.';
+  end if;
+
+  select coalesce(sum(pi.cantidad * pi.precio_unitario), 0) into v_subtotal
+  from pedido_items pi
+  join pedidos p on p.id = pi.pedido_id
+  where p.mesa_id = v_cuenta.mesa_id
+    and p.created_at >= v_cuenta.estadia_inicio
+    and p.estado in ('confirmado', 'completo', 'entregado');
+
+  select coalesce(max(ji.porcentaje_obtenido), 0) into v_descuento
+  from juegos_intentos ji
+  join pedidos p on p.id = ji.pedido_id
+  where p.mesa_id = v_cuenta.mesa_id
+    and p.created_at >= v_cuenta.estadia_inicio;
+
+  v_descuento_importe := round(v_subtotal * v_descuento / 100.0, 2);
+  v_propina_importe := round((v_subtotal - v_descuento_importe) * p_porcentaje / 100.0, 2);
+
+  update cuentas
+  set propina_porcentaje = p_porcentaje,
+      subtotal = v_subtotal,
+      descuento_porcentaje = v_descuento,
+      descuento_importe = v_descuento_importe,
+      propina_importe = v_propina_importe,
+      total = v_subtotal - v_descuento_importe + v_propina_importe
+  where id = v_cuenta.id
+  returning * into v_cuenta;
+
+  return v_cuenta;
+end;
+$$;
+
+-- Pago simulado. Después queda esperando la confirmación del mozo
+-- (punto 22). p_metodo como text y no como el enum: así el mensaje de
+-- error de un valor inválido es el nuestro, en español.
+create or replace function pagar_cuenta(p_metodo text)
+returns cuentas
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_cuenta cuentas;
+begin
+  if p_metodo is null or p_metodo not in ('dinero_en_cuenta', 'debito', 'credito') then
+    raise exception 'Elegí un medio de pago válido.';
+  end if;
+
+  select c.* into v_cuenta
+  from cuentas c
+  join mesas m on m.id = c.mesa_id and m.asignada_en = c.estadia_inicio
+  where m.cliente_actual_id = auth.uid()
+  for update of c;
+
+  if not found then
+    raise exception 'Primero tenés que pedir la cuenta.';
+  end if;
+  if v_cuenta.estado <> 'solicitada' then
+    raise exception 'La cuenta ya fue pagada.';
+  end if;
+  if v_cuenta.propina_porcentaje is null then
+    raise exception 'Escaneá el código QR de propina antes de pagar.';
+  end if;
+
+  update cuentas
+  set estado = 'pagada',
+      metodo_pago = p_metodo::metodo_pago,
+      pagada_en = now()
+  where id = v_cuenta.id
+  returning * into v_cuenta;
+
+  return v_cuenta;
+end;
+$$;
+
+-- Supabase da EXECUTE por defecto a anon en funciones nuevas, y
+-- "revoke from public" no lo saca (mismo hallazgo que en los juegos).
+revoke execute on function solicitar_cuenta() from public, anon;
+revoke execute on function aplicar_propina(int) from public, anon;
+revoke execute on function pagar_cuenta(text) from public, anon;
+grant execute on function solicitar_cuenta() to authenticated;
+grant execute on function aplicar_propina(int) to authenticated;
+grant execute on function pagar_cuenta(text) to authenticated;
+
+-- Realtime: aviso al mozo (cuenta pedida) y a mozo/dueño/supervisor
+-- (cuenta pagada). Idempotente, mismo patrón que con `mesas`.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'cuentas'
+  ) then
+    alter publication supabase_realtime add table cuentas;
+  end if;
+end $$;
+
+
+-- =========================================================
+-- v15 (02/10/2026): Punto 22 — el mozo confirma el pago y se libera la
+-- mesa.
+--
+-- Una sola función hace las dos cosas juntas (confirmar la cuenta y
+-- liberar la mesa) para que nunca quede una sin la otra. Al poner
+-- cliente_actual_id en NULL, el trigger de v9 deja asignada_en en NULL:
+-- la próxima estadía arranca con un asignada_en nuevo, así que los
+-- pedidos de este cliente no entran ni en la cuenta ni en la encuesta del
+-- siguiente.
+--
+-- La mesa se libera solo si sigue siendo la misma estadía (where por
+-- asignada_en): si el dueño ya la había liberado y reasignado a mano, no
+-- se pisa la asignación nueva.
+-- =========================================================
+
+create or replace function confirmar_pago(p_cuenta_id uuid)
+returns cuentas
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_cuenta cuentas;
+begin
+  if perfil_actual() is distinct from 'mozo' then
+    raise exception 'Solo un mozo puede confirmar el pago.';
+  end if;
+
+  select * into v_cuenta from cuentas where id = p_cuenta_id for update;
+  if not found then
+    raise exception 'No encontramos esa cuenta.';
+  end if;
+
+  -- Idempotente: si otro mozo ya la confirmó (o fue un doble toque), no
+  -- es un error.
+  if v_cuenta.estado = 'confirmada' then
+    return v_cuenta;
+  end if;
+  if v_cuenta.estado <> 'pagada' then
+    raise exception 'El cliente todavía no pagó esta cuenta.';
+  end if;
+
+  update cuentas
+  set estado = 'confirmada',
+      confirmada_en = now()
+  where id = p_cuenta_id
+  returning * into v_cuenta;
+
+  update mesas
+  set disponibilidad = 'vacia',
+      cliente_actual_id = null,
+      pedido_en_armado_por = null,
+      pedido_en_armado_en = null
+  where id = v_cuenta.mesa_id
+    and asignada_en = v_cuenta.estadia_inicio;
+
+  return v_cuenta;
+end;
+$$;
+
+revoke execute on function confirmar_pago(uuid) from public, anon;
+grant execute on function confirmar_pago(uuid) to authenticated;

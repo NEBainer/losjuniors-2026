@@ -1,0 +1,174 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="volver()" aria-label="Volver al pedido">
+        <ion-icon name="arrow-back-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>
+      <span class="titulo">Encuesta</span>
+      @if (numeroMesa() !== null) {
+        <span class="subtitulo">Mesa {{ numeroMesa() }}</span>
+      }
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="fondo-app">
+
+  @if (cargando() || enviando()) {
+    <div class="overlay-cargando">
+      <div class="contenedor-spinner">
+        <img src="assets/icon/logo_lamesa.png" alt="LA MESA" class="logo-spinner" />
+        <div class="spinner-css"></div>
+        <p>{{ enviando() ? 'Enviando tu encuesta…' : 'Cargando la encuesta…' }}</p>
+      </div>   
+    </div>
+  }
+
+  @if (mensajeError()) {
+    <div class="banner-error">
+      <ion-icon name="warning-outline"></ion-icon>
+      <span>{{ mensajeError() }}</span>
+    </div>
+  }
+
+  @if (!cargando()) {
+    <div class="contenedor-encuesta">
+
+      @if (errorCarga()) {
+        <div class="tarjeta-estado">
+          <ion-icon name="alert-circle-outline" class="icono-estado error"></ion-icon>
+          <h2>No podés completar la encuesta</h2>
+          <p>{{ errorCarga() }}</p>
+          <ion-button expand="block" class="boton-principal" (click)="verResultados()">
+            <ion-icon name="bar-chart-outline" slot="start"></ion-icon>
+            Ver resultados de las encuestas
+          </ion-button>
+        </div>
+      } @else if (estadia()?.yaRespondio) {
+        <div class="tarjeta-estado">
+          <ion-icon name="checkmark-circle-outline" class="icono-estado ok"></ion-icon>
+          <h2>¡Gracias por tu opinión!</h2>
+          <p>Ya completaste la encuesta en esta visita. Vas a poder completarla de nuevo en tu próxima estadía.</p>
+          <ion-button expand="block" class="boton-principal" (click)="verResultados()">
+            <ion-icon name="bar-chart-outline" slot="start"></ion-icon>
+            Ver resultados de las encuestas
+          </ion-button>
+        </div>
+      } @else {
+        <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+          <p class="introduccion">Tu opinión nos ayuda a mejorar. Todas las preguntas son obligatorias.</p>
+
+          <!-- 1. Estrellas -->
+          <section class="pregunta" [class.con-error]="mostrarError('calificacionGeneral')">
+            <h3><span class="numero">1</span>¿Cómo calificarías tu experiencia en general?</h3>
+            <div class="estrellas" role="radiogroup" aria-label="Calificación general">
+              @for (n of estrellas; track n) {
+                <button
+                  type="button"
+                  class="estrella"
+                  role="radio"
+                  [attr.aria-checked]="n === calificacion()"
+                  [attr.aria-label]="n === 1 ? '1 estrella' : n + ' estrellas'"
+                  (click)="elegirCalificacion(n)">
+                  <ion-icon [name]="n <= calificacion() ? 'star' : 'star-outline'"></ion-icon>
+                </button>
+              }
+            </div>
+            <p class="ayuda">{{ textoCalificacion() }}</p>
+            @if (mostrarError('calificacionGeneral')) {
+              <p class="error-campo">Elegí de una a cinco estrellas.</p>
+            }
+          </section>
+
+          <!-- 2. Opciones (radio) -->
+          <section class="pregunta" [class.con-error]="mostrarError('atencionMozo')">
+            <h3><span class="numero">2</span>¿Cómo fue la atención del mozo?</h3>
+            <ion-radio-group formControlName="atencionMozo" class="opciones">
+              @for (opcion of opcionesAtencion; track opcion.valor) {
+                <ion-radio [value]="opcion.valor" labelPlacement="end" justify="start">{{ opcion.etiqueta }}</ion-radio>
+              }
+            </ion-radio-group>
+            @if (mostrarError('atencionMozo')) {
+              <p class="error-campo">Elegí una opción.</p>
+            }
+          </section>
+
+          <!-- 3. Deslizador -->
+          <section class="pregunta" [class.con-error]="mostrarError('limpieza')">
+            <h3><span class="numero">3</span>Del 1 al 10, ¿qué tan limpio encontraste el local?</h3>
+            <div class="valor-limpieza">{{ formulario.controls.limpieza.value }}<span> / 10</span></div>
+            <ion-range
+              formControlName="limpieza"
+              aria-label="Limpieza del local"
+              [min]="1"
+              [max]="10"
+              [step]="1"
+              [snaps]="true"
+              [ticks]="true"
+              [pin]="true">
+              <span slot="start">1</span>
+              <span slot="end">10</span>
+            </ion-range>
+            @if (mostrarError('limpieza')) {
+              <p class="error-campo">Elegí un valor del 1 al 10.</p>
+            }
+          </section>
+
+          <!-- 4. Casillas múltiples -->
+          <section class="pregunta" [class.con-error]="mostrarError('aspectosDestacados')">
+            <h3><span class="numero">4</span>¿Qué fue lo que más te gustó? Podés elegir varias.</h3>
+            <div class="opciones">
+              @for (aspecto of opcionesAspecto; track aspecto.valor) {
+                <ion-checkbox
+                  labelPlacement="end"
+                  justify="start"
+                  [checked]="estaSeleccionado(aspecto.valor)"
+                  (ionChange)="alternarAspecto(aspecto.valor, $event.detail.checked)">
+                  {{ aspecto.etiqueta }}
+                </ion-checkbox>
+              }
+            </div>
+            @if (mostrarError('aspectosDestacados')) {
+              <p class="error-campo">Elegí al menos una opción.</p>
+            }
+          </section>
+
+          <!-- 5. Interruptor -->
+          <section class="pregunta">
+            <h3><span class="numero">5</span>¿Nos recomendarías a tus amigos?</h3>
+            <ion-toggle formControlName="recomendaria" justify="space-between">
+              {{ formulario.controls.recomendaria.value ? 'Sí, los recomendaría' : 'No, no los recomendaría' }}
+            </ion-toggle>
+          </section>
+
+          <!-- 6. Texto libre -->
+          <section class="pregunta" [class.con-error]="mostrarError('comentario')">
+            <h3><span class="numero">6</span>Dejanos un comentario</h3>
+            <ion-textarea
+              formControlName="comentario"
+              aria-label="Comentario"
+              placeholder="Contanos qué te gustó y qué podemos mejorar"
+              fill="solid"
+              [rows]="3"
+              [autoGrow]="true"
+              [counter]="true"
+              [maxlength]="300">
+            </ion-textarea>
+            @if (mostrarError('comentario')) {
+              <p class="error-campo">Escribí entre 10 y 300 caracteres.</p>
+            }
+          </section>
+
+          <ion-button type="submit" expand="block" class="boton-principal" [disabled]="enviando()">
+            <ion-icon name="send-outline" slot="start"></ion-icon>
+            Enviar encuesta
+          </ion-button>
+        </form>
+      }
+
+    </div>
+  }
+
+</ion-content>

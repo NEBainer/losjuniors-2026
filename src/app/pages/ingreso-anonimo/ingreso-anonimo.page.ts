@@ -5,7 +5,7 @@ import { IonButton, IonContent, IonIcon, IonInput, IonLabel, IonSpinner } from '
 import { Router } from '@angular/router';
 import { ClienteService } from '../../core/services/cliente.service';
 import { addIcons } from 'ionicons';
-import { camera, cameraOutline, personCircleOutline, warning, warningOutline } from 'ionicons/icons';
+import { barChartOutline, camera, cameraOutline, personCircleOutline, warning, warningOutline } from 'ionicons/icons';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
 @Component({
@@ -28,7 +28,7 @@ export class IngresoAnonimoPage implements OnInit {
     this.formulario = this.fb.group({
       nombre: ['', [Validators.required, Validators.minLength(2)]]
     });
-    addIcons({ camera, warning, cameraOutline, warningOutline, personCircleOutline });
+    addIcons({ camera, warning, cameraOutline, warningOutline, personCircleOutline, barChartOutline });
   }
 
   async capturarFoto() {
@@ -63,6 +63,10 @@ export class IngresoAnonimoPage implements OnInit {
     this.mensajeError.set(mensaje);
     try { await Haptics.impact({ style: ImpactStyle.Heavy }); } catch {}
     setTimeout(() => this.mensajeError.set(''), 4000);
+  }
+
+  verResultados() {
+    this.router.navigate(['/encuestas/resultados']);
   }
 
   ngOnInit() {

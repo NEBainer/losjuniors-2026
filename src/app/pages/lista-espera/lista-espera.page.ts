@@ -7,7 +7,7 @@ import { MesaService } from '../../core/services/mesa.service';
 import { NotificacionesService } from '../../core/services/notificaciones.service';
 import { Router } from '@angular/router';
 import { addIcons } from 'ionicons';
-import { checkmarkCircleOutline, qrCodeOutline, timeOutline } from 'ionicons/icons';
+import { barChartOutline, checkmarkCircleOutline, qrCodeOutline, timeOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-lista-espera',
@@ -34,7 +34,7 @@ export class ListaEsperaPage implements OnInit, OnDestroy {
     private notificacionesService: NotificacionesService,
     private router: Router,
   ) {
-    addIcons({ timeOutline, checkmarkCircleOutline, qrCodeOutline });
+    addIcons({ timeOutline, checkmarkCircleOutline, qrCodeOutline, barChartOutline });
    }
 
   async ngOnInit() {
@@ -94,6 +94,10 @@ export class ListaEsperaPage implements OnInit, OnDestroy {
     } finally {
       this.escaneando.set(false);
     }
+  }
+
+  verResultados() {
+    this.router.navigate(['/encuestas/resultados']);
   }
 
   private async dispararError(mensaje: string) {

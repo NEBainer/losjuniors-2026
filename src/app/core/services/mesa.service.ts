@@ -127,7 +127,11 @@ export class MesaService {
     // Sin este chequeo, cualquier cliente podía escanear el QR de OTRA
     // mesa (no la que le asignó el metre) y entrar igual a su carta.
     if (mesa.cliente_actual_id !== clienteId) {
-      throw new Error('Esta no es tu mesa asignada.');
+      throw new Error(
+        mesa.disponibilidad === 'vacia'
+          ? `La mesa ${mesa.numero} está libre. Para ocuparla, anotate en la lista de espera.`
+          : 'Esta no es tu mesa asignada.',
+      );
     }
 
     return mesa;

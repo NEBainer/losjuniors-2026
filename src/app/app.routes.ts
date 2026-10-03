@@ -135,4 +135,58 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/pedidos-mozo/pedidos-mozo.page').then(m => m.PedidosMozoPage),
     canActivate: [authGuard, guardPerfil(['mozo'])]
   },
+  {
+    path: 'mesa/:mesaId/encuesta',
+    loadComponent: () => import('./pages/encuesta/encuesta.page').then( m => m.EncuestaPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'encuestas/resultados',
+    loadComponent: () => import('./pages/encuestas-resultados/encuestas-resultados.page').then( m => m.EncuestasResultadosPage)
+  },
+  {
+    // Puntos 16/17: misma pantalla para cocina y bar -- el sector sale
+    // del perfil logueado (cocinero -> cocina, cantinero -> bar).
+    path: 'sector/pedidos',
+    loadComponent: () => import('./pages/pedidos-sector/pedidos-sector.page').then(m => m.PedidosSectorPage),
+    canActivate: [authGuard, guardPerfil(['cocinero', 'cantinero'])]
+  },
+  {
+    // Puntos 14/15: menú de juegos. Se entra desde la pantalla del
+    // pedido (confirmado, completo o entregado). El anónimo juega libre;
+    // el descuento es solo para cliente_registrado (schema.sql v12).
+    path: 'mesa/:mesaId/juegos',
+    loadComponent: () => import('./pages/juegos/juegos.page').then(m => m.JuegosPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'mesa/:mesaId/juegos/ahorcado',
+    loadComponent: () => import('./pages/juegos/ahorcado/ahorcado.page').then(m => m.AhorcadoPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'mesa/:mesaId/juegos/memotest',
+    loadComponent: () => import('./pages/juegos/memotest/memotest.page').then(m => m.MemotestPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'mesa/:mesaId/juegos/trivia',
+    loadComponent: () => import('./pages/juegos/trivia/trivia.page').then(m => m.TriviaPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'mesa/:mesaId/cuenta',
+    loadComponent: () => import('./pages/cuenta/cuenta.page').then(m => m.CuentaPage),
+    canActivate: [authGuard, guardPerfil(['cliente_registrado', 'cliente_anonimo'])]
+  },
+  {
+    path: 'qr-propina',
+    loadComponent: () => import('./pages/qr-propina/qr-propina.page').then(m => m.QrPropinaPage),
+    canActivate: [authGuard, guardPerfil(['mozo', 'dueño', 'supervisor'])]
+  },
+  {
+    path: 'mozo/cuentas',
+    loadComponent: () => import('./pages/cuentas-mozo/cuentas-mozo.page').then(m => m.CuentasMozoPage),
+    canActivate: [authGuard, guardPerfil(['mozo'])]
+  }
 ]

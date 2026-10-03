@@ -89,10 +89,10 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 | Integrante | Branch | Período | Módulos desarrollados |
 |---|---|---|---|
-| **Ezequiel Bainer** | `Bainer` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Creación y administración del repositorio GitHub.</li><li>Organización general del proyecto.</li><li>Actualización y mantenimiento del README.</li><li>Investigación inicial de Ionic.</li><li>Investigación inicial de Android Studio.</li><li>Investigación inicial de Capacitor.</li><li>Alta de mesa (punto 4): formulario con foto por cámara y generación de QR.</li><li>Listado y gestión de mesas (punto 4): alternar disponibilidad, refresco automático de la lista al volver del alta, guard de ruta por perfil (dueño/supervisor).</li><li>Validaciones del formulario de alta de mesa: mensajes de error visibles por campo, foto obligatoria, bloqueo de notación no numérica (<code>e</code>/<code>+</code>/<code>-</code>) en los campos de número y comensales.</li><li>Correcciones de diseño de la preentrega del 13/09 en home, login, registro de cliente, alta de empleado, alta y gestión de mesas y carta.</li><li>Regeneración del ícono y del splash de la app a partir de los assets fuente.</li><li>Accesos rápidos del login traídos desde la base de datos (foto, perfil y nombre de cada usuario).</li><li>Consulta al mozo (punto 11): carta abierta desde el QR de mesa, chat en tiempo real entre cliente y mozos, y bandeja del mozo con las mesas que tienen consultas sin responder.</li><li>Validación de que el QR escaneado sea el de la mesa asignada al cliente (punto 10).</li><li>Notificaciones al dueño/supervisor por clientes pendientes, a los mozos por consultas nuevas y al cliente cuando el mozo le responde.</li><li>Botón para volver a ver el QR de una mesa ya creada.</li></ul></details> |
-| **Maximiliano Arcieri** | `Arcieri` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Configuración inicial de Supabase.</li><li>Diseño de entidades.</li><li>Creación del esquema inicial de base de datos.</li><li>Implementación de autenticación.</li><li>Configuración de políticas RLS.</li><li>Pantalla de dueño/supervisor con listado de clientes pendientes y botones aceptar/rechazar (integrada con las políticas RLS).</li><li>Filtrado del panel de control por perfil (dueño/supervisor ven clientes pendientes; cocinero/cantinero ven solo la card de lista de pedidos).</li><li>Base de datos para alta de empleados (punto 1): índices únicos parciales de DNI/CUIL/email y policy de Storage para que dueño/supervisor suban la foto de un empleado nuevo.</li><li>Alta de empleados (punto 1) completa: Edge Function <code>crear-empleado</code>, service, página de formulario, guard de ruta y card de acceso en el panel para dueño/supervisor.</li><li>Fix de compresión de foto: la imagen de la cámara superaba el límite de 5 MB del bucket <code>fotos</code> de Storage; se resolvió redimensionando/comprimiendo antes de subir (<code>imagen.util.ts</code>, pensado para reusarse en mesas y productos).</li><li>Integración final de <code>dev</code>: unificó los puntos 2/3 (alta de plato/bebida) de Cicchelli con el punto 1 (alta de empleado) propio.</li><li>Metre asigna mesa (punto 10): vínculo cliente–mesa en la base de datos, lista de espera del metre y anotación del cliente registrado.</li><li><code>NotificacionesService</code> con <code>@capacitor/local-notifications</code>: aviso al metre por clientes nuevos en la lista de espera y al cliente cuando se le asigna mesa.</li></ul></details> |
-| **Noelia Storgato** | `Storgato` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Formulario de Login.</li><li>Pantalla de accesos rápidos.</li><li>Implementación de Logout.</li><li>Guards de ruta por perfil.</li><li>Creación del proyecto Ionic.</li><li>Flujo de cliente registrado: pantalla de alta, estado "pendiente" y notificación visual del cambio de estado.</li><li>Migración de las pantallas de registro a Signals para reflejar los datos de Supabase sin depender de zone.js.</li><li>Mascotas ilustradas en las pantallas de Login y Registro de cliente.</li><li>Escaneo de DNI argentino (código PDF417 del dorso) con ML Kit para autocompletar nombre, apellido y DNI en el registro de cliente.</li><li>Envío automático de mails (Brevo) para los estados pendiente, aceptado y rechazado del cliente (puntos 5, 7 y 8), desde Edge Function.</li><li>Fix de seguridad: un cliente pendiente o rechazado no puede entrar al home.</li><li>Ingreso de cliente anónimo (punto 9): escaneo del QR de entrada, alta con nombre y foto, y lista de espera.</li><li>Unificación del CSS con variables compartidas y limpieza de colores hardcodeados en varias pantallas.</li></ul></details> |
-| **Lucía Cicchelli** | `Cicchelli` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Diseño del ícono de la aplicación.</li><li>Desarrollo de la pantalla de inicio (Splash Screen) estática y animada para el sistema "LA MESA".</li><li>Maquetación modular utilizando Angular y SCSS con paleta cromática temática.</li><li>Implementación de animaciones CSS3 mediante <code>@keyframes</code>, <code>clip-path</code>, efecto de estampado y entradas escalonadas de elementos visuales.</li><li>Botón para omitir la animación.</li><li>Adaptación responsive para distintos dispositivos.</li><li>Compatibilidad con <code>prefers-reduced-motion</code>.</li><li>Alta de plato y bebida (puntos 2 y 3), ya integrada a <code>dev</code>: formularios con foto, reutilizando el patrón de formulario del equipo.</li><li>Vista de la carta (punto 11): platos y bebidas con foto, precio, descripción y tiempo estimado.</li><li>Ajustes del splash: animación de 2 segundos fijos y líneas centradas.</li><li>Armado del pedido (punto 12): cantidades por producto, importe acumulado y tiempo estimado siempre visibles, envío al mozo y confirmación desde la lista de pedidos del mozo.</li><li>Rechazo de pedido por el mozo (punto 13): en progreso.</li></ul></details> |
+| **Ezequiel Bainer** | `Bainer` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Creación y administración del repositorio GitHub.</li><li>Organización general del proyecto.</li><li>Actualización y mantenimiento del README.</li><li>Investigación inicial de Ionic.</li><li>Investigación inicial de Android Studio.</li><li>Investigación inicial de Capacitor.</li><li>Alta de mesa (punto 4): formulario con foto por cámara y generación de QR.</li><li>Listado y gestión de mesas (punto 4): alternar disponibilidad, refresco automático de la lista al volver del alta, guard de ruta por perfil (dueño/supervisor).</li><li>Validaciones del formulario de alta de mesa: mensajes de error visibles por campo, foto obligatoria, bloqueo de notación no numérica (<code>e</code>/<code>+</code>/<code>-</code>) en los campos de número y comensales.</li><li>Correcciones de diseño de la preentrega del 13/09 en home, login, registro de cliente, alta de empleado, alta y gestión de mesas y carta.</li><li>Regeneración del ícono y del splash de la app a partir de los assets fuente.</li><li>Accesos rápidos del login traídos desde la base de datos (foto, perfil y nombre de cada usuario).</li><li>Consulta al mozo (punto 11): carta abierta desde el QR de mesa, chat en tiempo real entre cliente y mozos, y bandeja del mozo con las mesas que tienen consultas sin responder.</li><li>Validación de que el QR escaneado sea el de la mesa asignada al cliente (punto 10).</li><li>Notificaciones al dueño/supervisor por clientes pendientes, a los mozos por consultas nuevas y al cliente cuando el mozo le responde.</li><li>Botón para volver a ver el QR de una mesa ya creada.</li><li>Juegos con descuento (punto 15): Ahorcado (10%), Memotest (15%) y Trivia (20%), habilitados desde el pedido confirmado. El descuento se gana solo en el primer intento; después se puede seguir jugando libre, y el cliente anónimo juega sin descuento.</li><li>Base de datos de los juegos: tabla <code>juegos_intentos</code> y funciones para validar el pedido, registrar el resultado y calcular el descuento que después toma la cuenta (v12 y v13).</li><li>Tests unitarios de la lógica de cada juego y del servicio de juegos.</li><li>Fix del alta de producto: el botón Guardar ya no tapa el menú de foto y las fotos se ven completas.</li><li>Recarga automática de la lista de clientes pendientes del panel cuando llega uno nuevo.</li><li>Integración de <code>dev</code> con los puntos 20 a 22 y renumeración de los bloques de <code>schema.sql</code>.</li></ul></details> |
+| **Maximiliano Arcieri** | `Arcieri` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Configuración inicial de Supabase.</li><li>Diseño de entidades.</li><li>Creación del esquema inicial de base de datos.</li><li>Implementación de autenticación.</li><li>Configuración de políticas RLS.</li><li>Pantalla de dueño/supervisor con listado de clientes pendientes y botones aceptar/rechazar (integrada con las políticas RLS).</li><li>Filtrado del panel de control por perfil (dueño/supervisor ven clientes pendientes; cocinero/cantinero ven solo la card de lista de pedidos).</li><li>Base de datos para alta de empleados (punto 1): índices únicos parciales de DNI/CUIL/email y policy de Storage para que dueño/supervisor suban la foto de un empleado nuevo.</li><li>Alta de empleados (punto 1) completa: Edge Function <code>crear-empleado</code>, service, página de formulario, guard de ruta y card de acceso en el panel para dueño/supervisor.</li><li>Fix de compresión de foto: la imagen de la cámara superaba el límite de 5 MB del bucket <code>fotos</code> de Storage; se resolvió redimensionando/comprimiendo antes de subir (<code>imagen.util.ts</code>, pensado para reusarse en mesas y productos).</li><li>Integración final de <code>dev</code>: unificó los puntos 2/3 (alta de plato/bebida) de Cicchelli con el punto 1 (alta de empleado) propio.</li><li>Metre asigna mesa (punto 10): vínculo cliente–mesa en la base de datos, lista de espera del metre y anotación del cliente registrado.</li><li><code>NotificacionesService</code> con <code>@capacitor/local-notifications</code>: aviso al metre por clientes nuevos en la lista de espera y al cliente cuando se le asigna mesa.</li><li>Estado del pedido por sector (punto 18): cocina y bar marcan su parte como lista y, cuando terminan los dos, el pedido pasa a "completo" y le aparece al mozo en "Listos para entregar", con aviso.</li><li>Entrega del pedido (punto 19): el mozo lo marca como entregado y el cliente confirma la recepción; recién ahí accede a juegos, encuesta y pedir la cuenta.</li><li>Base de datos de los puntos 18 y 19: columnas <code>cocina_lista</code>, <code>bar_listo</code> y <code>entregado_por_mozo</code>, y funciones <code>marcar_sector_listo</code>, <code>marcar_entregado_mozo</code> y <code>confirmar_recepcion_cliente</code>, que avisan con un error claro si fallan en vez de no hacer nada (v10 y v11).</li></ul></details> |
+| **Noelia Storgato** | `Storgato` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Formulario de Login.</li><li>Pantalla de accesos rápidos.</li><li>Implementación de Logout.</li><li>Guards de ruta por perfil.</li><li>Creación del proyecto Ionic.</li><li>Flujo de cliente registrado: pantalla de alta, estado "pendiente" y notificación visual del cambio de estado.</li><li>Migración de las pantallas de registro a Signals para reflejar los datos de Supabase sin depender de zone.js.</li><li>Mascotas ilustradas en las pantallas de Login y Registro de cliente.</li><li>Escaneo de DNI argentino (código PDF417 del dorso) con ML Kit para autocompletar nombre, apellido y DNI en el registro de cliente.</li><li>Envío automático de mails (Brevo) para los estados pendiente, aceptado y rechazado del cliente (puntos 5, 7 y 8), desde Edge Function.</li><li>Fix de seguridad: un cliente pendiente o rechazado no puede entrar al home.</li><li>Ingreso de cliente anónimo (punto 9): escaneo del QR de entrada, alta con nombre y foto, y lista de espera.</li><li>Unificación del CSS con variables compartidas y limpieza de colores hardcodeados en varias pantallas.</li><li>Encuesta de satisfacción (punto 20): una por estadía, con un control distinto por pregunta (estrellas, opciones, deslizador, casillas, interruptor y texto libre). Tabla <code>encuestas</code> y función <code>resultados_encuestas</code> (v9).</li><li>Resultados de las encuestas en 5 gráficos, uno por pantalla: lineal, torta, barras, barras horizontales y dona.</li><li>La cuenta (punto 21): el cliente elige la propina escaneando el QR, ve el detalle con precio unitario, descuento de los juegos, propina y total, y paga de forma simulada. Tabla <code>cuentas</code> y funciones <code>solicitar_cuenta</code>, <code>aplicar_propina</code> y <code>pagar_cuenta</code> (v14).</li><li>Pantalla de QR de propina para que el mozo se la muestre al cliente.</li><li>Confirmación del pago (punto 22): pantalla de cuentas del mozo, función <code>confirmar_pago</code> que libera la mesa (v15), y avisos al mozo cuando una mesa pide la cuenta o paga, y al dueño y al supervisor cuando se paga y cuando la mesa queda libre.</li><li>Mascotas por perfil en el panel de control (en progreso).</li></ul></details> |
+| **Lucía Cicchelli** | `Cicchelli` | 28/08/2026 – En progreso | <details><summary>Ver detalle</summary><ul><li>Diseño del ícono de la aplicación.</li><li>Desarrollo de la pantalla de inicio (Splash Screen) estática y animada para el sistema "LA MESA".</li><li>Maquetación modular utilizando Angular y SCSS con paleta cromática temática.</li><li>Implementación de animaciones CSS3 mediante <code>@keyframes</code>, <code>clip-path</code>, efecto de estampado y entradas escalonadas de elementos visuales.</li><li>Botón para omitir la animación.</li><li>Adaptación responsive para distintos dispositivos.</li><li>Compatibilidad con <code>prefers-reduced-motion</code>.</li><li>Alta de plato y bebida (puntos 2 y 3), ya integrada a <code>dev</code>: formularios con foto, reutilizando el patrón de formulario del equipo.</li><li>Vista de la carta (punto 11): platos y bebidas con foto, precio, descripción y tiempo estimado.</li><li>Ajustes del splash: animación de 2 segundos fijos y líneas centradas.</li><li>Armado del pedido (punto 12): cantidades por producto, importe acumulado y tiempo estimado siempre visibles, envío al mozo y confirmación desde la lista de pedidos del mozo.</li><li>Rechazo de pedido por el mozo (punto 13): el cliente ve el aviso y puede revisar y reenviar el pedido.</li><li>Fixes del registro de cliente: la foto se achica antes de subirla, se muestra el motivo real del error y se descarga el módulo de escaneo de Google antes de escanear.</li><li>Cocina y bar (puntos 14, 16 y 17): al confirmar el mozo, el pedido se reparte por sector; cada uno ve su listado agrupado por mesa, con fecha, hora, ítems y cantidades, y recibe aviso de pedidos nuevos.</li><li>Estado por sector visible para el cliente en la pantalla del pedido (cocina y bar: en preparación / listo).</li></ul></details> |
 
 ---
 
@@ -133,15 +133,34 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 | Armado del pedido y confirmación del mozo (punto 12) | ✅ |
 | Formato del contenido de los QR de mesa e ingreso al local | ✅ |
 | Notificaciones con la app abierta | ✅ |
-| Rechazo de pedido por el mozo (punto 13) | 🔄 |
+| Rechazo de pedido por el mozo (punto 13) | ✅ |
+| Pedidos a cocina y bar, agrupados por mesa (puntos 14, 16 y 17) | ✅ |
+| Juegos con descuento: Ahorcado, Memotest y Trivia (punto 15) | ✅ |
+| Estado por sector, entrega del mozo y confirmación del cliente (puntos 18 y 19) | ✅ |
+| Encuesta de satisfacción y resultados con gráficos (punto 20) | ✅ |
+| Cuenta con QR de propina, detalle y pago simulado (punto 21) | ✅ |
+| Mozo confirma el pago y libera la mesa (punto 22) | ✅ |
+| Mascotas por perfil en el panel de control | 🚧 |
 | Notificaciones push con la app cerrada | ⏳ |
-| QR de propina (punto 21) | ⏳ |
+| Login con redes sociales (punto 23) | ⏳ |
+| Reservas (puntos 24 a 26) | ⏳ |
+| Pedidos a domicilio (puntos 27 a 29) | ⏳ |
 
 ---
 
 ## Capturas e Imágenes
 
-**Índice:** [Identidad visual y splash](#identidad) · [Acceso y registro (puntos 5 a 8)](#acceso) · [Paneles de control por perfil](#paneles) · [Altas (puntos 1 a 4)](#altas) · [Carta, consultas y pedido (puntos 11 y 12)](#salon)
+| Sección | Puntos |
+|---|:---:|
+| [Identidad visual y splash](#identidad) | — |
+| [Altas](#altas) | 1 a 4 |
+| [Acceso, registro y mails de estado](#acceso) | 5 a 8 |
+| [Paneles de control por perfil](#paneles) | — |
+| [Mesa, carta, consultas y pedido](#salon) | 10 a 13 |
+| [Cocina, bar y estado del pedido](#estado-pedido) | 14, 16 a 19 |
+| [Juegos con descuento](#juegos) | 15 |
+| [Resultados de la encuesta](#encuesta) | 20 |
+| [Cuenta, propina y pago](#cuenta) | 21 y 22 |
 
 <a id="identidad"></a>
 
@@ -175,10 +194,60 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 
 </details>
 
+<a id="altas"></a>
+
+<details>
+<summary><b>Altas (puntos 1 a 4)</b></summary>
+
+<br>
+
+<table>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Alta de empleado</b><br><br>
+<img src="capturas/alta-empleado.jpg" alt="Formulario de alta de empleado" width="200">
+</td>
+<td align="center" width="33%" valign="top">
+<b>Alta de plato</b><br><br>
+<img src="capturas/alta-plato.jpg" alt="Formulario de alta de plato con 3 fotos cargadas" width="200"><br><sub>Con las 3 fotos cargadas.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Alta de bebida</b><br><br>
+<img src="capturas/alta-bebida.jpg" alt="Formulario de alta de bebida con 3 fotos" width="200">
+</td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Alta de empleado — validación</b><br><br>
+<img src="capturas/alta-empleado-validacion.jpg" alt="Alta de empleado con errores de validación" width="200"><br><sub>Error en cada campo y aviso de foto obligatoria.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Alta de mesa</b><br><br>
+<img src="capturas/alta-mesa-formulario.jpg" alt="Formulario de alta de mesa con foto" width="200"><br><sub>Número, comensales, tipo y foto.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Gestión de mesas</b><br><br>
+<img src="capturas/gestion-mesas.jpg" alt="Listado de mesas con foto y estado" width="200"><br><sub>Con foto y estado de cada mesa.</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Mesa creada</b><br><br>
+<img src="capturas/alta-mesa-qr.jpg" alt="Confirmación de alta de mesa con su QR" width="200"><br><sub>QR generado automáticamente.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>QR de una mesa</b><br><br>
+<img src="capturas/mesa-qr.jpg" alt="QR de una mesa ya creada" width="200"><br><sub>Se puede volver a ver desde el listado.</sub>
+</td>
+</tr>
+</table>
+
+</details>
+
 <a id="acceso"></a>
 
 <details>
-<summary><b>Acceso y registro (puntos 5 a 8)</b></summary>
+<summary><b>Acceso, registro y mails de estado (puntos 5 a 8)</b></summary>
 
 <br>
 
@@ -205,6 +274,26 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 </tr>
 </table>
 
+<table>
+<tr>
+<th colspan="3">Mails automáticos de estado (Brevo)</th>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Registro en revisión</b><br><br>
+<img src="capturas/mail-revision.jpg" alt="Mail de registro recibido y en revisión" width="240"><br><sub>Llega apenas el cliente se registra (punto 5).</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Registro aprobado</b><br><br>
+<img src="capturas/mail-aprobado.jpg" alt="Mail de registro aprobado" width="240"><br><sub>Cuando el dueño o supervisor lo acepta (punto 7).</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Registro rechazado</b><br><br>
+<img src="capturas/mail-rechazado.jpg" alt="Mail de registro no aprobado" width="240"><br><sub>Cuando el dueño o supervisor lo rechaza (punto 8).</sub>
+</td>
+</tr>
+</table>
+
 </details>
 
 <a id="paneles"></a>
@@ -226,7 +315,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 </td>
 <td align="center" width="33%" valign="top">
 <b>Mozo</b><br><br>
-<img src="capturas/panel-mozo.jpg" alt="Panel de control del mozo" width="200"><br><sub>Pedidos pendientes integrados abajo.</sub>
+<img src="capturas/panel-mozo.jpg" alt="Panel de control del mozo" width="200"><br><sub>Con QR de propina, pedidos pendientes y listos para entregar.</sub>
 </td>
 </tr>
 <tr>
@@ -246,47 +335,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 <tr>
 <td align="center" width="33%" valign="top">
 <b>Acceso restringido por URL</b><br><br>
-<img src="captura-guard-mesas.jpg" alt="Guard de ruta bloqueando Gestión de Mesas" width="200"><br><sub>Perfil sin permiso entrando a /mesas a mano.</sub>
-</td>
-</tr>
-</table>
-
-</details>
-
-<a id="altas"></a>
-
-<details>
-<summary><b>Altas (puntos 1 a 4)</b></summary>
-
-<br>
-
-<table>
-<tr>
-<td align="center" width="33%" valign="top">
-<b>Alta de empleado</b><br><br>
-<img src="capturas/alta-empleado.jpg" alt="Formulario de alta de empleado" width="200">
-</td>
-<td align="center" width="33%" valign="top">
-<b>Alta de plato</b><br><br>
-<img src="capturas/alta-plato.jpg" alt="Formulario de alta de plato con 3 fotos" width="200">
-</td>
-<td align="center" width="33%" valign="top">
-<b>Alta de bebida</b><br><br>
-<img src="capturas/alta-bebida.jpg" alt="Formulario de alta de bebida con 3 fotos" width="200">
-</td>
-</tr>
-<tr>
-<td align="center" width="33%" valign="top">
-<b>Gestión de mesas</b><br><br>
-<img src="capturas/gestion-mesas.jpg" alt="Listado de mesas con su estado" width="200">
-</td>
-<td align="center" width="33%" valign="top">
-<b>Mesa creada</b><br><br>
-<img src="capturas/alta-mesa-qr.jpg" alt="Confirmación de alta de mesa con su QR" width="200"><br><sub>QR generado automáticamente.</sub>
-</td>
-<td align="center" width="33%" valign="top">
-<b>QR de una mesa</b><br><br>
-<img src="capturas/mesa-qr.jpg" alt="QR de una mesa ya creada" width="200"><br><sub>Se puede volver a ver desde el listado.</sub>
+<img src="capturas/guard-mesas.jpg" alt="Guard de ruta bloqueando Gestión de Mesas" width="200"><br><sub>Perfil sin permiso entrando a /mesas a mano.</sub>
 </td>
 </tr>
 </table>
@@ -296,12 +345,16 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 <a id="salon"></a>
 
 <details>
-<summary><b>Carta, consultas y pedido (puntos 11 y 12)</b></summary>
+<summary><b>Mesa, carta, consultas y pedido (puntos 10 a 13)</b></summary>
 
 <br>
 
 <table>
 <tr>
+<td align="center" width="33%" valign="top">
+<b>Mesa asignada</b><br><br>
+<img src="capturas/mesa-asignada.jpg" alt="Aviso de mesa asignada con botón para escanear el QR" width="200"><br><sub>El metre asigna la mesa y el cliente escanea su QR (punto 10).</sub>
+</td>
 <td align="center" width="33%" valign="top">
 <b>Carta</b><br><br>
 <img src="capturas/carta.jpg" alt="Un producto de la carta a pantalla completa" width="200"><br><sub>Un producto por pantalla, swipe entre fotos.</sub>
@@ -310,12 +363,12 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 <b>Consulta al mozo — cliente</b><br><br>
 <img src="capturas/consulta-mozo-vista-cliente.jpg" alt="Chat de consulta visto por el cliente" width="200">
 </td>
+</tr>
+<tr>
 <td align="center" width="33%" valign="top">
 <b>Consulta al mozo — mozo</b><br><br>
 <img src="capturas/consulta-mozo-vista-mozo.jpg" alt="Chat de consulta visto por el mozo" width="200">
 </td>
-</tr>
-<tr>
 <td align="center" width="33%" valign="top">
 <b>Armado del pedido</b><br><br>
 <img src="capturas/pedido.jpg" alt="Armado del pedido por comensal" width="200"><br><sub>Importe y tiempo estimado siempre visibles.</sub>
@@ -324,9 +377,165 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 <b>Esperando al mozo</b><br><br>
 <img src="capturas/pedido-esperando.jpg" alt="Pedido esperando confirmación del mozo" width="200">
 </td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Pedido rechazado</b><br><br>
+<img src="capturas/pedido-rechazado.jpg" alt="Aviso de pedido rechazado por el mozo" width="200"><br><sub>El mozo lo rechaza y el cliente lo revisa (punto 13).</sub>
+</td>
+</tr>
+</table>
+
+</details>
+
+<a id="estado-pedido"></a>
+
+<details>
+<summary><b>Cocina, bar y estado del pedido (puntos 14, 16 a 19)</b></summary>
+
+<br>
+
+<table>
+<tr>
 <td align="center" width="33%" valign="top">
 <b>Pedido confirmado</b><br><br>
-<img src="capturas/pedido-confirmado.jpg" alt="Pedido confirmado por el mozo" width="200">
+<img src="capturas/pedido-confirmado.jpg" alt="Pedido confirmado con cocina y bar en preparación" width="200"><br><sub>Estado de cocina y bar por separado, y acceso a los juegos (punto 14).</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Cocina</b><br><br>
+<img src="capturas/cocina-pedidos.jpg" alt="Listado de pedidos de cocina agrupados por mesa" width="200"><br><sub>Agrupado por mesa, con fecha, hora, ítems y cantidades (punto 16).</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Bar</b><br><br>
+<img src="capturas/bar-pedidos.jpg" alt="Listado de pedidos de bar agrupados por mesa" width="200"><br><sub>Igual que cocina, pero con las bebidas (punto 17).</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Cocina lista</b><br><br>
+<img src="capturas/pedido-cocina-lista.jpg" alt="Pedido con cocina lista y bar en preparación" width="200"><br><sub>El cliente ve el avance de cada sector.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Pedido listo</b><br><br>
+<img src="capturas/pedido-listo.jpg" alt="Pedido listo, el mozo lo está llevando" width="200"><br><sub>Terminaron los dos sectores y le llega al mozo (punto 18).</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Pedido entregado</b><br><br>
+<img src="capturas/pedido-entregado.jpg" alt="El mozo entregó el pedido, botón para confirmar recepción" width="200"><br><sub>El cliente confirma la recepción (punto 19).</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>¡Buen provecho!</b><br><br>
+<img src="capturas/pedido-recibido.jpg" alt="Pedido recibido con accesos a juegos, encuesta y cuenta" width="200"><br><sub>Con acceso a juegos, encuesta y pedir la cuenta.</sub>
+</td>
+</tr>
+</table>
+
+</details>
+
+<a id="juegos"></a>
+
+<details>
+<summary><b>Juegos con descuento (punto 15)</b></summary>
+
+<br>
+
+<table>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Juegos</b><br><br>
+<img src="capturas/juegos.jpg" alt="Listado de juegos con el descuento de cada uno" width="200"><br><sub>Descuento solo en el primer intento.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Ahorcado</b><br><br>
+<img src="capturas/juego-ahorcado.jpg" alt="Juego del ahorcado" width="200"><br><sub>Adivinar una comida letra por letra (10%).</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Memotest</b><br><br>
+<img src="capturas/juego-memotest.jpg" alt="Juego de memotest" width="200"><br><sub>Encontrar los pares de la carta (15%).</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Trivia</b><br><br>
+<img src="capturas/juego-trivia.jpg" alt="Juego de trivia gastronómica" width="200"><br><sub>5 preguntas gastronómicas (20%).</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Ganó en juego libre</b><br><br>
+<img src="capturas/juego-ganaste.jpg" alt="Resultado ganado en juego libre" width="200"><br><sub>Después del primer intento se juega sin descuento.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Perdió</b><br><br>
+<img src="capturas/juego-perdiste.jpg" alt="Resultado perdido" width="200">
+</td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Cliente anónimo</b><br><br>
+<img src="capturas/juego-anonimo.jpg" alt="Cliente anónimo gana pero no obtiene descuento" width="200"><br><sub>Puede jugar, pero el descuento es solo para registrados.</sub>
+</td>
+</tr>
+</table>
+
+</details>
+
+<a id="encuesta"></a>
+
+<details>
+<summary><b>Resultados de la encuesta (punto 20)</b></summary>
+
+<br>
+
+<table>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Calificación general</b><br><br>
+<img src="capturas/encuesta-calificacion.jpg" alt="Gráfico lineal del promedio diario de estrellas" width="200"><br><sub>Gráfico lineal.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Atención del mozo</b><br><br>
+<img src="capturas/encuesta-atencion.jpg" alt="Gráfico de torta de la atención del mozo" width="200"><br><sub>Gráfico de torta.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Limpieza del local</b><br><br>
+<img src="capturas/encuesta-limpieza.jpg" alt="Gráfico de barras de la limpieza del local" width="200"><br><sub>Gráfico de barras.</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Lo que más gustó</b><br><br>
+<img src="capturas/encuesta-destacado.jpg" alt="Gráfico de barras horizontales de lo que más gustó" width="200"><br><sub>Barras horizontales.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>¿Nos recomendarían?</b><br><br>
+<img src="capturas/encuesta-recomendacion.jpg" alt="Gráfico de dona de recomendación" width="200"><br><sub>Gráfico de dona.</sub>
+</td>
+</tr>
+</table>
+
+</details>
+
+<a id="cuenta"></a>
+
+<details>
+<summary><b>Cuenta, propina y pago (puntos 21 y 22)</b></summary>
+
+<br>
+
+<table>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>QR de propina</b><br><br>
+<img src="capturas/qr-propina.jpg" alt="Códigos QR de cada nivel de propina" width="200"><br><sub>El mozo se los muestra al cliente al pedir la cuenta.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>QR de propina ampliado</b><br><br>
+<img src="capturas/qr-propina-detalle.jpg" alt="QR de propina Bueno 10% a pantalla completa" width="200"><br><sub>Uno por pantalla para escanearlo cómodo.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Panel del mozo — cuentas</b><br><br>
+<img src="capturas/panel-mozo-cuentas.jpg" alt="Panel del mozo con el acceso a Cuentas" width="200"><br><sub>Desde Cuentas confirma pagos y libera mesas (punto 22).</sub>
 </td>
 </tr>
 </table>
@@ -347,8 +556,12 @@ La base corre en **Supabase** (PostgreSQL + Auth + Storage + Realtime). Todas la
 | `mesas` | Número, capacidad, tipo, disponibilidad, QR y cliente asignado | 4, 10 |
 | `lista_espera` | Clientes esperando que el metre les asigne mesa | 9, 10 |
 | `mensajes_mozo` | Chat entre el cliente de una mesa y los mozos | 11 |
-| `pedidos` | Pedido de cada mesa, con importe, tiempo estimado y estado (pendiente / confirmado / rechazado) | 12, 13 |
+| `pedidos` | Pedido de cada mesa, con importe, tiempo estimado, estado (pendiente / confirmado / completo / entregado / rechazado) y avance de cocina, bar y entrega | 12–14, 16–19 |
 | `pedido_items` | Productos de cada pedido, por comensal y cantidad | 12 |
+| `juegos_intentos` | Un intento por juego y pedido, con el resultado y el descuento ganado | 15 |
+| `encuestas` | Respuestas de la encuesta de satisfacción, una por estadía | 20 |
+| `cuentas` | Cuenta de la mesa: propina, descuento de los juegos, total, método de pago y estado | 21, 22 |
+| Funciones (RPC) | Cambios de estado que validan el perfil adentro: `marcar_sector_listo`, `marcar_entregado_mozo`, `confirmar_recepcion_cliente`, `registrar_resultado_juego`, `descuento_juegos`, `resultados_encuestas`, `solicitar_cuenta`, `aplicar_propina`, `pagar_cuenta`, `confirmar_pago` | 15, 18–22 |
 | Vista `accesos_rapidos` | Un usuario por perfil para los botones de acceso rápido del login | Login |
 | Bucket `fotos` (Storage) | Fotos de usuarios, productos y mesas | 1–5 |
 | Edge Functions | `crear-empleado` (alta de empleados) y `enviar-correo-estado` (mails de aprobación con Brevo) | 1, 5–8 |

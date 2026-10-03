@@ -41,8 +41,11 @@
   <div class="contenedor-principal contenedor-app" [class.panel-compacto]="esPanelDueno() || esPanelMozo()">
 
     <div class="cabecera-dashboard">
-      <h1>Panel de Control</h1>
-      <p>Seleccione un módulo para operar</p>
+      <img [src]="'assets/mascota/' + mascotaActual()" alt="Mascota La Mesa" class="mascota-cabecera" />
+      <div class="textos-cabecera">
+        <h1>Panel de Control</h1>
+        <p>Seleccione un módulo para operar</p>
+      </div>
     </div>
 
     @if (mensajeErrorEscaneo()) {
@@ -84,9 +87,9 @@
         </div>
       }
       @if (puedeVerPedidos()) {
-        <div class="modulo-card">
+        <div class="modulo-card" (click)="irAPedidosSector()">
           <ion-icon name="list-outline"></ion-icon>
-          <h3>Lista de Pedidos</h3>
+          <h3>Pedidos</h3>
           <p>Comandas activas</p>
         </div>
       }
@@ -116,6 +119,21 @@
           <ion-icon name="time-outline"></ion-icon>
           <h3>Lista de Espera</h3>
           <p>Asignar mesa a clientes</p>
+        </div>
+      }
+      @if (puedeVerQrPropina()) {
+        <div class="modulo-card" (click)="irAQrPropina()">
+          <ion-icon name="qr-code-outline"></ion-icon>
+          <h3>QR de Propina</h3>
+          <p>Mostrar al pedir la cuenta</p>
+        </div>
+      }
+
+      @if (esPanelMozo()) {
+        <div class="modulo-card" (click)="irACuentasMozo()">
+          <ion-icon name="receipt-outline"></ion-icon>
+          <h3>Cuentas</h3>
+          <p>Confirmar pagos y liberar mesas</p>
         </div>
       }
       <!-- Punto 10: cliente_registrado se anota a la lista de espera, o ve
@@ -202,7 +220,7 @@
          de "Clientes pendientes" de arriba (correcciones-profesor 13-09) en
          vez de una tarjeta que navega aparte. -->
     @if (esPanelMozo()) {
-      <div class="seccion-pendientes">
+      <div class="seccion-pendientes seccion-doble">
         <div class="cabecera-pendientes">
           <ion-icon name="list-outline"></ion-icon>
           <h2>Pedidos pendientes</h2>
@@ -245,6 +263,43 @@
                   [disabled]="procesandoPedidoId() === pedido.id"
                 >
                   <ion-icon name="checkmark-circle-outline"></ion-icon>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Punto 18/19: pedidos que cocina y bar terminaron. Una sola acción
+           (no hay aceptar/rechazar): el mozo lo lleva a la mesa y toca el
+           ícono. Los mensajes de éxito/error se muestran en la sección de
+           arriba (comparten mensajeOkPedidosMozo/mensajeErrorPedidosMozo). -->
+      <div class="seccion-pendientes seccion-doble">
+        <div class="cabecera-pendientes">
+          <ion-icon name="restaurant-outline"></ion-icon>
+          <h2>Listos para entregar</h2>
+        </div>
+
+        @if (!cargandoPedidosListosMozo() && pedidosListosMozo().length === 0) {
+          <p class="estado-vacio-pendientes">No hay pedidos listos para llevar a la mesa.</p>
+        }
+
+        <div class="lista-pendientes-embebida">
+          @for (pedido of pedidosListosMozo(); track pedido.id) {
+            <div class="fila-pendiente">
+              <div class="avatar-chico">
+                <span>{{ pedido.mesaNumero }}</span>
+              </div>
+              <span class="nombre-pendiente">
+                {{ formatearPrecioPedido(pedido.importeTotal) }} · pedido {{ pedido.hace }}
+              </span>
+              <div class="acciones-chicas">
+                <button
+                  class="btn-chico btn-entregar"
+                  (click)="entregarPedidoMozo(pedido)"
+                  [disabled]="procesandoPedidoId() === pedido.id"
+                >
+                  <ion-icon name="checkmark-done-circle-outline"></ion-icon>
                 </button>
               </div>
             </div>

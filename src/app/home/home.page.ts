@@ -16,6 +16,8 @@ import {
   bookOutline, chatbubblesOutline, checkmarkCircleOutline, checkmarkOutline, closeOutline,
   fastFoodOutline, informationCircleOutline, listOutline, logOutOutline, peopleOutline,
   personAddOutline, qrCodeOutline, restaurantOutline, timeOutline, wineOutline, closeCircleOutline,
+  checkmarkDoneCircleOutline,
+  receiptOutline,
 } from 'ionicons/icons';
 
 // Fila lista para pintar en la lista embebida de pendientes: mismo patrón
@@ -34,6 +36,15 @@ function haceCuanto(fechaIso: string): string {
   if (minutos === 1) return 'hace 1 min';
   return `hace ${minutos} min`;
 }
+
+const MASCOTAS_POR_PERFIL: Partial<Record<PerfilUsuario, string>> = {
+  'dueño': 'gatito-dueno.png',
+  supervisor: 'gatito-supervisor.png',
+  metre: 'gatito-metre.png',
+  mozo: 'gatito-mozo.png',
+  cocinero: 'gatito-cocinero.png',
+  cantinero: 'gatito-cantinero.png',
+};
 
 @Component({
   selector: 'app-home',
@@ -72,6 +83,11 @@ export class HomePage {
   // Punto 11: bandeja de consultas al mozo — solo el perfil mozo.
   readonly puedeVerConsultas = computed(() =>
     this.esUnoDe(this.perfil(), ['mozo']),
+  );
+  // Punto 21: los cinco QR de propina. El mozo se los muestra al cliente
+  // cuando pide la cuenta; dueño y supervisor también los tienen a mano.
+  readonly puedeVerQrPropina = computed(() =>
+    this.esUnoDe(this.perfil(), ['mozo', 'dueño', 'supervisor']),
   );
   // Requisito excluyente "QR de mesa" (no es un punto numerado propio):
   // el personal de sala escanea el mismo QR que el cliente, pero en vez
@@ -117,6 +133,11 @@ export class HomePage {
   readonly mensajeErrorPedidosMozo = signal('');
   readonly mensajeOkPedidosMozo = signal('');
 
+  // Punto 18/19: pedidos 'completo' que el mozo todavía no entregó. Mismo
+  // procesandoPedidoId/mensajes que la lista de pendientes de arriba.
+  readonly pedidosListosMozo = signal<PedidoVista[]>([]);
+  readonly cargandoPedidosListosMozo = signal(false);
+
   readonly escaneandoMesa = signal(false);
   readonly mensajeErrorEscaneo = signal('');
 
@@ -139,6 +160,10 @@ export class HomePage {
   // termine en lista_espera Y con mesa al mismo tiempo: el unique de
   // lista_espera no chequea contra mesas.cliente_actual_id).
   readonly mesaAsignada = signal<Mesa | null>(null);
+  readonly mascotaActual = computed(() => {
+  const p = this.perfil();
+  return (p && MASCOTAS_POR_PERFIL[p]) ?? 'gatito-login.png';
+});
 
   constructor(
     private authService: AuthService,
@@ -154,7 +179,7 @@ export class HomePage {
       logOutOutline, restaurantOutline, listOutline, peopleOutline, personAddOutline,
       fastFoodOutline, wineOutline, bookOutline, checkmarkOutline, qrCodeOutline,
       chatbubblesOutline, informationCircleOutline, closeOutline, timeOutline, closeCircleOutline,
-      checkmarkCircleOutline,
+      checkmarkCircleOutline, checkmarkDoneCircleOutline, receiptOutline
     });
   }
 
@@ -167,7 +192,10 @@ export class HomePage {
       await this.cargarPendientes();
     }
     if (this.esPanelMozo()) {
-      await this.cargarPedidosPendientesMozo();
+      await Promise.all([this.cargarPedidosPendientesMozo(), this.cargarPedidosListosMozo()]);
+    }
+     if (this.esPanelMozo() || this.esPanelDueno()) {
+      this.notificacionesService.iniciarEscuchaCuentas(this.esPanelMozo());
     }
     if (this.puedeUnirseListaEspera()) {
       await this.verificarMesaAsignada();
@@ -187,9 +215,16 @@ export class HomePage {
       // Punto 12/13: push al mozo cuando entra un pedido nuevo o reenviado
       // tras un rechazo, y la lista embebida se recarga sola.
       this.notificacionesService.iniciarEscuchaPedidosMozo(() => this.cargarPedidosPendientesMozo());
+      // Punto 18: push al mozo cuando cocina y bar terminan un pedido.
+      this.notificacionesService.iniciarEscuchaPedidosCompletos(() => this.cargarPedidosListosMozo());
     }
     if (this.puedeEscanearMesa()) {
       this.notificacionesService.iniciarEscuchaRespuestasCliente();
+    }
+    // Puntos 16/17: push a cocina/bar cuando el mozo confirma un pedido,
+    // aunque no tengan abierta la pantalla de pedidos.
+    if (this.puedeVerPedidos()) {
+      this.notificacionesService.iniciarEscuchaSector(this.perfil() === 'cocinero' ? 'cocina' : 'bar');
     }
   }
 
@@ -235,6 +270,10 @@ export class HomePage {
 
   irAListaEsperaMetre() {
     this.router.navigate(['/metre/lista-espera']);
+  }
+
+  irACuentasMozo() {
+    this.router.navigate(['/mozo/cuentas']);
   }
 
   async cargarPendientes() {
@@ -348,6 +387,37 @@ export class HomePage {
     }
   }
 
+  // Punto 18: mismo patrón que cargarPedidosPendientesMozo(), para los
+  // pedidos que cocina y bar ya terminaron.
+  async cargarPedidosListosMozo() {
+    this.cargandoPedidosListosMozo.set(true);
+    try {
+      const filas = await this.pedidoService.listarListosParaEntregar();
+      this.pedidosListosMozo.set(filas.map((p) => ({ ...p, hace: haceCuanto(p.creadoEn) })));
+    } catch {
+      this.dispararErrorPedidosMozo('No se pudo cargar el listado de pedidos listos para entregar.');
+    } finally {
+      this.cargandoPedidosListosMozo.set(false);
+    }
+  }
+
+  // Punto 19: el mozo llevó el pedido a la mesa. El cliente ve aparecer
+  // el botón "Confirmar recepción" por Realtime (PedidoPage).
+  async entregarPedidoMozo(pedido: PedidoVista) {
+    this.procesandoPedidoId.set(pedido.id);
+    try {
+      await this.pedidoService.marcarEntregado(pedido.id);
+      this.pedidosListosMozo.update((lista) => lista.filter((p) => p.id !== pedido.id));
+      this.mensajeOkPedidosMozo.set(`Pedido de mesa ${pedido.mesaNumero} entregado.`);
+      setTimeout(() => this.mensajeOkPedidosMozo.set(''), 3000);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'No se pudo marcar el pedido como entregado.';
+      this.dispararErrorPedidosMozo(msg);
+    } finally {
+      this.procesandoPedidoId.set(null);
+    }
+  }
+
   formatearPrecioPedido(precio: number): string {
     return precio.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
   }
@@ -382,6 +452,10 @@ export class HomePage {
     this.router.navigate(['/cocinero/plato-alta']);
   }
 
+  irAPedidosSector() {
+    this.router.navigate(['/sector/pedidos']);
+  }
+
   irAAltaBebida() {
     this.router.navigate(['/cantinero/bebida-alta']);
   }
@@ -392,6 +466,10 @@ export class HomePage {
   // escaneando el QR de la mesa.
   irALaCarta() {
     this.router.navigate(['/carta']);
+  }
+
+  irAQrPropina() {
+    this.router.navigate(['/qr-propina']);
   }
 
   // Punto 11: escanea el QR de la mesa ({"tipo":"mesa","numero":N}, ver
@@ -476,6 +554,9 @@ export class HomePage {
       this.notificacionesService.detenerEscuchaConsultasMozo();
       this.notificacionesService.detenerEscuchaRespuestasCliente();
       this.notificacionesService.detenerEscuchaPedidosMozo();
+      this.notificacionesService.detenerEscuchaSector();
+      this.notificacionesService.detenerEscuchaPedidosCompletos();
+      this.notificacionesService.detenerEscuchaCuentas();
 
       // Verificar que las credenciales se borren
       // Limpiamos la caché local de Capacitor/Navegador por seguridad extra

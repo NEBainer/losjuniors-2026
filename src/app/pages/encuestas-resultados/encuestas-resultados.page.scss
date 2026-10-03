@@ -1,0 +1,193 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  color-scheme: only light;
+}
+
+ion-header ion-toolbar {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+}
+
+.titulo {
+  display: block;
+  font-weight: 700;
+}
+
+.subtitulo {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.fondo-app {
+  --background: var(--ion-background-color);
+}
+
+ion-content {
+  // Contenedor de posicionamiento de .contenedor-resultados: con
+  // [scrollY]="false", un height: 100% no llena la pantalla (mismo
+  // problema ya resuelto así en la carta).
+  position: relative;
+}
+
+.contenedor-resultados {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  padding: var(--app-padding);
+  padding-bottom: calc(var(--app-padding) + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--ion-text-color);
+}
+
+.diapositiva {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--ion-color-step-100);
+  border-radius: 20px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  // Deja pasar el scroll vertical del sistema pero el deslizamiento
+  // horizontal lo maneja la página (cambiar de gráfico).
+  touch-action: pan-y;
+
+  h2 {
+    margin: 0;
+    color: var(--ion-color-primary);
+    font-size: 1.4rem;
+    font-weight: 700;
+  }
+}
+
+.contador {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.descripcion {
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.destacado {
+  align-self: flex-start;
+  margin: 4px 0 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.contenedor-grafico {
+  // Chart.js necesita un padre con position: relative y alto definido
+  // para que responsive + maintainAspectRatio: false llene el espacio.
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 240px;
+}
+
+.navegacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  .boton-icono-circular:disabled {
+    opacity: 0.4;
+  }
+}
+
+.puntos {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// El botón mide 24px (fácil de tocar); el punto visible es el ::before.
+.punto {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    background: var(--ion-color-step-150);
+    transition: width 0.2s ease, background-color 0.2s ease;
+  }
+
+  &.activo::before {
+    width: 22px;
+    background: var(--ion-color-primary);
+  }
+}
+
+.tarjeta-estado {
+  margin: auto 0;
+  background: var(--ion-color-step-100);
+  border-radius: 20px;
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+
+  h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    opacity: 0.85;
+  }
+
+  .icono-estado {
+    font-size: 56px;
+    color: var(--ion-color-primary);
+
+    &.error { color: var(--ion-color-danger); }
+  }
+}
+
+.boton-principal {
+  --background: var(--ion-color-primary);
+  --color: var(--ion-color-primary-contrast);
+  --border-radius: 14px;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .punto::before {
+    transition: none;
+  }
+}
