@@ -41,6 +41,21 @@ ion-header ion-toolbar {
   color: var(--ion-text-color);
 }
 
+ion-content {
+  position: relative;
+}
+
+.pantalla-fija {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  padding: var(--app-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--ion-text-color);
+}
+
 // Mismo esquema que el comprobante de Mercado Pago: el monto es lo
 // primero y lo más grande de la pantalla ("el TOTAL, grande y claro").
 .resumen-total {
@@ -86,19 +101,26 @@ ion-header ion-toolbar {
 }
 
 .lineas {
+  flex: 1 1 auto;
+  min-height: 0;
   list-style: none;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 .linea {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+  scroll-snap-align: start;
 }
 
 .linea-texto {
@@ -142,16 +164,6 @@ ion-header ion-toolbar {
   }
 }
 
-.fila-total {
-  color: var(--ion-color-primary);
-  font-size: 1.35rem;
-  font-weight: 800;
-
-  span:last-child {
-    font-weight: 800;
-  }
-}
-
 .enlace-cambiar {
   align-self: flex-start;
   display: inline-flex;
@@ -167,27 +179,39 @@ ion-header ion-toolbar {
 }
 
 .metodos {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: 18px;
+
+  &.con-error {
+    border-color: var(--ion-color-danger);
+  }
 }
 
 .metodo {
+  flex: 1 1 0;
+  min-height: 64px;
+  max-height: 120px;
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  gap: 16px;
+  padding: 0 20px;
   border: 2px solid var(--ion-color-step-150);
-  border-radius: 12px;
-  background: var(--ion-background-color);
+  border-radius: 16px;
+  background: var(--ion-color-step-100);
   color: var(--ion-text-color);
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.15rem;
+  font-weight: 700;
   text-align: left;
 
   ion-icon {
-    font-size: 1.5rem;
+    font-size: 2.2rem;
     color: var(--ion-color-primary);
   }
 
@@ -196,11 +220,12 @@ ion-header ion-toolbar {
   }
 
   .marca {
-    font-size: 1.3rem;
+    font-size: 1.6rem;
   }
 
   &.elegido {
     border-color: var(--ion-color-primary);
+    background: var(--ion-color-step-150);
   }
 }
 
@@ -271,6 +296,26 @@ ion-header ion-toolbar {
   .ayuda {
     font-size: 0.85rem;
   }
+}
+
+.tarjeta-detalle {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.resumen-total.compacto {
+  padding: 14px 16px;
+
+  .monto-total {
+    font-size: 2.2rem;
+  }
+}
+
+.titulo-etapa {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 800;
 }
 
 .niveles {

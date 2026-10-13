@@ -10,7 +10,7 @@
   // un scroll mínimo pero constante (mismo bug encontrado y corregido en
   // mesa-alta.page.scss y alta-empleado.page.scss).
   min-height: 100%;
-  padding: 25px;
+  padding: calc(25px + var(--safe-top)) 25px calc(25px + var(--safe-bottom));
   gap: 22px;
 }
 

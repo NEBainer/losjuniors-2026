@@ -9,7 +9,7 @@
   // ion-footer -- con eso sobraba justo lo que mide el footer y generaba
   // un scroll mínimo pero constante (probado en dispositivo real).
   min-height: 100%;
-  padding: 25px;
+  padding: calc(25px + var(--safe-top)) 25px calc(25px + var(--safe-bottom));
   gap: 22px;
 }
 

@@ -26,8 +26,11 @@
   
   --overlay-cargando-bg: rgba(26, 37, 44, 0.92);
 
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+
+  --ion-safe-area-top: var(--safe-top);
+  --ion-safe-area-bottom: var(--safe-bottom);
 }
 
 
