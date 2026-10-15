@@ -7,6 +7,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+<<<<<<< HEAD
+=======
+  // padding-top suma --safe-top (global.scss): este `padding` pisa el de
+  // .contenedor-app y sin el safe-area el título quedaba tapado por la barra
+  // de estado del teléfono (preentrega 03-10, mismo bug que mesa-alta).
+>>>>>>> origin/Cicchelli
   padding: calc(24px + var(--safe-top)) 24px calc(24px + var(--safe-bottom));
 }
 
