@@ -10,14 +10,10 @@
   // un scroll mínimo pero constante (mismo bug encontrado y corregido en
   // mesa-alta.page.scss y alta-empleado.page.scss).
   min-height: 100%;
-<<<<<<< HEAD
-  padding: calc(25px + var(--safe-top)) 25px calc(25px + var(--safe-bottom));
-=======
   // padding-top suma --safe-top (global.scss): este `padding` pisa el de
   // .contenedor-app y sin el safe-area el título quedaba tapado por la barra
   // de estado del teléfono (preentrega 03-10, mismo bug que mesa-alta).
   padding: calc(25px + var(--safe-top)) 25px 25px;
->>>>>>> origin/Cicchelli
   gap: 22px;
 }
 

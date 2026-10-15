@@ -9,14 +9,10 @@
   // ion-footer -- con eso sobraba justo lo que mide el footer y generaba
   // un scroll mínimo pero constante (probado en dispositivo real).
   min-height: 100%;
-<<<<<<< HEAD
-  padding: calc(25px + var(--safe-top)) 25px calc(25px + var(--safe-bottom));
-=======
   // padding-top suma --safe-top (global.scss): este `padding` pisa el de
   // .contenedor-app y sin el safe-area el título quedaba tapado por la barra
   // de estado del teléfono (preentrega 03-10).
   padding: calc(25px + var(--safe-top)) 25px 25px;
->>>>>>> origin/Cicchelli
   gap: 22px;
 }
 
