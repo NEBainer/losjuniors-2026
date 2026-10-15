@@ -2,22 +2,22 @@
   --background: var(--ion-background-color);
 }
 
+ion-content {
+  // Contenedor de posicionamiento de .pantalla-fija (ver global.scss).
+  position: relative;
+}
+
 .contenedor-principal {
-  display: flex;
-  flex-direction: column;
-  // 100% (no 100dvh): dvh es el alto TOTAL de pantalla, sin descontar el
-  // ion-footer -- con eso sobraba justo lo que mide el footer y generaba
-  // un scroll mínimo pero constante (mismo bug encontrado y corregido en
-  // mesa-alta.page.scss y alta-empleado.page.scss).
-  min-height: 100%;
-  // padding-top suma --safe-top (global.scss): este `padding` pisa el de
-  // .contenedor-app y sin el safe-area el título quedaba tapado por la barra
-  // de estado del teléfono (preentrega 03-10, mismo bug que mesa-alta).
-  padding: calc(25px + var(--safe-top)) 25px 25px;
-  gap: 22px;
+  // padding-top suma --safe-top (global.scss): sin el safe-area el título
+  // quedaba tapado por la barra de estado del teléfono (preentrega 03-10,
+  // mismo bug que mesa-alta). Abajo no hace falta --safe-bottom: lo
+  // resuelve el botón fijo (.pie-agregar).
+  padding: calc(25px + var(--safe-top)) 25px 16px;
+  gap: 18px;
 }
 
 .cabecera-pagina {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -38,22 +38,22 @@
     flex: 1;
   }
 
-  .boton-volver {
-    background-color: var(--ion-color-step-100);
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--ion-color-primary);
+  // .boton-volver {
+  //   background-color: var(--ion-color-step-100);
+  //   border: none;
+  //   border-radius: 50%;
+  //   width: 44px;
+  //   height: 44px;
+  //   min-width: 44px;
+  //   display: flex;
+  //   align-items: center;
+  //   justify-content: center;
+  //   color: var(--ion-color-primary);
 
-    ion-icon {
-      font-size: 1.4rem;
-    }
-  }
+  //   ion-icon {
+  //     font-size: 1.4rem;
+  //   }
+  // }
 }
 
 .texto-centrado {
@@ -62,6 +62,7 @@
 }
 
 .mensaje-error {
+  flex-shrink: 0;
   background-color: var(--ion-color-danger);
   color: var(--ion-color-primary-contrast);
   padding: 15px;
@@ -90,7 +91,7 @@
   font-size: 1.2rem;
   font-weight: 800;
   text-transform: uppercase;
-  box-shadow: 0 4px 8px rgba(156, 59, 20, 0.3);
+  box-shadow: 0 4px 8px rgba(var(--ion-color-primary-rgb), 0.3);
 
   ion-icon {
     font-size: 1.4rem;
@@ -99,9 +100,9 @@
 
 // Fijo abajo (correcciones-profesor) -- ver comentario en el HTML.
 .pie-agregar {
-  padding: 14px 25px calc(14px + env(safe-area-inset-bottom));
+  padding: 14px 25px calc(14px + var(--safe-bottom));
   background: var(--ion-background-color);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -2px 8px rgba(var(--ion-color-tertiary-rgb), 0.08);
 }
 
 .acceso-denegado,
@@ -120,29 +121,32 @@
   }
 }
 
-.lista-mesas {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 16px;
-}
+// .lista-mesas {
+//   flex: 1;
+//   display: flex;
+//   flex-direction: column;
+//   justify-content: center;
+//   gap: 16px;
+// }
 
+// Dos mesas por pantalla (corrección 03/10): tarjeta vertical con la foto
+// grande arriba y los datos abajo. El alto de cada tarjeta lo define
+// .lista-snap (global.scss).
 .tarjeta-mesa {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 18px;
   background-color: var(--ion-color-step-100);
-  border-radius: 14px;
-  padding: 14px;
 
   .foto-mesa {
-    flex-shrink: 0;
-    width: 84px;
-    height: 84px;
-    border-radius: 10px;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    border-radius: 12px;
     overflow: hidden;
-    background-color: var(--ion-color-step-150, var(--ion-background-color));
+    background-color: var(--ion-color-step-150);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -154,29 +158,47 @@
     }
 
     ion-icon {
-      font-size: 2rem;
+      font-size: 3.5rem;
       color: var(--ion-color-step-500);
+    }
+  }
+
+  .pie-tarjeta {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    > .boton-icono-circular {
+      flex-shrink: 0;
+      width: 52px;
+      height: 52px;
+      min-width: 52px;
+
+      ion-icon {
+        font-size: 1.6rem;
+      }
     }
   }
 
   .info-mesa {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    min-width: 0;
+    gap: 6px;
 
     h3 {
       margin: 0;
-      font-size: 1.15rem;
-      font-weight: 800;
+      font-size: 1.5rem;
+      font-weight: 900;
       color: var(--ion-color-primary);
     }
 
     p {
       margin: 0;
-      font-size: 0.95rem;
-      opacity: 0.8;
+      font-size: 1rem;
+      opacity: 0.85;
     }
   }
 
@@ -184,15 +206,16 @@
     align-self: flex-start;
     border: none;
     border-radius: 20px;
-    padding: 8px 16px;
-    font-size: 0.85rem;
+    padding: 8px 18px;
+    font-size: 0.9rem;
     font-weight: 700;
     text-transform: uppercase;
-    background-color: #2e7d32;
-    color: #fff;
+    background-color: var(--ion-color-success);
+    color: var(--ion-color-success-contrast);
 
     &.ocupada {
       background-color: var(--ion-color-danger);
+      color: var(--ion-color-primary-contrast);
     }
   }
 

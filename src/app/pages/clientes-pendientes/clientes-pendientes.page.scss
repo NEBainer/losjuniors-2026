@@ -2,18 +2,27 @@
   --background: var(--ion-background-color);
 }
 
+ion-content {
+  // Contenedor de posicionamiento de .pantalla-fija (ver global.scss).
+  position: relative;
+}
+
+// Sin scroll de página (corrección 03/10): encabezado arriba y el listado
+// con snap, de a dos clientes, ocupa todo el resto. El padding suma el
+// espacio de la barra de estado y de la barra de gestos (no hay botón
+// fijo abajo que lo resuelva).
 .contenedor-principal {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
+  padding: calc(var(--app-padding) + var(--safe-top)) var(--app-padding) calc(var(--app-padding) + var(--safe-bottom));
+  gap: 16px;
+  color: var(--ion-text-color);
 }
 
 /* Cabecera con volver + refrescar */
 .cabecera-pendientes {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
 
   .titulo {
     flex-grow: 1;
@@ -32,36 +41,19 @@
     }
   }
 
-  .boton-icono {
-    flex-shrink: 0;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--ion-color-step-100);
-    border: 2px solid var(--ion-color-step-150);
-    border-radius: 10px;
-    color: var(--ion-color-primary);
-
-    ion-icon {
-      font-size: 1.4rem;
-    }
-
-    &:disabled {
-      opacity: 0.5;
-    }
+  .boton-icono-circular:disabled {
+    opacity: 0.5;
   }
 }
 
 /* Mensajes de info/error (no alerts) */
 .mensaje {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
   border-radius: 8px;
-  margin-bottom: 16px;
   font-size: 0.95rem;
 
   ion-icon {
@@ -72,7 +64,7 @@
 
 .mensaje-error {
   background-color: var(--ion-color-danger);
-  color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
+  color: var(--ion-color-primary-contrast);
 }
 
 .mensaje-ok {
@@ -103,35 +95,21 @@
 }
 
 /* Listado */
-.lista-pendientes {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  // Con pocos pendientes (o solo uno) el listado se centra en vez de
-  // quedar pegado arriba con un hueco vacío abajo (diseno-visual.md: no
-  // se admiten espacios neutros/vacíos).
-  justify-content: center;
-  gap: 16px;
-}
 
 .cliente-card {
-  background-color: var(--ion-color-step-100);
-  border: 2px solid var(--ion-color-step-150);
-  border-radius: 12px;
-  padding: 16px;
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  grid-template-areas:
-    "avatar datos"
-    "acciones acciones";
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  align-items: center;
+  padding: 12px;
+  border: 2px solid var(--ion-color-step-150);
+  border-radius: 18px;
+  background-color: var(--ion-color-step-100);
 
   .avatar {
-    grid-area: avatar;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    border-radius: 12px;
     overflow: hidden;
     background-color: var(--ion-color-primary);
     display: flex;
@@ -142,28 +120,30 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      // Son fotos de cara: se prioriza la parte de arriba al recortar.
+      object-position: center 30%;
     }
 
     .inicial {
       color: var(--ion-color-primary-contrast);
-      font-size: 1.5rem;
+      font-size: 4rem;
       font-weight: bold;
     }
   }
 
   .datos {
-    grid-area: datos;
+    flex-shrink: 0;
 
     h3 {
       margin: 0;
-      font-size: 1.15rem;
-      font-weight: bold;
+      font-size: 1.35rem;
+      font-weight: 800;
       color: var(--ion-text-color);
     }
   }
 
   .acciones {
-    grid-area: acciones;
+    flex-shrink: 0;
     display: flex;
     gap: 10px;
 
@@ -173,26 +153,27 @@
 
       .pregunta {
         flex-basis: 100%;
-        font-size: 0.95rem;
-        font-weight: 600;
+        font-size: 1rem;
+        font-weight: 700;
       }
     }
   }
 
   .btn {
     flex: 1;
+    min-height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 12px;
+    padding: 0 12px;
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
+    border-radius: 10px;
+    font-size: 1.05rem;
     font-weight: bold;
 
     ion-icon {
-      font-size: 1.2rem;
+      font-size: 1.3rem;
     }
 
     &:disabled {
@@ -209,6 +190,6 @@
   .btn-rechazar,
   .btn-no {
     background-color: var(--ion-color-danger);
-    color: var(--ion-color-danger-contrast, var(--ion-color-primary-contrast));
+    color: var(--ion-color-primary-contrast);
   }
 }

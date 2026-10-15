@@ -130,3 +130,68 @@
     color: var(--ion-color-primary-contrast);
   }
 }
+
+  // ------------------------------------------------------------------
+  // PANTALLAS DE LISTADO 
+  // "Los listados no se cortan: scroll controlado tipo reels, de a dos
+  // tarjetas por vez". La carta es la referencia del profesor.
+  // ------------------------------------------------------------------
+
+  // Pantalla sin scroll de página: ocupa exactamente el alto de
+  // ion-content. Va junto con [scrollY]="false" en el ion-content (con el
+  // scroll desactivado, un height: 100% no llena la pantalla; mismo caso
+  // que la carta). No combinar con .contenedor-app: su min-height: 100dvh
+  // no descuenta el ion-footer y empujaría el contenido detrás de él.
+  .pantalla-fija {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  // Listado con snap vertical. Toma todo el alto libre de su contenedor y
+  // cada hijo directo es una tarjeta: dos por vista (por defecto) o una
+  // (--una). El snap está solo en las tarjetas impares, así cada
+  // deslizamiento pasa a las dos siguientes; si el dedo no recorre
+  // bastante, vuelve.
+  .lista-snap {
+    --tarjetas-por-vista: 2;
+    --separacion-tarjetas: 14px;
+
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--separacion-tarjetas);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    > * {
+      flex: 0 0 calc(
+        (100% - (var(--tarjetas-por-vista) - 1) * var(--separacion-tarjetas)) / var(--tarjetas-por-vista)
+      );
+      min-height: 0;
+      box-sizing: border-box;
+    }
+
+    > :nth-child(odd) {
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+  }
+
+  .lista-snap--una {
+    --tarjetas-por-vista: 1;
+
+    > * {
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+    }
+  }
