@@ -112,6 +112,8 @@ ion-content {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding-bottom: 24px;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent);
 }
 
 .linea {

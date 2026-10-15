@@ -183,3 +183,20 @@
     </div>
   }
 </ion-content>
+
+@if (!cargando() && pantallaFija()) {
+  <ion-footer>
+    <ion-toolbar class="barra-pago">
+      @if (fase() === 'detalle') {
+        <ion-button expand="block" class="boton-pagar" (click)="irAlPago()">
+          Continuar al pago
+          <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+        </ion-button>
+      } @else {
+        <ion-button expand="block" class="boton-pagar" [disabled]="!!procesando()" (click)="pagar()">
+          Pagar {{ formatear(cuenta()?.total ?? 0) }}
+        </ion-button>
+      }
+    </ion-toolbar>
+  </ion-footer>
+}
