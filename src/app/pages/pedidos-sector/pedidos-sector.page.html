@@ -1,4 +1,4 @@
-<ion-content class="fondo-app">
+<ion-content class="fondo-app" [scrollY]="false">
 
   @if (cargando()) {
     <div class="overlay-cargando">
@@ -10,7 +10,7 @@
     </div>
   }
 
-  <div class="contenedor-principal contenedor-app">
+  <div class="contenedor-principal pantalla-fija">
 
     <div class="cabecera">
       <button class="boton-icono-circular" (click)="volver()" title="Volver al panel">
@@ -45,19 +45,22 @@
       </div>
     }
 
-    <!-- Agrupado por número de mesa, con espacio entre pedidos (enunciado
-         puntos 16/17: "fácil manipulación"). -->
-    <div class="lista-mesas">
-      @for (grupo of grupos(); track grupo.mesaNumero) {
-        <section class="bloque-mesa">
-          <div class="mesa-badge">Mesa {{ grupo.mesaNumero }}</div>
-
+    <!-- Corrección 03/10: de a dos pedidos por vez, con snap (ver
+         .lista-snap en global.scss). Cada tarjeta lleva su mesa, así el
+         orden por mesa se mantiene sin bloques intermedios (puntos 16/17:
+         "fácil manipulación"). -->
+    @if (grupos().length > 0) {
+      <div class="lista-snap">
+        @for (grupo of grupos(); track grupo.mesaNumero) {
           @for (pedido of grupo.pedidos; track pedido.id) {
             <div class="pedido-card">
-              <p class="fecha">
-                <ion-icon name="time-outline"></ion-icon>
-                {{ formatearFecha(pedido.creadoEn) }}
-              </p>
+              <div class="cabecera-pedido">
+                <span class="mesa-badge">Mesa {{ grupo.mesaNumero }}</span>
+                <p class="fecha">
+                  <ion-icon name="time-outline"></ion-icon>
+                  {{ formatearFecha(pedido.creadoEn) }}
+                </p>
+              </div>
 
               <ul class="items">
                 @for (item of pedido.items; track item.nombre) {
@@ -75,9 +78,9 @@
               </button>
             </div>
           }
-        </section>
-      }
-    </div>
+        }
+      </div>
+    }
 
   </div>
 </ion-content>

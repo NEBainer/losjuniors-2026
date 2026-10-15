@@ -70,6 +70,15 @@
         min-height: 0;
         overflow: hidden;
         padding: 8px;
+        // // Si la tarjeta queda muy baja, se oculta el ícono antes que cortar
+        // // el título.
+        // container-type: size;
+
+        // @container (max-height: 95px) {
+        //   ion-icon {
+        //     display: none;
+        //   }
+        // }
 
         ion-icon {
           font-size: 2rem;
@@ -270,6 +279,18 @@
     }
   }
 
+  .cabecera-enlace {
+    cursor: pointer;
+
+    .flecha {
+      margin-left: auto;
+    }
+
+    &:active {
+      opacity: 0.7;
+    }
+  }
+
   .estado-vacio-pendientes {
     text-align: center;
     opacity: 0.7;
@@ -348,6 +369,17 @@
       font-weight: 600;
       line-height: 1.25;
       overflow-wrap: anywhere;
+      // Pedidos del mozo: precio arriba, detalle abajo -- en dos renglones
+      // fijos entra en la fila de 76px del snap. Los clientes del dueño
+      // son texto suelto y se ven igual que antes.
+      display: flex;
+      flex-direction: column;
+
+      small {
+        font-size: 0.8rem;
+        font-weight: 500;
+        opacity: 0.8;
+      }
     }
   }
 

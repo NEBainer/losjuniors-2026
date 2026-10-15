@@ -2,33 +2,29 @@
   --background: var(--ion-background-color);
 }
 
+ion-content {
+  // Contenedor de posicionamiento de .pantalla-fija (ver global.scss).
+  position: relative;
+}
+
 .contenedor-principal {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
+  padding: calc(var(--app-padding) + var(--safe-top)) var(--app-padding) calc(var(--app-padding) + var(--safe-bottom));
+  gap: 14px;
+  color: var(--ion-text-color);
 }
 
 .cabecera-pendientes {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
 
-  .titulo {
+  h1 {
     flex-grow: 1;
-
-    h1 {
-      font-size: 1.6rem;
-      font-weight: bold;
-      color: var(--ion-color-primary);
-      margin: 0 0 4px 0;
-    }
-
-    p {
-      margin: 0;
-      font-size: 0.95rem;
-      opacity: 0.85;
-    }
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: var(--ion-color-primary);
+    margin: 0;
   }
 
   .boton-icono-circular {
@@ -53,21 +49,38 @@
   }
 }
 
-// Punto 18: separa la sección "Listos para entregar" de la de pendientes.
-.subtitulo-seccion {
-  margin: 8px 0 0;
-  font-size: 1.25rem;
-  font-weight: bold;
-  color: var(--ion-color-primary);
+.pestanas {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background-color: var(--ion-color-step-100);
+
+  button {
+    padding: 10px 6px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--ion-text-color);
+    font-size: 0.95rem;
+    font-weight: 600;
+
+    &.activa {
+      background-color: var(--ion-color-primary);
+      color: var(--ion-color-primary-contrast);
+    }
+  }
 }
 
 .mensaje {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 12px 14px;
   border-radius: 8px;
-  margin-bottom: 16px;
   font-size: 0.95rem;
 
   ion-icon {
@@ -78,7 +91,7 @@
 
 .mensaje-error {
   background-color: var(--ion-color-danger);
-  color: #FCF7EE;
+  color: var(--ion-color-danger-contrast);
 }
 
 .mensaje-ok {
@@ -107,87 +120,125 @@
   }
 }
 
-.lista-pendientes {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 16px;
-}
-
+// Mitad de pantalla por tarjeta (.lista-snap): cabecera, totales y botones
+// fijos; los ítems toman el alto que sobra y scrollean adentro si el
+// pedido es muy largo.
 .pedido-card {
   background-color: var(--ion-color-step-100);
   border: 2px solid var(--ion-color-step-150);
   border-radius: 12px;
-  padding: 16px;
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  grid-template-areas:
-    "mesa datos"
-    "acciones acciones";
-  gap: 12px;
-  align-items: center;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 
-  .mesa-badge {
-    grid-area: mesa;
-    width: 64px;
-    height: 64px;
-    border-radius: 12px;
-    background-color: var(--ion-color-primary);
-    color: var(--ion-color-primary-contrast);
+  .cabecera-pedido {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-size: 0.85rem;
-    font-weight: bold;
-    line-height: 1.2;
+    justify-content: space-between;
   }
 
-  .datos {
-    grid-area: datos;
+  .mesa-badge {
+    background-color: var(--ion-color-primary);
+    color: var(--ion-color-primary-contrast);
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 4px 14px;
+    border-radius: 999px;
+  }
 
-    h3 {
-      margin: 0;
-      font-size: 1.25rem;
-      font-weight: bold;
-      color: var(--ion-text-color);
+  .hace {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.9rem;
+    opacity: 0.85;
+  }
+
+  .items {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    li {
+      font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .detalle {
-      margin: 4px 0 0;
+    .cantidad {
+      min-width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background-color: var(--ion-color-primary);
+      color: var(--ion-color-primary-contrast);
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .totales {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 1.05rem;
+
+    span {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.85rem;
-      opacity: 0.8;
-
-      ion-icon {
-        font-size: 1rem;
-      }
     }
   }
 
   .acciones {
-    grid-area: acciones;
+    flex-shrink: 0;
+    display: flex;
+    gap: 10px;
+  }
+
+  .boton-accion {
+    flex: 1;
+    height: 46px;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 36px;
-  }
+    gap: 6px;
 
-  .icono-accion {
-    font-size: 2.6rem;
-    cursor: pointer;
-    transition: transform 0.1s ease, opacity 0.2s ease;
-
-    &:active {
-      transform: scale(0.88);
+    ion-icon {
+      font-size: 1.4rem;
     }
 
-    &.deshabilitado {
-      opacity: 0.4;
-      pointer-events: none;
+    &.confirmar {
+      background-color: var(--ion-color-success);
+      color: var(--ion-color-success-contrast);
+    }
+
+    &.rechazar {
+      background-color: var(--ion-color-danger);
+      color: var(--ion-color-danger-contrast);
+    }
+
+    &:active {
+      transform: scale(0.97);
+    }
+
+    &:disabled {
+      opacity: 0.5;
     }
   }
 }

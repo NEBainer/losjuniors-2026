@@ -2,13 +2,21 @@
   --background: var(--ion-background-color);
 }
 
+ion-content {
+  // Contenedor de posicionamiento de .pantalla-fija (ver global.scss).
+  position: relative;
+}
+
 .contenedor-principal {
-  display: flex;
-  flex-direction: column;
+  // .pantalla-fija no lleva el padding de .contenedor-app: se suma
+  // --safe-top/--safe-bottom a mano para no quedar bajo las barras.
+  padding: calc(var(--app-padding) + var(--safe-top)) var(--app-padding) calc(var(--app-padding) + var(--safe-bottom));
   gap: 16px;
+  color: var(--ion-text-color);
 }
 
 .cabecera {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -55,6 +63,7 @@
 }
 
 .mensaje {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -99,27 +108,12 @@
   }
 }
 
-.lista-mesas {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  // Aire con el borde inferior ("2 dedos", convención 4).
-  padding-bottom: 36px;
-}
-
-.bloque-mesa {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .mesa-badge {
-  align-self: flex-start;
   background-color: var(--ion-color-primary);
   color: var(--ion-color-primary-contrast);
   font-weight: bold;
   font-size: 1.1rem;
-  padding: 6px 16px;
+  padding: 4px 14px;
   border-radius: 999px;
 }
 
@@ -131,6 +125,14 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  .cabecera-pedido {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
 
   .fecha {
     margin: 0;
@@ -146,6 +148,11 @@
   }
 
   .items {
+    // La tarjeta mide media pantalla: los ítems toman el alto que sobra y,
+    // si un pedido es muy largo, scrollean adentro sin empujar el botón.
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -174,6 +181,7 @@
   }
 
   .boton-accion {
+    flex-shrink: 0;
     height: 48px;
     border: none;
     border-radius: 12px;

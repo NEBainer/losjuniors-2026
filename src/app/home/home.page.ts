@@ -18,6 +18,7 @@ import {
   personAddOutline, qrCodeOutline, restaurantOutline, timeOutline, wineOutline, closeCircleOutline,
   checkmarkDoneCircleOutline,
   receiptOutline,
+  chevronForwardOutline,
 } from 'ionicons/icons';
 
 // Fila lista para pintar en la lista embebida de pendientes: mismo patrón
@@ -179,7 +180,7 @@ export class HomePage {
       logOutOutline, restaurantOutline, listOutline, peopleOutline, personAddOutline,
       fastFoodOutline, wineOutline, bookOutline, checkmarkOutline, qrCodeOutline,
       chatbubblesOutline, informationCircleOutline, closeOutline, timeOutline, closeCircleOutline,
-      checkmarkCircleOutline, checkmarkDoneCircleOutline, receiptOutline
+      checkmarkCircleOutline, checkmarkDoneCircleOutline, receiptOutline, chevronForwardOutline,
     });
   }
 
@@ -454,6 +455,10 @@ export class HomePage {
 
   irAPedidosSector() {
     this.router.navigate(['/sector/pedidos']);
+  }
+
+  verPedidosMozo(vista: 'pendientes' | 'listos') {
+    this.router.navigate(['/mozo/pedidos'], { queryParams: { vista } });
   }
 
   irAAltaBebida() {
