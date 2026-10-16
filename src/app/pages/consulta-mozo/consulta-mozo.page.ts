@@ -36,6 +36,24 @@ import { NotificacionesService } from '../../core/services/notificaciones.servic
  * NotificacionesService.iniciarEscuchaRespuestasCliente() (las dos
  * arrancan en home.page.ts, así llegan aunque este chat no esté abierto).
  */
+// Corrección 03/10 ("demasiado espacio libre"): respuestas rápidas en una
+// fila con scroll horizontal arriba del campo de texto. Tocar una la carga
+// en el campo, para mandarla tal cual o editarla.
+const SUGERENCIAS_CLIENTE = [
+  '¿Cuánto falta para mi pedido?',
+  '¿Me traés la cuenta?',
+  'Necesito cubiertos',
+  'Necesito servilletas',
+  '¿Tienen opciones sin TACC?',
+];
+const SUGERENCIAS_MOZO = [
+  'Enseguida voy',
+  'Ya sale de cocina',
+  'En 5 minutos está',
+  'Te llevo la cuenta',
+  'Sí, tenemos',
+];
+
 @Component({
   selector: 'app-consulta-mozo',
   standalone: true,
@@ -72,6 +90,7 @@ export class ConsultaMozoPage implements OnInit, OnDestroy {
   protected readonly error = signal('');
   protected readonly mensajes = signal<MensajeMozo[]>([]);
   readonly texto = signal('');
+  readonly sugerencias = signal<string[]>(SUGERENCIAS_CLIENTE);
 
   private mesaId: string | null = null;
   private usuarioId: string | null = null;
@@ -109,6 +128,8 @@ export class ConsultaMozoPage implements OnInit, OnDestroy {
       this.mesaId = mesa.id;
       this.usuarioId = usuario.id;
       this.esMozo = usuario.perfil === 'mozo';
+
+      this.sugerencias.set(this.esMozo ? SUGERENCIAS_MOZO : SUGERENCIAS_CLIENTE);
 
       this.mensajes.set(await this.consultaMozoService.obtenerHistorial(mesa.id));
       if (!this.esMozo) {
@@ -153,6 +174,10 @@ export class ConsultaMozoPage implements OnInit, OnDestroy {
     } finally {
       this.enviando.set(false);
     }
+  }
+
+  usarSugerencia(sugerencia: string): void {
+    this.texto.set(sugerencia);
   }
 
   volver(): void {

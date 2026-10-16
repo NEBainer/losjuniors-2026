@@ -82,7 +82,7 @@ ion-footer ion-toolbar {
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .estado-vacio {
@@ -91,28 +91,33 @@ ion-footer ion-toolbar {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 10px;
   text-align: center;
   color: var(--texto-gris);
   font-family: 'EB Garamond', Georgia, serif;
-  padding: 32px 16px;
+  font-size: 1.3rem;
+  padding: 32px 24px;
+
+  p {
+    margin: 0;
+  }
 
   ion-icon {
-    font-size: 2.5rem;
+    font-size: 5rem;
     color: var(--dorado);
   }
   .ayuda {
-    font-size: 0.85rem;
+    font-size: 1.05rem;
   }
 }
 
 .burbuja {
-  max-width: 78%;
-  padding: 8px 12px;
-  border-radius: 14px;
+  max-width: 82%;
+  padding: 12px 16px;
+  border-radius: 18px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   box-shadow: 0 1px 3px rgba(91, 42, 23, 0.15);
 }
 
@@ -132,14 +137,14 @@ ion-footer ion-toolbar {
 }
 
 .remitente {
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--dorado);
 }
 
 .texto-mensaje {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   line-height: 1.35;
   white-space: pre-wrap;
   word-break: break-word;
@@ -147,7 +152,7 @@ ion-footer ion-toolbar {
 
 .hora-mensaje {
   align-self: flex-end;
-  font-size: 0.66rem;
+  font-size: 0.78rem;
   opacity: 0.75;
 }
 
@@ -171,8 +176,8 @@ ion-footer ion-toolbar {
   max-height: 96px;
   border-radius: 18px;
   border: none;
-  padding: 10px 14px;
-  font-size: 0.95rem;
+  padding: 12px 16px;
+  font-size: 1.05rem;
   font-family: inherit;
   color: var(--marron-osc);
   background: var(--crema);
@@ -186,7 +191,39 @@ ion-footer ion-toolbar {
   --background: var(--dorado);
   --background-activated: var(--dorado);
   --color: var(--marron-osc);
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   margin: 0;
+}
+
+// Respuestas rápidas: scroll horizontal (corrección 03/10, mezclar
+// sentidos de scroll). Sin barra visible, como .lista-snap.
+.sugerencias {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.chip-sugerencia {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  padding: 10px 16px;
+  border: 1px solid var(--dorado);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--crema);
+  font-size: 0.95rem;
+  white-space: nowrap;
+
+  &:active {
+    background: var(--dorado);
+    color: var(--marron-osc);
+  }
 }
