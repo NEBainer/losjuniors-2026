@@ -38,7 +38,7 @@
     </div>
   }
 
-  <div class="contenedor-principal contenedor-app" [class.panel-compacto]="esPanelDueno() || esPanelMozo()">
+  <div class="contenedor-principal contenedor-app panel-compacto" [class.panel-simple]="!esPanelDueno() && !esPanelMozo()">
 
     <div class="cabecera-dashboard">
       <img [src]="'assets/mascota/' + mascotaActual()" alt="Mascota La Mesa" class="mascota-cabecera" />

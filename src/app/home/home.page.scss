@@ -15,10 +15,10 @@
   //padding-bottom: calc(20px + env(safe-area-inset-bottom));
   color: var(--ion-text-color);
 
-  // Paneles con una lista integrada abajo (dueño/supervisor con clientes
-  // pendientes, mozo con pedidos pendientes -- correcciones-profesor
-  // 13-09): la pantalla se reparte entre accesos rápidos arriba y la lista
-  // abajo, en vez de dejar que la grilla crezca libre y genere scroll.
+  // Todos los paneles entran justo en la pantalla, sin scroll ("los home no
+  // scrollean", preentrega 03-10). Los que tienen lista integrada abajo
+  // (dueño/supervisor con clientes pendientes, mozo con pedidos) reparten
+  // el alto entre accesos rápidos y lista; .panel-simple es el resto.
   &.panel-compacto {
     position: absolute;
     inset: 0;
@@ -41,16 +41,6 @@
     }
 
     .grilla-modulos {
-      // base 0: la grilla toma solo el alto que sobra después de la
-      // cabecera, los pendientes y el logout. Las tarjetas se achican para
-      // entrar; ya no hay scroll interno ni tarjetas cortadas.
-      flex: 1 1 0;
-      min-height: 0;
-      overflow: hidden;
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      grid-auto-rows: minmax(0, 1fr);
-      gap: 10px;
       // base 0: la grilla toma solo el alto que sobra después de la
       // cabecera, los pendientes y el logout. Las tarjetas se achican para
       // entrar; ya no hay scroll interno ni tarjetas cortadas.
@@ -111,6 +101,42 @@
       .boton-logout {
         padding: 10px;
         font-size: 1rem;
+      }
+    }
+    // Cocina, bar, metre y clientes: 2 o 3 tarjetas, sin lista abajo. Una
+    // por fila (como antes) llenando el alto, con subtítulo. En un celular
+    // chico, si la tarjeta queda baja se oculta el subtítulo antes que
+    // cortarla.
+    &.panel-simple .grilla-modulos {
+      grid-template-columns: 1fr;
+
+      .modulo-card {
+        padding: 12px;
+
+        ion-icon {
+          font-size: 2.6rem;
+        }
+
+        h3 {
+          font-size: 1.3rem;
+          margin-bottom: 4px;
+        }
+
+        p {
+          display: block;
+        }
+
+        @container (max-height: 140px) {
+          p {
+            display: none;
+          }
+        }
+      }
+
+      // En una columna no hay hueco que cubrir: sin esto, el span 2 de
+      // arriba agrega una segunda columna fantasma.
+      .modulo-card:last-child:nth-child(odd) {
+        grid-column: auto;
       }
     }
     // La lista de pendientes no se achica: el que cede espacio es la grilla.
