@@ -4,6 +4,7 @@
 
 .contenedor-registro {
   min-height: 100%;
+  padding-bottom: var(--app-padding);
   // Compacto a propósito (correcciones-profesor 13-09: todos los campos
   // deben verse sin scroll) -- ver también encabezado/foto/formulario más
   // abajo, todos achicados desde sus tamaños originales.
@@ -134,12 +135,20 @@
 
 
 .formulario {
+  flex: 1 1 auto;
+  justify-content: space-evenly;
   display: flex;
   flex-direction: column;
   gap: 8px;
   background: var(--ion-color-step-100);
   border-radius: 16px;
   padding: 12px 14px;
+}
+
+.fila-campos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .campo {
@@ -163,6 +172,7 @@
     --padding-bottom: 8px;
     border-radius: 10px;
     font-size: 0.95rem;
+    min-height: 44px;
   }
 
   .input-con-icono {

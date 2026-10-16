@@ -55,11 +55,17 @@
     color: var(--ion-color-danger);
   }
 
-  .boton-escanear-mesa .boton-resultados {
+  .boton-escanear-mesa, 
+  .boton-resultados {
     width: 100%;
     margin-top: 8px;
     --border-radius: 12px;
     font-weight: 700;
+    height: auto;
+    --padding-top: 12px;
+    --padding-bottom: 12px;
+    white-space: normal;
+    text-align: center;
 
     ion-icon {
       font-size: 1.4rem;
