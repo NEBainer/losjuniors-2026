@@ -64,11 +64,24 @@ export class PedidoService {
     return pedidoId;
   }
 
+  // Solo pedidos de la estadía actual (desde mesas.asignada_en), mismo
+  // criterio que cuentas en schema.sql v14 y que EncuestaService: si no,
+  // un cliente nuevo hereda el último pedido del cliente anterior.
   async obtenerPedidoActivoDeMesa(mesaId: string): Promise<Pedido | null> {
+    const { data: mesa, error: errorMesa } = await this.client
+      .from('mesas')
+      .select('asignada_en')
+      .eq('id', mesaId)
+      .single();
+
+    if (errorMesa) throw new Error('No se pudo verificar si ya había un pedido para esta mesa.');
+    if (!mesa.asignada_en) return null;
+
     const { data, error } = await this.client
       .from('pedidos')
       .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo')
       .eq('mesa_id', mesaId)
+      .gte('created_at', mesa.asignada_en)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
