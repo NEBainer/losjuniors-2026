@@ -64,7 +64,7 @@
 
               <ul class="items">
                 @for (item of pedido.items; track item.nombre) {
-                  <li><span class="cantidad">{{ item.cantidad }}</span> {{ item.nombre }}</li>
+                  <li><span class="cantidad">{{ item.cantidad }}</span><span class="nombre">{{ item.nombre }}</span></li>
                 }
               </ul>
 

@@ -1,4 +1,4 @@
-<ion-content class="fondo-app">
+<ion-content class="fondo-app" [scrollY]="false">
 
   @if (cargando()) {
     <div class="overlay-cargando">
@@ -10,7 +10,7 @@
     </div>
   }
 
-  <div class="contenedor-principal contenedor-app">
+  <div class="contenedor-principal pantalla-fija">
 
     <div class="cabecera-pagina">
       <button class="boton-icono-circular" (click)="volver()" type="button">
@@ -35,7 +35,7 @@
       </div>
     }
 
-    <div class="seccion">
+    <div class="seccion seccion-lista" [class.seccion-compacta]="(cola().length === 0 || errorCargaCola()) && mesasVacias().length > 0 && !errorCargaMesas()">
       <div class="cabecera-seccion">
         <ion-icon name="people-outline"></ion-icon>
         <h2>Clientes esperando ({{ cola().length }})</h2>
@@ -55,7 +55,8 @@
           <p>Nadie está esperando mesa en este momento.</p>
         </div>
       } @else {
-        <div class="lista-cola">
+        <!-- Corrección 16/10: de a dos filas por vista, con snap (ver .lista-snap en global.scss). -->
+        <div class="lista-cola lista-snap">
           @for (fila of cola(); track fila.id) {
             <div
               class="fila-cliente"
@@ -79,7 +80,7 @@
       }
     </div>
 
-    <div class="seccion">
+    <div class="seccion seccion-lista" [class.seccion-compacta]="(mesasVacias().length === 0 || errorCargaMesas()) && cola().length > 0 && !errorCargaCola()">
       <div class="cabecera-seccion">
         <ion-icon name="restaurant-outline"></ion-icon>
         <h2>Mesas disponibles ({{ mesasVacias().length }})</h2>

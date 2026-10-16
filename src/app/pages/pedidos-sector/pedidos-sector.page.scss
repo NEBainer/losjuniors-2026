@@ -148,32 +148,48 @@ ion-content {
   }
 
   .items {
-    // La tarjeta mide media pantalla: los ítems toman el alto que sobra y,
-    // si un pedido es muy largo, scrollean adentro sin empujar el botón.
+    // Corrección 16/10: ítems compactos en dos columnas para que entren más
+    // productos en la media pantalla de la tarjeta; el nombre se parte en
+    // hasta dos renglones. Si aun así no entran, scrollea adentro sin
+    // empujar los botones.
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 8px 10px;
 
     li {
-      font-size: 1.15rem;
+      min-width: 0;
+      font-size: 0.95rem;
+      line-height: 1.15;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
+    }
+
+    .nombre {
+      min-width: 0;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
     }
 
     .cantidad {
-      min-width: 34px;
-      height: 34px;
-      border-radius: 8px;
+      flex-shrink: 0;
+      min-width: 26px;
+      height: 26px;
+      border-radius: 6px;
       background-color: var(--ion-color-primary);
       color: var(--ion-color-primary-contrast);
       font-weight: bold;
+      font-size: 0.85rem;
       display: flex;
       align-items: center;
       justify-content: center;
