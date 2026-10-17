@@ -35,57 +35,54 @@
         </div>
       } @else {
         <p class="introduccion">
-          Cuando un cliente pide la cuenta, mostrale el código del nivel de satisfacción que elija.
-          Tocá uno para verlo en grande.
+          Mostrale al cliente el código del nivel que elija. Deslizá hacia los costados para cambiar de nivel.
         </p>
 
-        <div class="grilla-qr">
-          @for (codigo of codigos(); track codigo.porcentaje; let i = $index) {
-            <button
-              type="button"
-              class="tarjeta-qr"
-              [attr.aria-label]="'Ver en grande el código ' + codigo.nivel"
-              (click)="ampliar(i)">
-              <img [src]="codigo.imagen" [alt]="'Código QR de propina ' + codigo.nivel" />
+        <div class="pista" #pista (scroll)="alDesplazar()">
+          @for (codigo of codigos(); track codigo.porcentaje) {
+            <section class="diapositiva" [attr.aria-label]="'Código QR de propina ' + codigo.nivel">
               <span class="nivel">{{ codigo.nivel }}</span>
-              <span class="porcentaje">{{ codigo.porcentaje }}%</span>
-            </button>
+              <span class="porcentaje">{{ codigo.porcentaje }}% de propina</span>
+              <div class="marco-qr">
+                <img [src]="codigo.imagen" [alt]="'Código QR de propina ' + codigo.nivel" />
+              </div>
+            </section>
           }
         </div>
+
+        <nav class="navegacion" aria-label="Cambiar de nivel">
+          <button
+            type="button"
+            class="boton-icono-circular destacado"
+            aria-label="Nivel anterior"
+            [disabled]="indice() === 0"
+            (click)="anterior()">
+            <ion-icon name="chevron-back-outline"></ion-icon>
+          </button>
+
+          <div class="puntos">
+            @for (codigo of codigos(); track codigo.porcentaje; let i = $index) {
+              <button
+                type="button"
+                class="punto"
+                [class.activo]="i === indice()"
+                [attr.aria-label]="'Ver ' + codigo.nivel"
+                [attr.aria-current]="i === indice()"
+                (click)="irA(i)">
+              </button>
+            }
+          </div>
+
+          <button
+            type="button"
+            class="boton-icono-circular destacado"
+            aria-label="Nivel siguiente"
+            [disabled]="indice() === codigos().length - 1"
+            (click)="siguiente()">
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </button>
+        </nav>
       }
     </div>
   }
-
-  @if (ampliado(); as codigo) {
-    <div class="overlay-ampliado" role="dialog" aria-modal="true" [attr.aria-label]="'Código QR de propina ' + codigo.nivel">
-      <button type="button" class="boton-icono-circular boton-cerrar" aria-label="Cerrar" (click)="cerrar()">
-        <ion-icon name="close-outline"></ion-icon>
-      </button>
-
-      <span class="nivel-grande">{{ codigo.nivel }}</span>
-      <span class="porcentaje-grande">{{ codigo.porcentaje }}% de propina</span>
-      <img [src]="codigo.imagen" [alt]="'Código QR de propina ' + codigo.nivel" class="qr-grande" />
-
-      <nav class="navegacion" aria-label="Cambiar de nivel">
-        <button
-          type="button"
-          class="boton-icono-circular destacado"
-          aria-label="Nivel anterior"
-          [disabled]="indiceAmpliado() === 0"
-          (click)="anterior()">
-          <ion-icon name="chevron-back-outline"></ion-icon>
-        </button>
-        <span>{{ (indiceAmpliado() ?? 0) + 1 }} de {{ codigos().length }}</span>
-        <button
-          type="button"
-          class="boton-icono-circular destacado"
-          aria-label="Nivel siguiente"
-          [disabled]="indiceAmpliado() === codigos().length - 1"
-          (click)="siguiente()">
-          <ion-icon name="chevron-forward-outline"></ion-icon>
-        </button>
-      </nav>
-    </div>
-  }
-
 </ion-content>

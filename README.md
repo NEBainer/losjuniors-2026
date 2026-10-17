@@ -141,7 +141,6 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 | Cuenta con QR de propina, detalle y pago simulado (punto 21) | ✅ |
 | Mozo confirma el pago y libera la mesa (punto 22) | ✅ |
 | Mascotas por perfil en el panel de control | 🚧 |
-| Notificaciones push con la app cerrada | ⏳ |
 | Login con redes sociales (punto 23) | ⏳ |
 | Reservas (puntos 24 a 26) | ⏳ |
 | Pedidos a domicilio (puntos 27 a 29) | ⏳ |
@@ -159,7 +158,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 | [Mesa, carta, consultas y pedido](#salon) | 10 a 13 |
 | [Cocina, bar y estado del pedido](#estado-pedido) | 14, 16 a 19 |
 | [Juegos con descuento](#juegos) | 15 |
-| [Resultados de la encuesta](#encuesta) | 20 |
+| [Encuesta y resultados](#encuesta) | 20 |
 | [Cuenta, propina y pago](#cuenta) | 21 y 22 |
 
 <a id="identidad"></a>
@@ -361,7 +360,7 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 </td>
 <td align="center" width="33%" valign="top">
 <b>Consulta al mozo — cliente</b><br><br>
-<img src="capturas/consulta-mozo-vista-cliente.jpg" alt="Chat de consulta visto por el cliente" width="200">
+<img src="capturas/consulta-mozo-vista-cliente.jpg" alt="Chat de consulta visto por el cliente" width="200"><br><sub>Con mensajes rápidos abajo.</sub>
 </td>
 </tr>
 <tr>
@@ -483,9 +482,45 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 <a id="encuesta"></a>
 
 <details>
-<summary><b>Resultados de la encuesta (punto 20)</b></summary>
+<summary><b>Encuesta y resultados (punto 20)</b></summary>
 
 <br>
+
+<b>Completar la encuesta</b><br><br>
+Una pregunta por pantalla, con barra de avance y navegación Anterior/Siguiente. Cada pregunta usa un tipo de respuesta distinto.
+
+<table>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>1. Calificación</b><br><br>
+<img src="capturas/encuesta-form-calificacion.jpg" alt="Pregunta de calificación con estrellas" width="200"><br><sub>Estrellas.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>2. Atención del mozo</b><br><br>
+<img src="capturas/encuesta-form-atencion.jpg" alt="Pregunta de atención del mozo con opciones" width="200"><br><sub>Opción única.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>3. Limpieza del local</b><br><br>
+<img src="capturas/encuesta-form-limpieza.jpg" alt="Pregunta de limpieza con slider del 1 al 10" width="200"><br><sub>Slider de 1 a 10.</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>4. Lo que más gustó</b><br><br>
+<img src="capturas/encuesta-form-destacado.jpg" alt="Pregunta de lo que más gustó con casillas" width="200"><br><sub>Selección múltiple.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>5. Recomendación</b><br><br>
+<img src="capturas/encuesta-form-recomendacion.jpg" alt="Pregunta de recomendación con interruptor" width="200"><br><sub>Sí / No.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Final</b><br><br>
+<img src="capturas/encuesta-gracias.jpg" alt="Agradecimiento al completar la encuesta" width="200"><br><sub>Con acceso a los resultados.</sub>
+</td>
+</tr>
+</table>
+
+<b>Resultados con gráficos</b><br><br>
 
 <table>
 <tr>
@@ -536,6 +571,20 @@ El sistema permitirá gestionar el funcionamiento de un restaurante mediante el 
 <td align="center" width="33%" valign="top">
 <b>Panel del mozo — cuentas</b><br><br>
 <img src="capturas/panel-mozo-cuentas.jpg" alt="Panel del mozo con el acceso a Cuentas" width="200"><br><sub>Desde Cuentas confirma pagos y libera mesas (punto 22).</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%" valign="top">
+<b>Cuentas — por confirmar</b><br><br>
+<img src="capturas/cuentas-por-confirmar.jpg" alt="Pantalla de cuentas del mozo con un pago por confirmar" width="200"><br><sub>El cliente pagó y el mozo debe confirmarlo.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Confirmar el pago</b><br><br>
+<img src="capturas/cuentas-confirmar-pago.jpg" alt="Confirmación del pago recibido" width="200"><br><sub>Pide confirmar que recibió el dinero.</sub>
+</td>
+<td align="center" width="33%" valign="top">
+<b>Pago confirmado</b><br><br>
+<img src="capturas/cuentas-pago-confirmado.jpg" alt="Pago confirmado y mesa liberada" width="200"><br><sub>La mesa queda libre (punto 22).</sub>
 </td>
 </tr>
 </table>

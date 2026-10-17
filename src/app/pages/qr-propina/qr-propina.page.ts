@@ -1,6 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonTitle, IonToolbar } from '@ionic/angular';
 import { NIVELES_PROPINA, PorcentajePropina } from '../../core/models/cuenta.model';
 import { QrAppService } from '../../core/services/qr-app.service';
@@ -27,15 +25,12 @@ export class QrPropinaPage implements OnInit {
   private readonly router = inject(Router);
   private readonly qrAppService = inject(QrAppService);
 
+  private readonly pista = viewChild<ElementRef<HTMLDivElement>>('pista');
+
   readonly cargando = signal(true);
   readonly error = signal('');
   readonly codigos = signal<CodigoPropina[]>([]);
-  readonly indiceAmpliado = signal<number | null>(null);
-
-  readonly ampliado = computed(() => {
-    const indice = this.indiceAmpliado();
-    return indice === null ? null : (this.codigos()[indice] ?? null);
-  });
+  readonly indice = signal(0);
 
   constructor() { 
     addIcons({
@@ -43,7 +38,6 @@ export class QrPropinaPage implements OnInit {
       arrowBackOutline,
       chevronBackOutline,
       chevronForwardOutline,
-      closeOutline,
       refreshOutline,
     });
   }
@@ -81,22 +75,25 @@ export class QrPropinaPage implements OnInit {
     }
   }
 
-  ampliar(indice: number): void {
-    this.indiceAmpliado.set(indice);
+alDesplazar(): void {
+    const pista = this.pista()?.nativeElement;
+    if (!pista || !pista.clientWidth) return;
+    this.indice.set(Math.round(pista.scrollLeft / pista.clientWidth));
   }
 
-  cerrar(): void {
-    this.indiceAmpliado.set(null);
+  irA(indice: number): void {
+    const pista = this.pista()?.nativeElement;
+    if (!pista || indice < 0 || indice >= this.codigos().length) return;
+    const sinAnimacion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    pista.scrollTo({ left: indice * pista.clientWidth, behavior: sinAnimacion ? 'auto' : 'smooth' });
   }
 
   anterior(): void {
-    const indice = this.indiceAmpliado();
-    if (indice !== null && indice > 0) this.indiceAmpliado.set(indice - 1);
+    this.irA(this.indice() - 1);
   }
 
   siguiente(): void {
-    const indice = this.indiceAmpliado();
-    if (indice !== null && indice < this.codigos().length - 1) this.indiceAmpliado.set(indice + 1);
+    this.irA(this.indice() + 1);
   }
 
   volver(): void {

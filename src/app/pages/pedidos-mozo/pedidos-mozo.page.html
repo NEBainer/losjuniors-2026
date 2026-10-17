@@ -1,4 +1,4 @@
-<ion-content class="fondo-app">
+<ion-content class="fondo-app" [scrollY]="false">
 
   @if (cargando()) {
     <div class="overlay-cargando">
@@ -10,18 +10,26 @@
     </div>
   }
 
-  <div class="contenedor-principal contenedor-app">
+  <div class="contenedor-principal pantalla-fija">
 
     <div class="cabecera-pendientes">
       <button class="boton-icono-circular" (click)="volver()" title="Volver al panel">
         <ion-icon name="arrow-back-outline"></ion-icon>
       </button>
-      <div class="titulo">
-        <h1>Pedidos pendientes</h1>
-        <p>Confirmá los pedidos para que pasen a cocina y barra</p>
-      </div>
+      <h1>Pedidos</h1>
       <button class="boton-icono-circular" (click)="cargar()" [disabled]="cargando()" title="Refrescar listado">
         <ion-icon name="refresh-outline"></ion-icon>
+      </button>
+    </div>
+
+    <!-- Puntos 12 y 18: una lista por vez (de a dos tarjetas grandes) en vez
+         de dos listas apiladas que se aprietan entre sí. -->
+    <div class="pestanas">
+      <button [class.activa]="vista() === 'pendientes'" (click)="vista.set('pendientes')">
+        Por confirmar ({{ pendientes().length }})
+      </button>
+      <button [class.activa]="vista() === 'listos'" (click)="vista.set('listos')">
+        Para entregar ({{ listos().length }})
       </button>
     </div>
 
@@ -38,91 +46,64 @@
       </div>
     }
 
-    @if (!cargando() && pendientes().length === 0) {
+    @if (!cargando() && visibles().length === 0) {
       <div class="estado-vacio">
         <ion-icon name="restaurant-outline"></ion-icon>
-        <p>No hay pedidos esperando confirmación.</p>
+        <p>{{ vista() === 'pendientes' ? 'No hay pedidos esperando confirmación.' : 'No hay pedidos listos para llevar a la mesa.' }}</p>
+      </div>
+    }  @else {
+      <!-- Corrección 03/10: de a dos pedidos por vez, con snap (ver
+           .lista-snap en global.scss). -->
+      <div class="lista-snap">
+        @for (pedido of visibles(); track pedido.id) {
+          <div class="pedido-card">
+
+            <div class="cabecera-pedido">
+              <span class="mesa-badge">Mesa {{ pedido.mesaNumero }}</span>
+              <span class="hace">
+                <ion-icon name="time-outline"></ion-icon>
+                {{ pedido.hace }}
+              </span>
+            </div>
+
+            <ul class="items">
+              @for (item of pedido.items; track item.nombre) {
+                <li><span class="cantidad">{{ item.cantidad }}</span><span class="nombre">{{ item.nombre }}</span></li>
+              }
+            </ul>
+
+            <div class="totales">
+              <span><ion-icon name="cash-outline"></ion-icon> {{ formatearPrecio(pedido.importeTotal) }}</span>
+              @if (vista() === 'pendientes') {
+                <span><ion-icon name="time-outline"></ion-icon> ~{{ pedido.tiempoEstimadoMinutos }} min</span>
+              }
+            </div>
+
+            <div class="acciones">
+              @if (vista() === 'pendientes') {
+                <!-- Punto 13: rechazo directo, sin diálogo. -->
+                <button class="boton-accion rechazar" (click)="rechazar(pedido)" [disabled]="procesandoId() === pedido.id">
+                  <ion-icon name="close-circle-outline"></ion-icon>
+                  <span>Rechazar</span>
+                </button>
+                <button class="boton-accion confirmar" (click)="confirmar(pedido)" [disabled]="procesandoId() === pedido.id">
+                  <ion-icon name="checkmark-circle-outline"></ion-icon>
+                  <span>Confirmar</span>
+                </button>
+              } @else {
+                <!-- Punto 19: el mozo lo llevó a la mesa; el cliente después
+                     confirma la recepción. -->
+                <button class="boton-accion confirmar" (click)="entregar(pedido)" [disabled]="procesandoId() === pedido.id">
+                  <ion-icon name="checkmark-done-circle-outline"></ion-icon>
+                  <span>Entregado</span>
+                </button>
+              }
+            </div>
+
+          </div>
+        }
       </div>
     }
-
-    <div class="lista-pendientes">
-      @for (pedido of pendientes(); track pedido.id) {
-        <div class="pedido-card">
-
-          <div class="mesa-badge">
-            Mesa<br />{{ pedido.mesaNumero }}
-          </div>
-
-          <div class="datos">
-            <h3>{{ formatearPrecio(pedido.importeTotal) }}</h3>
-            <p class="detalle">
-              <ion-icon name="time-outline"></ion-icon>
-              ~{{ pedido.tiempoEstimadoMinutos }} min · {{ pedido.hace }}
-            </p>
-          </div>
-
-          <div class="acciones">
-            <ion-icon
-              name="close-circle"
-              color="danger"
-              class="icono-accion"
-              [class.deshabilitado]="procesandoId() === pedido.id"
-              (click)="rechazar(pedido)"
-            ></ion-icon>
-            <ion-icon
-              name="checkmark-circle"
-              color="success"
-              class="icono-accion"
-              [class.deshabilitado]="procesandoId() === pedido.id"
-              (click)="confirmar(pedido)"
-            ></ion-icon>
-          </div>
-
-        </div>
-      }
-    </div>
-
-    <!-- Punto 18/19: pedidos que cocina y bar terminaron. Una sola acción
-         (no hay aceptar/rechazar acá): el mozo lo lleva a la mesa y toca
-         el ícono, el cliente después confirma la recepción. -->
-    <h2 class="subtitulo-seccion">Listos para entregar</h2>
-
-    @if (!cargando() && listos().length === 0) {
-      <div class="estado-vacio">
-        <ion-icon name="restaurant-outline"></ion-icon>
-        <p>No hay pedidos listos para llevar a la mesa.</p>
-      </div>
-    }
-
-    <div class="lista-pendientes">
-      @for (pedido of listos(); track pedido.id) {
-        <div class="pedido-card">
-
-          <div class="mesa-badge">
-            Mesa<br />{{ pedido.mesaNumero }}
-          </div>
-
-          <div class="datos">
-            <h3>{{ formatearPrecio(pedido.importeTotal) }}</h3>
-            <p class="detalle">
-              <ion-icon name="time-outline"></ion-icon>
-              Pedido {{ pedido.hace }}
-            </p>
-          </div>
-
-          <div class="acciones">
-            <ion-icon
-              name="checkmark-done-circle"
-              color="success"
-              class="icono-accion"
-              [class.deshabilitado]="procesandoId() === pedido.id"
-              (click)="entregar(pedido)"
-            ></ion-icon>
-          </div>
-
-        </div>
-      }
-    </div>
 
   </div>
 </ion-content>

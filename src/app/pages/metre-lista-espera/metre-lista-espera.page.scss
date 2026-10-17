@@ -2,13 +2,20 @@
   --background: var(--ion-background-color);
 }
 
+ion-content {
+  // Contenedor de posicionamiento de .pantalla-fija (ver global.scss).
+  position: relative;
+}
+
 .contenedor-principal {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  // Sin .contenedor-app (su min-height: 100dvh rompe .pantalla-fija), así que
+  // el safe-area se suma acá para que el título no quede bajo la barra de estado.
+  padding: calc(var(--app-padding) + var(--safe-top)) var(--app-padding) calc(var(--app-padding) + var(--safe-bottom));
+  gap: 14px;
 }
 
 .cabecera-pagina {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -32,6 +39,7 @@
 }
 
 .mensaje {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -61,7 +69,20 @@
   gap: 12px;
 }
 
+// Cada listado ocupa la mitad del alto libre y scrollea por su cuenta.
+.seccion-lista {
+  flex: 1 1 0;
+  min-height: 0;
+
+  // Sección vacía mientras la otra tiene contenido: se achica a su mensaje
+  // y la otra toma el resto del alto.
+  &.seccion-compacta {
+    flex: 0 0 auto;
+  }
+}
+
 .cabecera-seccion {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -80,6 +101,9 @@
 }
 
 .estado-vacio {
+  // Si la sección es alta (las dos vacías), el mensaje queda centrado.
+  flex: 1 1 auto;
+  justify-content: center;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -99,14 +123,14 @@
   }
 }
 
-/* Cola de clientes: fila seleccionable, no hay diálogo de confirmación */
+/* Cola de clientes: fila seleccionable, no hay diálogo de confirmación.
+   Scroll y snap vienen de .lista-snap (global.scss). */
 .lista-cola {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  --separacion-tarjetas: 10px;
 }
 
 .fila-cliente {
+  // Con .lista-snap la fila toma la mitad del alto: se centra su contenido.
   display: flex;
   align-items: center;
   gap: 12px;
@@ -158,9 +182,28 @@
 
 /* Mesas disponibles: cada una es un botón, tocarla asigna directo */
 .lista-mesas {
+  // Dos filas de mesas por vista, con scroll propio y snap (mismo criterio
+  // que .lista-snap, pero en grilla de 2 columnas).
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: calc((100% - 12px) / 2);
   gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  > :nth-child(4n + 1),
+  > :nth-child(4n + 2) {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
 }
 
 .tarjeta-mesa-seleccionable {
@@ -171,7 +214,9 @@
   background-color: var(--ion-color-step-100);
   border: 2px solid var(--ion-color-step-150);
   border-radius: 12px;
-  padding: 16px 8px;
+  padding: 8px;
+  justify-content: center;
+  min-height: 0;
   color: var(--ion-text-color);
 
   ion-icon {

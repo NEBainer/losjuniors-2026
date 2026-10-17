@@ -808,6 +808,14 @@ export class PedidoPage implements OnInit, OnDestroy {
         // confirmado tiene que enterarse de esos cambios igual.
         this.suscribirConfirmacion(pedidoActivo.id);
         this.detectarSectores(pedidoActivo.id, carta);
+        // Punto 12: el lock de armado es solo para la fase "armando". El
+        // botón "Pedido" de la carta lo toma igual para entrar a ver el
+        // estado de un pedido ya enviado, y como acá no se arma nada,
+        // ngOnDestroy no lo liberaba: la mesa quedaba trabada con el
+        // nombre del cliente y no se podía volver a entrar.
+        if (this.fase() !== 'armando') {
+          this.mesaService.liberarPedidoEnCurso(this.mesaId);
+        }
       }
     } catch (e) {
       console.error('No se pudo cargar la mesa/carta', e);

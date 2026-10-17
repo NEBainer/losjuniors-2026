@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, inject, signal, computed, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -24,6 +24,8 @@ import {
   arrowBackOutline,
   barChartOutline,
   checkmarkCircleOutline,
+  chevronBackOutline,
+  chevronForwardOutline,
   sendOutline,
   star,
   starOutline,
@@ -51,6 +53,15 @@ function alMenosUno(control: AbstractControl): ValidationErrors | null {
 
 const TEXTOS_CALIFICACION = ['Tocá una estrella', 'Muy mala', 'Mala', 'Buena', 'Muy buena', 'Excelente'];
 
+const CAMPOS = [
+  'calificacionGeneral',
+  'atencionMozo',
+  'limpieza',
+  'aspectosDestacados',
+  'recomendaria',
+  'comentario',
+] as const;
+
 /**
  * encuesta.page.ts
  * -----------------
@@ -63,6 +74,7 @@ const TEXTOS_CALIFICACION = ['Tocá una estrella', 'Muy mala', 'Mala', 'Buena', 
 
 @Component({
   selector: 'app-encuesta',
+  host: { class: 'ion-page' },
   templateUrl: './encuesta.page.html',
   styleUrls: ['./encuesta.page.scss'],
   imports: [IonButton, IonButtons, IonCheckbox, IonContent, IonHeader, IonIcon,IonRadio, IonRadioGroup, IonRange, IonTextarea, IonTitle,IonToggle, IonToolbar, CommonModule, ReactiveFormsModule,]
@@ -72,6 +84,7 @@ export class EncuestaPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly encuestaService = inject(EncuestaService);
+  private readonly pista = viewChild<ElementRef<HTMLDivElement>>('pista');
 
   readonly estrellas = [1, 2, 3, 4, 5];
   readonly opcionesAtencion = (Object.keys(ETIQUETAS_ATENCION) as AtencionMozo[]).map((valor) => ({
@@ -89,6 +102,9 @@ export class EncuestaPage implements OnInit {
   readonly estadia = signal<EstadiaActual | null>(null);
   readonly errorCarga = signal('');
   readonly mensajeError = signal('');
+  readonly indice = signal(0);
+  readonly totalPreguntas = CAMPOS.length;
+  readonly esUltima = computed(() => this.indice() === CAMPOS.length - 1);
 
   readonly formulario = this.fb.nonNullable.group({
     calificacionGeneral: [0, [Validators.min(1), Validators.max(5)]],
@@ -109,6 +125,8 @@ export class EncuestaPage implements OnInit {
       star,
       starOutline,
       warningOutline,
+      chevronBackOutline,
+      chevronForwardOutline,
     });
   }
 
@@ -162,13 +180,42 @@ export class EncuestaPage implements OnInit {
     return control.invalid && control.touched;
   }
 
+  alDesplazar(): void {
+    const pista = this.pista()?.nativeElement;
+    if (!pista || !pista.clientWidth) return;
+    this.indice.set(Math.round(pista.scrollLeft / pista.clientWidth));
+  }
+
+  irA(indice: number): void {
+    const pista = this.pista()?.nativeElement;
+    if (!pista || indice < 0 || indice >= CAMPOS.length) return;
+    const sinAnimacion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    pista.scrollTo({ left: indice * pista.clientWidth, behavior: sinAnimacion ? 'auto' : 'smooth' });
+  }
+
+  anterior(): void {
+    this.irA(this.indice() - 1);
+  }
+
+  async siguiente(): Promise<void> {
+    const control = this.formulario.controls[CAMPOS[this.indice()]];
+    control.markAsTouched();
+    if (control.invalid) {
+      await this.dispararError('Respondé esta pregunta para seguir.');
+      return;
+    }
+    this.irA(this.indice() + 1);
+  }
+
   async enviar(): Promise<void> {
     const estadia = this.estadia();
     if (!estadia || this.enviando()) return;
 
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
-      await this.dispararError('Revisá las preguntas marcadas en rojo.');
+      const faltante = CAMPOS.findIndex((campo) => this.formulario.controls[campo].invalid);
+      this.irA(faltante);
+      await this.dispararError(`Te falta responder la pregunta ${faltante + 1}.`);
       return;
     }
 

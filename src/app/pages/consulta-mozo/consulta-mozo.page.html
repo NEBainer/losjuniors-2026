@@ -34,8 +34,8 @@
       @if (!hayMensajes()) {
         <div class="estado-vacio">
           <ion-icon name="chatbubbles-outline"></ion-icon>
-          <p>Todavía no mandaste ninguna consulta.</p>
-          <p class="ayuda">Escribí tu mensaje y se lo notificamos a los mozos.</p>
+          <p>Todavía no hay mensajes.</p>
+          <p class="ayuda">Escribí tu consulta o elegí una de abajo: les avisamos a los mozos al instante.</p>
         </div>
       }
 
@@ -58,6 +58,13 @@
 @if (!cargando()) {
   <ion-footer>
     <ion-toolbar class="barra-envio">
+      <div class="sugerencias">
+        @for (sugerencia of sugerencias(); track sugerencia) {
+          <button type="button" class="chip-sugerencia" (click)="usarSugerencia(sugerencia)">
+            {{ sugerencia }}
+          </button>
+        }
+      </div>
       <div class="campo-envio">
         <textarea
           class="input-mensaje"

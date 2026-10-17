@@ -6,7 +6,7 @@
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-  padding-bottom: 24px;
+  padding-bottom: calc(24px + var(--safe-bottom));
 }
 
 .cabecera {

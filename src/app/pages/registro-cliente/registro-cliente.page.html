@@ -23,30 +23,32 @@
     }
 
     <form [formGroup]="formulario" (ngSubmit)="registrarse()" class="formulario">
-      <div class="campo">
-        <ion-label>Nombres</ion-label>
-        <ion-input
-          formControlName="nombres"
-          placeholder="Ej: Julián"
-          fill="solid"
-          class="input-formulario">
-        </ion-input>
-        @if (formulario.get('nombres')?.touched && formulario.get('nombres')?.invalid) {
-          <span class="error-campo">Ingresá un nombre válido (mínimo 2 caracteres).</span>
-        }
-      </div>
+      <div class="fila-campos">
+        <div class="campo">
+          <ion-label>Nombres</ion-label>
+          <ion-input
+            formControlName="nombres"
+            placeholder="Ej: Julián"
+            fill="solid"
+            class="input-formulario">
+          </ion-input>
+          @if (formulario.get('nombres')?.touched && formulario.get('nombres')?.invalid) {
+            <span class="error-campo">Ingresá un nombre válido (mínimo 2 caracteres).</span>
+          }
+        </div>
 
-      <div class="campo">
-        <ion-label>Apellidos</ion-label>
-        <ion-input
-          formControlName="apellidos"
-          placeholder="Ej: Rodríguez"
-          fill="solid"
-          class="input-formulario">
-        </ion-input>
-        @if (formulario.get('apellidos')?.touched && formulario.get('apellidos')?.invalid) {
-          <span class="error-campo">Ingresá un apellido válido (mínimo 2 caracteres).</span>
-        }
+        <div class="campo">
+          <ion-label>Apellidos</ion-label>
+          <ion-input
+            formControlName="apellidos"
+            placeholder="Ej: Rodríguez"
+            fill="solid"
+            class="input-formulario">
+          </ion-input>
+          @if (formulario.get('apellidos')?.touched && formulario.get('apellidos')?.invalid) {
+            <span class="error-campo">Ingresá un apellido válido (mínimo 2 caracteres).</span>
+          }
+        </div>
       </div>
 
       <div class="campo">

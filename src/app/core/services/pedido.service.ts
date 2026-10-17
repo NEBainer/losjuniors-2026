@@ -64,11 +64,24 @@ export class PedidoService {
     return pedidoId;
   }
 
+  // Solo pedidos de la estadía actual (desde mesas.asignada_en), mismo
+  // criterio que cuentas en schema.sql v14 y que EncuestaService: si no,
+  // un cliente nuevo hereda el último pedido del cliente anterior.
   async obtenerPedidoActivoDeMesa(mesaId: string): Promise<Pedido | null> {
+    const { data: mesa, error: errorMesa } = await this.client
+      .from('mesas')
+      .select('asignada_en')
+      .eq('id', mesaId)
+      .single();
+
+    if (errorMesa) throw new Error('No se pudo verificar si ya había un pedido para esta mesa.');
+    if (!mesa.asignada_en) return null;
+
     const { data, error } = await this.client
       .from('pedidos')
       .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo')
       .eq('mesa_id', mesaId)
+      .gte('created_at', mesa.asignada_en)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -131,16 +144,13 @@ export class PedidoService {
   async listarPendientes(): Promise<PedidoPendiente[]> {
     const { data, error } = await this.client
       .from('pedidos')
-      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo, mesas(numero)')
+      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo, mesas(numero), pedido_items(cantidad, productos(nombre))')
       .eq('estado', 'pendiente_confirmacion')
       .order('created_at', { ascending: true });
 
     if (error) throw new Error('No se pudieron cargar los pedidos pendientes.');
 
-    return (data ?? []).map((fila: any) => ({
-      ...this.mapPedido(fila),
-      mesaNumero: fila.mesas?.numero ?? 0,
-    }));
+    return (data ?? []).map((fila: any) => this.mapPedidoPendiente(fila));
   }
 
   async confirmarPedido(pedidoId: string): Promise<void> {
@@ -172,17 +182,14 @@ export class PedidoService {
   async listarListosParaEntregar(): Promise<PedidoPendiente[]> {
     const { data, error } = await this.client
       .from('pedidos')
-      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo, mesas(numero)')
+      .select('id, mesa_id, estado, importe_total, tiempo_estimado_minutos, created_at, cocina_lista, bar_listo, entregado_por_mozo, mesas(numero), pedido_items(cantidad, productos(nombre))')
       .eq('estado', 'completo')
       .eq('entregado_por_mozo', false)
       .order('created_at', { ascending: true });
 
     if (error) throw new Error('No se pudieron cargar los pedidos listos para entregar.');
 
-    return (data ?? []).map((fila: any) => ({
-      ...this.mapPedido(fila),
-      mesaNumero: fila.mesas?.numero ?? 0,
-    }));
+    return (data ?? []).map((fila: any) => this.mapPedidoPendiente(fila));
   }
 
   // Punto 19: el mozo avisa que llevó el pedido a la mesa. La función
@@ -269,6 +276,19 @@ export class PedidoService {
       cocinaLista: fila.cocina_lista ?? false,
       barListo: fila.bar_listo ?? false,
       entregadoPorMozo: fila.entregado_por_mozo ?? false,
+    };
+  }
+  private mapPedidoPendiente(fila: any): PedidoPendiente {
+    const porNombre = new Map<string, number>();
+    for (const item of fila.pedido_items ?? []) {
+      const nombre = item.productos?.nombre as string | undefined;
+      if (!nombre) continue;
+      porNombre.set(nombre, (porNombre.get(nombre) ?? 0) + item.cantidad);
+    }
+    return {
+      ...this.mapPedido(fila),
+      mesaNumero: fila.mesas?.numero ?? 0,
+      items: Array.from(porNombre, ([nombre, cantidad]) => ({ nombre, cantidad })),
     };
   }
 }

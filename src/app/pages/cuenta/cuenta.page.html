@@ -1,16 +1,15 @@
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-button (click)="volver()" aria-label="Volver al pedido">
+      <ion-button (click)="volver()" [attr.aria-label]="fase() === 'pago' ? 'Volver al detalle' : 'Volver al pedido'">
         <ion-icon name="arrow-back-outline" slot="icon-only"></ion-icon>
       </ion-button>
     </ion-buttons>
-    <ion-title>Tu cuenta</ion-title>
+    <ion-title>{{ fase() === 'pago' ? 'Medio de pago' : 'Tu cuenta' }}</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content class="fondo-app">
-
+<ion-content class="fondo-app" [scrollY]="!pantallaFija()">
   @if (cargando() || procesando()) {
     <div class="overlay-cargando">
       <div class="contenedor-spinner">
@@ -28,7 +27,7 @@
     </div>
   }
 
-  @if (!cargando()) {
+   @if (!cargando()) {
     <div class="contenedor-cuenta">
 
       @if (errorCarga()) {
@@ -60,55 +59,58 @@
           }
 
           @case ('detalle') {
-            <section class="resumen-total">
-              <span class="etiqueta">Total a pagar</span>
-              <span class="monto-total">{{ formatear(c.total) }}</span>
-            </section>
+            <div class="pantalla-fija">
+              <section class="resumen-total">
+                <span class="etiqueta">Total a pagar</span>
+                <span class="monto-total">{{ formatear(c.total) }}</span>
+              </section>
 
-            <section class="tarjeta">
-              <h3>Detalle de tu consumo</h3>
-              <ul class="lineas">
-                @for (item of items(); track item.nombre + item.precioUnitario) {
-                  <li class="linea">
-                    <div class="linea-texto">
-                      <span class="nombre">{{ item.nombre }}</span>
-                      <span class="secundario">{{ item.cantidad }} × {{ formatear(item.precioUnitario) }}</span>
-                    </div>
-                    <span class="importe">{{ formatear(item.importe) }}</span>
-                  </li>
-                }
-              </ul>
+              <section class="tarjeta tarjeta-detalle">
+                <h3>Detalle de tu consumo</h3>
+                <ul class="lineas">
+                  @for (item of items(); track item.nombre + item.precioUnitario) {
+                    <li class="linea">
+                      <div class="linea-texto">
+                        <span class="nombre">{{ item.nombre }}</span>
+                        <span class="secundario">{{ item.cantidad }} × {{ formatear(item.precioUnitario) }}</span>
+                      </div>
+                      <span class="importe">{{ formatear(item.importe) }}</span>
+                    </li>
+                  }
+                </ul>
 
-              <div class="separador"></div>
+                <div class="separador"></div>
 
-              <div class="fila">
-                <span>Subtotal</span>
-                <span>{{ formatear(c.subtotal) }}</span>
-              </div>
-              <div class="fila" [class.descuento]="(c.descuentoImporte ?? 0) > 0">
-                <span>Descuento por juegos{{ c.descuentoPorcentaje ? ' (' + c.descuentoPorcentaje + '%)' : '' }}</span>
-                <span>{{ (c.descuentoImporte ?? 0) > 0 ? '− ' + formatear(c.descuentoImporte) : 'Sin descuento' }}</span>
-              </div>
-              <div class="fila">
-                <span>Propina: {{ nivelPropina() }} ({{ c.propinaPorcentaje }}%)</span>
-                <span>{{ formatear(c.propinaImporte) }}</span>
-              </div>
-              <button type="button" class="enlace-cambiar" (click)="escanearPropina()">
-                <ion-icon name="qr-code-outline"></ion-icon>
-                Cambiar la propina
-              </button>
+                <div class="fila">
+                  <span>Subtotal</span>
+                  <span>{{ formatear(c.subtotal) }}</span>
+                </div>
+                <div class="fila" [class.descuento]="(c.descuentoImporte ?? 0) > 0">
+                  <span>Descuento por juegos{{ c.descuentoPorcentaje ? ' (' + c.descuentoPorcentaje + '%)' : '' }}</span>
+                  <span>{{ (c.descuentoImporte ?? 0) > 0 ? '− ' + formatear(c.descuentoImporte) : 'Sin descuento' }}</span>
+                </div>
+                <div class="fila">
+                  <span>Propina: {{ nivelPropina() }} ({{ c.propinaPorcentaje }}%)</span>
+                  <span>{{ formatear(c.propinaImporte) }}</span>
+                </div>
+                <button type="button" class="enlace-cambiar" (click)="escanearPropina()">
+                  <ion-icon name="qr-code-outline"></ion-icon>
+                  Cambiar la propina
+                </button>
+              </section>
+            </div>
+          }
 
-              <div class="separador"></div>
+          @case ('pago') {
+            <div class="pantalla-fija">
+              <section class="resumen-total compacto">
+                <span class="etiqueta">Vas a pagar</span>
+                <span class="monto-total">{{ formatear(c.total) }}</span>
+              </section>
 
-              <div class="fila fila-total">
-                <span>TOTAL</span>
-                <span>{{ formatear(c.total) }}</span>
-              </div>
-            </section>
+              <h2 class="titulo-etapa">¿Cómo querés pagar?</h2>
 
-            <section class="tarjeta" [class.con-error]="errorMetodo()">
-              <h3>Elegí cómo pagar</h3>
-              <div class="metodos" role="radiogroup" aria-label="Medio de pago">
+              <div class="metodos" [class.con-error]="errorMetodo()" role="radiogroup" aria-label="Medio de pago">
                 @for (metodo of metodos; track metodo.valor) {
                   <button
                     type="button"
@@ -123,12 +125,12 @@
                   </button>
                 }
               </div>
+
               @if (errorMetodo()) {
                 <p class="error-campo">Elegí un medio de pago para continuar.</p>
               }
-            </section>
-
-            <p class="aviso-simulado">Pago simulado: no se realiza ningún cobro real.</p>
+              <p class="aviso-simulado">Pago simulado: no se realiza ningún cobro real.</p>
+            </div>
           }
 
           @case ('pagada') {
@@ -160,7 +162,7 @@
                 </div>
               }
 
-               <ion-button expand="block" class="boton-principal" [disabled]="escaneando()" (click)="verificarMesa()">
+              <ion-button expand="block" class="boton-principal" [disabled]="escaneando()" (click)="verificarMesa()">
                 <ion-icon name="qr-code-outline" slot="start"></ion-icon>
                 Escanear QR de la mesa
               </ion-button>
@@ -180,15 +182,21 @@
 
     </div>
   }
-
 </ion-content>
 
-@if (!cargando() && fase() === 'detalle') {
+@if (!cargando() && pantallaFija()) {
   <ion-footer>
     <ion-toolbar class="barra-pago">
-      <ion-button expand="block" class="boton-pagar" [disabled]="!!procesando()" (click)="pagar()">
-        Pagar {{ formatear(cuenta()?.total ?? 0) }}
-      </ion-button>
+      @if (fase() === 'detalle') {
+        <ion-button expand="block" class="boton-pagar" (click)="irAlPago()">
+          Continuar al pago
+          <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+        </ion-button>
+      } @else {
+        <ion-button expand="block" class="boton-pagar" [disabled]="!!procesando()" (click)="pagar()">
+          Pagar {{ formatear(cuenta()?.total ?? 0) }}
+        </ion-button>
+      }
     </ion-toolbar>
   </ion-footer>
 }

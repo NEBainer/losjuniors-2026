@@ -26,6 +26,9 @@ export interface Pedido {
 
 export interface PedidoPendiente extends Pedido {
   mesaNumero: number;
+  // Pantalla de pedidos del mozo: qué pidió la mesa, sumado por producto
+  // (mismo criterio que PedidoSector).
+  items: { nombre: string; cantidad: number }[];
 }
 
 // Puntos 16/17: cocina prepara todo lo que no es bebida (decisión de

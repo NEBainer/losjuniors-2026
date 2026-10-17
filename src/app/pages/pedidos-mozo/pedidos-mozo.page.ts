@@ -1,5 +1,5 @@
-import { Component, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, signal, computed } from '@angular/core';
+import { Router, ActivatedRoute } from '@angular/router';
 import { IonContent, IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import {
@@ -12,16 +12,31 @@ import {
   restaurantOutline,
   timeOutline,
   checkmarkDoneCircle,
+  checkmarkDoneCircleOutline,
+  closeCircleOutline,
+  cashOutline,
 } from 'ionicons/icons';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { PedidoService } from '../../core/services/pedido.service';
 import { PedidoPendiente } from '../../core/models/pedido.model';
 
+//Funcion vieja
+// function haceCuanto(fechaIso: string): string {
+//   const minutos = Math.max(0, Math.round((Date.now() - new Date(fechaIso).getTime()) / 60000));
+//   if (minutos < 1) return 'recién';
+//   if (minutos === 1) return 'hace 1 min';
+//   return `hace ${minutos} min`;
+// }
+
+//funcion nueva
 function haceCuanto(fechaIso: string): string {
   const minutos = Math.max(0, Math.round((Date.now() - new Date(fechaIso).getTime()) / 60000));
   if (minutos < 1) return 'recién';
-  if (minutos === 1) return 'hace 1 min';
-  return `hace ${minutos} min`;
+  if (minutos < 60) return minutos === 1 ? 'hace 1 min' : `hace ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  return dias === 1 ? 'hace 1 día' : `hace ${dias} días`;
 }
 
 @Component({
@@ -38,12 +53,16 @@ export class PedidosMozoPage {
   readonly listos = signal<(PedidoPendiente & { hace: string })[]>([]);
   readonly cargando = signal(false);
   readonly procesandoId = signal<string | null>(null);
+  // Pestaña visible: viene del home (?vista=pendientes|listos) según qué
+  // sección tocó el mozo.
+  readonly vista = signal<'pendientes' | 'listos'>('pendientes');
+  readonly visibles = computed(() => (this.vista() === 'pendientes' ? this.pendientes() : this.listos()));
 
   readonly mensajeError = signal('');
   readonly mensajeOk = signal('');
 
-  constructor(private pedidos: PedidoService, private router: Router) {
-    addIcons({ arrowBackOutline, refreshOutline, warning, checkmarkCircleOutline, checkmarkCircle, closeCircle, restaurantOutline, timeOutline, checkmarkDoneCircle });
+  constructor(private pedidos: PedidoService, private router: Router, private route: ActivatedRoute) {
+    addIcons({ arrowBackOutline, refreshOutline, warning, checkmarkCircleOutline, checkmarkCircle, closeCircle, restaurantOutline, timeOutline, checkmarkDoneCircle, checkmarkDoneCircleOutline, closeCircleOutline, cashOutline });
   }
 
   volver() {
@@ -51,6 +70,7 @@ export class PedidosMozoPage {
   }
 
   ionViewWillEnter() {
+    this.vista.set(this.route.snapshot.queryParamMap.get('vista') === 'listos' ? 'listos' : 'pendientes');
     this.cargar();
   }
 

@@ -5,13 +5,13 @@ import { CuentaService } from '../../core/services/cuenta.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Cuenta, ETIQUETAS_METODO_PAGO, ItemCuenta, MetodoPago, NIVELES_PROPINA } from '../../core/models/cuenta.model';
 import { addIcons } from 'ionicons';
-import { alertCircleOutline, arrowBackOutline, barChartOutline, card, cardOutline, checkmarkCircle, happyOutline, notificationsOutline, qrCodeOutline, radioButtonOff, radioButtonOn, walletOutline, warningOutline } from 'ionicons/icons';
+import { alertCircleOutline, arrowBackOutline, arrowForwardOutline, barChartOutline, card, cardOutline, checkmarkCircle, happyOutline, notificationsOutline, qrCodeOutline, radioButtonOff, radioButtonOn, walletOutline, warningOutline } from 'ionicons/icons';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { MesaService } from '../../core/services/mesa.service';
 import { QrAppService } from '../../core/services/qr-app.service';
 
 
-type Fase = 'propina' | 'detalle' | 'pagada' | 'confirmada';
+type Fase = 'propina' | 'detalle' | 'pago' | 'pagada' | 'confirmada';
 
 const DEMORA_PAGO_SIMULADO_MS = 1500;
 const esperar = (ms: number) => new Promise<void>((resolver) => setTimeout(resolver, ms));
@@ -50,14 +50,18 @@ export class CuentaPage implements OnInit, OnDestroy {
   readonly errorMetodo = signal(false);
   readonly escaneando = signal(false);
   readonly mesaVerificada = signal<{ numero: number; libre: boolean } | null>(null);
+  readonly enEtapaPago = signal(false);
 
   readonly fase = computed<Fase | null>(() => {
     const cuenta = this.cuenta();
     if (!cuenta) return null;
     if (cuenta.estado === 'confirmada') return 'confirmada';
     if (cuenta.estado === 'pagada') return 'pagada';
-    return cuenta.propinaPorcentaje === null ? 'propina' : 'detalle';
+    if (cuenta.propinaPorcentaje === null) return 'propina';
+    return this.enEtapaPago() ? 'pago' : 'detalle';
   });
+
+  readonly pantallaFija = computed(() => this.fase() === 'detalle' || this.fase() === 'pago');
 
   readonly nivelPropina = computed(
     () => NIVELES_PROPINA.find((n) => n.porcentaje === this.cuenta()?.propinaPorcentaje)?.nivel ?? '',
@@ -90,7 +94,8 @@ export class CuentaPage implements OnInit, OnDestroy {
       radioButtonOn,
       walletOutline,
       warningOutline,
-      barChartOutline
+      barChartOutline,
+      arrowForwardOutline
     })
   }
 
@@ -132,6 +137,15 @@ export class CuentaPage implements OnInit, OnDestroy {
 
   elegirMetodo(metodo: MetodoPago): void {
     this.metodoElegido.set(metodo);
+    this.errorMetodo.set(false);
+  }
+
+  irAlPago(): void {
+    this.enEtapaPago.set(true);
+  }
+
+  volverAlDetalle(): void {
+    this.enEtapaPago.set(false);
     this.errorMetodo.set(false);
   }
 
@@ -203,6 +217,10 @@ export class CuentaPage implements OnInit, OnDestroy {
   }
 
   volver(): void {
+    if (this.fase() === 'pago') {
+      this.volverAlDetalle();
+      return;
+    }
     if (this.mesaId) {
       this.router.navigate(['/mesa', this.mesaId, 'pedido']);
     } else {

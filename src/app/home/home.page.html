@@ -38,7 +38,7 @@
     </div>
   }
 
-  <div class="contenedor-principal contenedor-app" [class.panel-compacto]="esPanelDueno() || esPanelMozo()">
+  <div class="contenedor-principal contenedor-app panel-compacto" [class.panel-simple]="!esPanelDueno() && !esPanelMozo()">
 
     <div class="cabecera-dashboard">
       <img [src]="'assets/mascota/' + mascotaActual()" alt="Mascota La Mesa" class="mascota-cabecera" />
@@ -170,7 +170,7 @@
       <div class="seccion-pendientes">
         <div class="cabecera-pendientes">
           <ion-icon name="people-outline"></ion-icon>
-          <h2>Clientes pendientes</h2>
+          <h2>Clientes pendientes ({{ pendientes().length }})</h2>
         </div>
 
         @if (mensajeErrorPendientes()) {
@@ -182,37 +182,39 @@
 
         @if (!cargandoPendientes() && pendientes().length === 0) {
           <p class="estado-vacio-pendientes">No hay clientes pendientes de aprobación.</p>
-        }
+        } @else {
+          <!-- Corrección 03/10: de a un cliente por vez, con snap (ver
+               .lista-snap en global.scss); deslizando se ve el siguiente. -->
+          <div class="lista-pendientes-embebida lista-snap lista-snap--una">
+            @for (cliente of pendientes(); track cliente.id) {
+              <div class="fila-pendiente">
+                <div class="avatar-chico">
+                  @if (cliente.fotoUrl) {
+                    <img [src]="cliente.fotoUrl" [alt]="'Foto de ' + cliente.nombres" />
+                  } @else {
+                    <span>{{ cliente.inicial }}</span>
+                  }
+                </div>
+                <span class="nombre-pendiente">{{ cliente.apellidos }}, {{ cliente.nombres }}</span>
 
-        <div class="lista-pendientes-embebida">
-          @for (cliente of pendientes(); track cliente.id) {
-            <div class="fila-pendiente">
-              <div class="avatar-chico">
-                @if (cliente.fotoUrl) {
-                  <img [src]="cliente.fotoUrl" [alt]="'Foto de ' + cliente.nombres" />
+                @if (confirmandoId() === cliente.id) {
+                  <div class="acciones-confirmar-chicas">
+                    <span>¿Aceptar?</span>
+                    <button class="btn-chico btn-si" (click)="confirmarAceptar(cliente)" [disabled]="procesandoId() === cliente.id">Sí</button>
+                    <button class="btn-chico btn-no" (click)="cancelarConfirmacionPendiente()" [disabled]="procesandoId() === cliente.id">No</button>
+                  </div>
                 } @else {
-                  <span>{{ cliente.inicial }}</span>
+                  <div class="acciones-chicas">
+                    <button class="btn-chico btn-detalle" (click)="verDetalle(cliente)">Ver detalle</button>
+                    <button class="btn-chico btn-aceptar" (click)="pedirConfirmacionAceptar(cliente.id)" aria-label="Aceptar cliente">
+                      <ion-icon name="checkmark-outline"></ion-icon>
+                    </button>
+                  </div>
                 }
               </div>
-              <span class="nombre-pendiente">{{ cliente.apellidos }}, {{ cliente.nombres }}</span>
-
-              @if (confirmandoId() === cliente.id) {
-                <div class="acciones-confirmar-chicas">
-                  <span>¿Aceptar?</span>
-                  <button class="btn-chico btn-si" (click)="confirmarAceptar(cliente)" [disabled]="procesandoId() === cliente.id">Sí</button>
-                  <button class="btn-chico btn-no" (click)="cancelarConfirmacionPendiente()" [disabled]="procesandoId() === cliente.id">No</button>
-                </div>
-              } @else {
-                <div class="acciones-chicas">
-                  <button class="btn-chico btn-detalle" (click)="verDetalle(cliente)">Ver detalle</button>
-                  <button class="btn-chico btn-aceptar" (click)="pedirConfirmacionAceptar(cliente.id)">
-                    <ion-icon name="checkmark-outline"></ion-icon>
-                  </button>
-                </div>
-              }
-            </div>
-          }
-        </div>
+            }
+          </div>
+        }
       </div>
     }
 
@@ -221,9 +223,10 @@
          vez de una tarjeta que navega aparte. -->
     @if (esPanelMozo()) {
       <div class="seccion-pendientes seccion-doble">
-        <div class="cabecera-pendientes">
+        <div class="cabecera-pendientes cabecera-enlace" (click)="verPedidosMozo('pendientes')">
           <ion-icon name="list-outline"></ion-icon>
-          <h2>Pedidos pendientes</h2>
+          <h2>Por confirmar ({{ pedidosPendientesMozo().length }})</h2>
+          <ion-icon name="chevron-forward-outline" class="flecha"></ion-icon>
         </div>
 
         @if (mensajeErrorPedidosMozo()) {
@@ -235,39 +238,42 @@
 
         @if (!cargandoPedidosMozo() && pedidosPendientesMozo().length === 0) {
           <p class="estado-vacio-pendientes">No hay pedidos esperando confirmación.</p>
+        } @else {
+          <!-- Corrección 03/10: de a un pedido por vez, con snap (mismo
+               criterio que los clientes pendientes del dueño). -->
+          <div class="lista-pendientes-embebida lista-snap lista-snap--una">
+            @for (pedido of pedidosPendientesMozo(); track pedido.id) {
+              <div class="fila-pendiente">
+                <div class="avatar-chico">
+                  <span>{{ pedido.mesaNumero }}</span>
+                </div>
+                <span class="nombre-pendiente">
+                  <strong>{{ formatearPrecioPedido(pedido.importeTotal) }}</strong>
+                  <small>~{{ pedido.tiempoEstimadoMinutos }} min · {{ pedido.hace }}</small>
+                </span>
+                <div class="acciones-chicas">
+                  <!-- Punto 13: rechazo directo, sin diálogo (convención de
+                       aceptar/rechazar con íconos). El cliente recibe la push
+                       y vuelve a armar el pedido con lo que ya tenía. -->
+                  <button
+                    class="btn-chico btn-rechazar"
+                    (click)="rechazarPedidoMozo(pedido)"
+                    [disabled]="procesandoPedidoId() === pedido.id"
+                  >
+                    <ion-icon name="close-circle-outline"></ion-icon>
+                  </button>
+                  <button
+                    class="btn-chico btn-aceptar"
+                    (click)="confirmarPedidoMozo(pedido)"
+                    [disabled]="procesandoPedidoId() === pedido.id"
+                  >
+                    <ion-icon name="checkmark-circle-outline"></ion-icon>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
         }
-
-        <div class="lista-pendientes-embebida">
-          @for (pedido of pedidosPendientesMozo(); track pedido.id) {
-            <div class="fila-pendiente">
-              <div class="avatar-chico">
-                <span>{{ pedido.mesaNumero }}</span>
-              </div>
-              <span class="nombre-pendiente">
-                {{ formatearPrecioPedido(pedido.importeTotal) }} · ~{{ pedido.tiempoEstimadoMinutos }} min · {{ pedido.hace }}
-              </span>
-              <div class="acciones-chicas">
-                <!-- Punto 13: rechazo directo, sin diálogo (convención de
-                     aceptar/rechazar con íconos). El cliente recibe la push
-                     y vuelve a armar el pedido con lo que ya tenía. -->
-                <button
-                  class="btn-chico btn-rechazar"
-                  (click)="rechazarPedidoMozo(pedido)"
-                  [disabled]="procesandoPedidoId() === pedido.id"
-                >
-                  <ion-icon name="close-circle-outline"></ion-icon>
-                </button>
-                <button
-                  class="btn-chico btn-aceptar"
-                  (click)="confirmarPedidoMozo(pedido)"
-                  [disabled]="procesandoPedidoId() === pedido.id"
-                >
-                  <ion-icon name="checkmark-circle-outline"></ion-icon>
-                </button>
-              </div>
-            </div>
-          }
-        </div>
       </div>
 
       <!-- Punto 18/19: pedidos que cocina y bar terminaron. Una sola acción
@@ -275,36 +281,38 @@
            ícono. Los mensajes de éxito/error se muestran en la sección de
            arriba (comparten mensajeOkPedidosMozo/mensajeErrorPedidosMozo). -->
       <div class="seccion-pendientes seccion-doble">
-        <div class="cabecera-pendientes">
+        <div class="cabecera-pendientes cabecera-enlace" (click)="verPedidosMozo('listos')">
           <ion-icon name="restaurant-outline"></ion-icon>
-          <h2>Listos para entregar</h2>
+          <h2>Para entregar ({{ pedidosListosMozo().length }})</h2>
+          <ion-icon name="chevron-forward-outline" class="flecha"></ion-icon>
         </div>
 
         @if (!cargandoPedidosListosMozo() && pedidosListosMozo().length === 0) {
           <p class="estado-vacio-pendientes">No hay pedidos listos para llevar a la mesa.</p>
+        } @else {
+          <div class="lista-pendientes-embebida lista-snap lista-snap--una">
+            @for (pedido of pedidosListosMozo(); track pedido.id) {
+              <div class="fila-pendiente">
+                <div class="avatar-chico">
+                  <span>{{ pedido.mesaNumero }}</span>
+                </div>
+                <span class="nombre-pendiente">
+                  <strong>{{ formatearPrecioPedido(pedido.importeTotal) }}</strong>
+                  <small>pedido {{ pedido.hace }}</small>
+                </span>
+                <div class="acciones-chicas">
+                  <button
+                    class="btn-chico btn-entregar"
+                    (click)="entregarPedidoMozo(pedido)"
+                    [disabled]="procesandoPedidoId() === pedido.id"
+                  >
+                    <ion-icon name="checkmark-done-circle-outline"></ion-icon>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
         }
-
-        <div class="lista-pendientes-embebida">
-          @for (pedido of pedidosListosMozo(); track pedido.id) {
-            <div class="fila-pendiente">
-              <div class="avatar-chico">
-                <span>{{ pedido.mesaNumero }}</span>
-              </div>
-              <span class="nombre-pendiente">
-                {{ formatearPrecioPedido(pedido.importeTotal) }} · pedido {{ pedido.hace }}
-              </span>
-              <div class="acciones-chicas">
-                <button
-                  class="btn-chico btn-entregar"
-                  (click)="entregarPedidoMozo(pedido)"
-                  [disabled]="procesandoPedidoId() === pedido.id"
-                >
-                  <ion-icon name="checkmark-done-circle-outline"></ion-icon>
-                </button>
-              </div>
-            </div>
-          }
-        </div>
       </div>
     }
 

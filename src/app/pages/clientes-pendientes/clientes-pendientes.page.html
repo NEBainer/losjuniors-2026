@@ -1,4 +1,4 @@
-<ion-content class="fondo-app">
+<ion-content class="fondo-app" [scrollY]="false">
 
   <!-- Spinner con logo en toda espera (requisito excluyente del enunciado) -->
   @if (cargando()) {
@@ -11,7 +11,7 @@
     </div>
   }
 
-  <div class="contenedor-principal contenedor-app">
+  <div class="contenedor-principal pantalla-fija">
 
     <div class="cabecera-pendientes">
       <button class="boton-icono-circular" (click)="volver()" title="Volver al panel">
@@ -45,52 +45,52 @@
         <ion-icon name="people-outline"></ion-icon>
         <p>No hay clientes pendientes de aprobación.</p>
       </div>
-    }
+    } @else {
+       <!-- Corrección 03/10: de a dos clientes por vez, con snap (ver
+           .lista-snap en global.scss). -->
+      <div class="lista-snap">
+        @for (cliente of pendientes(); track cliente.id) {
+          <div class="cliente-card">
 
-    <div class="lista-pendientes">
-      @for (cliente of pendientes(); track cliente.id) {
-        <div class="cliente-card">
+            <div class="avatar">
+              @if (cliente.fotoUrl) {
+                <img [src]="cliente.fotoUrl" [alt]="'Foto de ' + cliente.nombres + ' ' + cliente.apellidos" />
+              } @else {
+                <span class="inicial">{{ cliente.inicial }}</span>
+              }
+            </div>
 
-          <div class="avatar">
-            @if (cliente.fotoUrl) {
-              <img [src]="cliente.fotoUrl" [alt]="'Foto de ' + cliente.nombres + ' ' + cliente.apellidos" />
+            <div class="datos">
+              <h3>{{ cliente.apellidos }}, {{ cliente.nombres }}</h3>
+            </div>
+
+            @if (confirmandoId() === cliente.id) {
+              <div class="acciones acciones-confirmar">
+                <span class="pregunta">
+                  ¿{{ accion() === 'aceptado' ? 'Aceptar' : 'Rechazar' }} a este cliente?
+                </span>
+                <button class="btn btn-si" (click)="confirmar(cliente)" [disabled]="procesandoId() === cliente.id">
+                  Sí
+                </button>
+                <button class="btn btn-no" (click)="cancelarConfirmacion()" [disabled]="procesandoId() === cliente.id">
+                  No
+                </button>
+              </div>
             } @else {
-              <span class="inicial">{{ cliente.inicial }}</span>
+              <div class="acciones">
+                <button class="btn btn-aceptar" (click)="pedirConfirmacion(cliente.id, 'aceptado')">
+                  <ion-icon name="checkmark-outline"></ion-icon>
+                  <span>Aceptar</span>
+                </button>
+                <button class="btn btn-rechazar" (click)="pedirConfirmacion(cliente.id, 'rechazado')">
+                  <ion-icon name="close-outline"></ion-icon>
+                  <span>Rechazar</span>
+                </button>
+              </div>
             }
           </div>
-
-          <div class="datos">
-            <h3>{{ cliente.apellidos }}, {{ cliente.nombres }}</h3>
-          </div>
-
-          @if (confirmandoId() === cliente.id) {
-            <div class="acciones acciones-confirmar">
-              <span class="pregunta">
-                ¿{{ accion() === 'aceptado' ? 'Aceptar' : 'Rechazar' }} a este cliente?
-              </span>
-              <button class="btn btn-si" (click)="confirmar(cliente)" [disabled]="procesandoId() === cliente.id">
-                Sí
-              </button>
-              <button class="btn btn-no" (click)="cancelarConfirmacion()" [disabled]="procesandoId() === cliente.id">
-                No
-              </button>
-            </div>
-          } @else {
-            <div class="acciones">
-              <button class="btn btn-aceptar" (click)="pedirConfirmacion(cliente.id, 'aceptado')">
-                <ion-icon name="checkmark-outline"></ion-icon>
-                <span>Aceptar</span>
-              </button>
-              <button class="btn btn-rechazar" (click)="pedirConfirmacion(cliente.id, 'rechazado')">
-                <ion-icon name="close-outline"></ion-icon>
-                <span>Rechazar</span>
-              </button>
-            </div>
-          }
-
-        </div>
-      }
-    </div>
-
+        }
+      </div>
+    }
   </div>
 </ion-content>

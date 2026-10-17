@@ -1,5 +1,5 @@
-<ion-content class="fondo-app">
-  <div class="contenedor-principal contenedor-app">
+<ion-content class="fondo-app" [scrollY]="false">
+  <div class="contenedor-principal pantalla-fija">
     <div class="cabecera-pagina">
       <button class="boton-icono-circular" (click)="volver()" type="button">
         <ion-icon name="arrow-back-outline"></ion-icon>
@@ -37,7 +37,8 @@
           <p>Todavía no hay mesas cargadas. Agregá la primera con el botón de abajo.</p>
         </div>
       } @else {
-        <div class="lista-mesas">
+        <!-- Corrección 03/10: de a dos mesas por vez, con snap (ver .lista-snap en global.scss). -->
+        <div class="lista-snap">
           @for (mesa of mesas; track mesa.id) {
             <div class="tarjeta-mesa">
               <div class="foto-mesa">
@@ -48,28 +49,30 @@
                 }
               </div>
 
-              <div class="info-mesa">
-                <h3>Mesa {{ mesa.numero }}</h3>
-                <p>{{ etiquetasTipo[mesa.tipo] }} · {{ mesa.cantidad_comensales }} comensales</p>
+              <div class="pie-tarjeta">
+                <div class="info-mesa">
+                  <h3>Mesa {{ mesa.numero }}</h3>
+                  <p>{{ etiquetasTipo[mesa.tipo] }} · {{ mesa.cantidad_comensales }} comensales</p>
+
+                  <button
+                    type="button"
+                    class="chip-disponibilidad"
+                    [class.ocupada]="mesa.disponibilidad === 'ocupada'"
+                    (click)="alternarDisponibilidad(mesa)"
+                  >
+                    {{ mesa.disponibilidad === 'vacia' ? 'Vacía' : 'Ocupada' }}
+                  </button>
+                </div>
 
                 <button
+                  class="boton-icono-circular"
+                  (click)="verQr(mesa)"
                   type="button"
-                  class="chip-disponibilidad"
-                  [class.ocupada]="mesa.disponibilidad === 'ocupada'"
-                  (click)="alternarDisponibilidad(mesa)"
+                  aria-label="Ver QR de la mesa"
                 >
-                  {{ mesa.disponibilidad === 'vacia' ? 'Vacía' : 'Ocupada' }}
+                  <ion-icon name="qr-code-outline"></ion-icon>
                 </button>
-              </div>
-
-              <button
-                class="boton-icono-circular"
-                (click)="verQr(mesa)"
-                type="button"
-                aria-label="Ver QR de la mesa"
-              >
-                <ion-icon name="qr-code-outline"></ion-icon>
-              </button>
+              </div> 
             </div>
           }
         </div>

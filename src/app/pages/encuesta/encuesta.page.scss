@@ -27,53 +27,119 @@ ion-header ion-toolbar {
   --background: var(--ion-background-color);
 }
 
+ion-content {
+  position: relative;
+}
+
 .banner-error {
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  position: absolute;
+  top: 12px;
+  left: var(--app-padding);
+  right: var(--app-padding);
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 12px;
   padding: 10px 14px;
   border-radius: 12px;
   background: var(--ion-color-danger);
   color: var(--ion-background-color);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
 .contenedor-encuesta {
-  min-height: 100%;
+  position: absolute;
+  inset: 0;
   box-sizing: border-box;
-  padding: var(--app-padding);
-  padding-bottom: calc(var(--app-padding) + var(--safe-bottom));
+  padding: var(--app-padding) 0 calc(var(--app-padding) + var(--safe-bottom));
   display: flex;
   flex-direction: column;
   color: var(--ion-text-color);
 }
 
-form {
+.pantalla-encuesta {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.introduccion {
-  margin: 0;
+.progreso {
+  padding: 0 var(--app-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.texto-progreso {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
   font-size: 1rem;
-  text-align: center;
-  opacity: 0.85;
+  font-weight: 700;
+
+  .aclaracion {
+    font-size: 0.8rem;
+    font-weight: 600;
+    opacity: 0.7;
+  }
+}
+
+.barra {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--ion-color-step-150);
+  overflow: hidden;
+}
+
+.relleno {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--ion-color-primary);
+  transition: width 0.3s ease;
+}
+
+.pista {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.diapositiva {
+  flex: 0 0 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 var(--app-padding);
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  display: flex;
 }
 
 .pregunta {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
   background: var(--ion-color-step-100);
   border: 2px solid transparent;
-  border-radius: 16px;
-  padding: 16px;
+  border-radius: 20px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  justify-content: safe center;
+  gap: 18px;
 
   &.con-error {
     border-color: var(--ion-color-danger);
@@ -83,21 +149,21 @@ form {
     margin: 0;
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
     color: var(--ion-text-color);
-    font-size: 1.05rem;
+    font-size: 1.3rem;
     font-weight: 700;
     line-height: 1.3;
   }
 
   .numero {
     flex-shrink: 0;
-    width: 26px;
-    height: 26px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: var(--ion-color-primary);
     color: var(--ion-color-primary-contrast);
-    font-size: 0.85rem;
+    font-size: 1rem;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -108,7 +174,7 @@ form {
 .estrellas {
   display: flex;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .estrella {
@@ -116,7 +182,7 @@ form {
   border: none;
   padding: 4px;
   color: var(--ion-color-primary);
-  font-size: 2.4rem;
+  font-size: 3rem;
   line-height: 0;
   cursor: pointer;
 
@@ -129,21 +195,22 @@ form {
   margin: 0;
   text-align: center;
   color: var(--ion-color-primary);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
 .opciones {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 ion-radio {
   --color: var(--ion-color-primary);
   --color-checked: var(--ion-color-primary);
   color: var(--ion-text-color);
-  padding: 8px 0;
+  font-size: 1.15rem;
+  padding: 12px 0;
 }
 
 ion-checkbox {
@@ -151,19 +218,22 @@ ion-checkbox {
   --border-color-checked: var(--ion-color-primary);
   --checkbox-background-checked: var(--ion-color-primary);
   --checkmark-color: var(--ion-color-primary-contrast);
+  --size: 24px;
   color: var(--ion-text-color);
-  padding: 8px 0;
+  font-size: 1.15rem;
+  padding: 12px 0;
 }
 
 .valor-limpieza {
   text-align: center;
   color: var(--ion-color-primary);
-  font-size: 2rem;
+  font-size: 3.2rem;
   font-weight: 800;
+  line-height: 1;
 
   span {
     color: var(--ion-text-color);
-    font-size: 1rem;
+    font-size: 1.2rem;
     font-weight: 600;
     opacity: 0.7;
   }
@@ -172,10 +242,13 @@ ion-checkbox {
 ion-range {
   --bar-background: var(--ion-color-step-150);
   --bar-background-active: var(--ion-color-primary);
+  --bar-height: 6px;
   --knob-background: var(--ion-color-primary);
+  --knob-size: 28px;
   --pin-background: var(--ion-color-primary);
   --pin-color: var(--ion-color-primary-contrast);
   color: var(--ion-text-color);
+  font-size: 1.05rem;
   font-weight: 600;
   padding: 0 4px;
 }
@@ -186,6 +259,7 @@ ion-toggle {
   --handle-background: var(--ion-background-color);
   --handle-background-checked: var(--ion-color-primary);
   color: var(--ion-text-color);
+  font-size: 1.15rem;
   font-weight: 600;
 }
 
@@ -196,26 +270,42 @@ ion-textarea {
   --border-radius: 12px;
   --padding-start: 12px;
   --padding-end: 12px;
+  font-size: 1.05rem;
 }
 
 .error-campo {
   margin: 0;
   color: var(--ion-color-danger);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 600;
+}
+
+.navegacion {
+  padding: 0 var(--app-padding);
+  display: flex;
+  gap: 12px;
+
+  ion-button {
+    flex: 1;
+    margin: 0;
+    min-height: 52px;
+    --border-radius: 14px;
+    font-weight: 700;
+  }
 }
 
 .boton-principal {
   --background: var(--ion-color-primary);
   --color: var(--ion-color-primary-contrast);
-  --border-radius: 14px;
-  min-height: 52px;
-  margin: 4px 0 0;
-  font-weight: 700;
+}
+
+.boton-secundario {
+  --color: var(--ion-color-primary);
+  --border-color: var(--ion-color-primary);
 }
 
 .tarjeta-estado {
-  margin: auto 0;
+  margin: auto var(--app-padding);
   background: var(--ion-color-step-100);
   border-radius: 20px;
   padding: 32px 24px;
@@ -249,6 +339,15 @@ ion-textarea {
 
   .boton-principal {
     width: 100%;
+    min-height: 52px;
     margin-top: 8px;
+    --border-radius: 14px;
+    font-weight: 700;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .relleno {
+    transition: none;
   }
 }
